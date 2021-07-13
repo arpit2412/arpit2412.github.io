@@ -1,213 +1,185 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="X-UA-Compatible" content="ie=edge">
-	<title>Arpit Garg</title>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
-	<link href="https://fonts.googleapis.com/css?family=Comfortaa:700" rel="stylesheet">
-	<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
-	<link rel="stylesheet" href="index.css">
-</head>
-<body>
-	<div id="loading">
-		<div id="spinner"></div>
-	</div>
-	<div id="particles-js"></div>
-	<div id="box">
-		<div class="box1 onlywide animated bounceOutLeft" style="animation-delay:1.7s;"></div>
-		<div class="box2 onlywide animated bounceOutLeft" style="animation-delay:1.8s;"></div>
-		<div class="box2 onlywide animated bounceOutLeft" style="animation-delay:1.9s;"></div>
-		<div class="box2 animated bounceOutRight" style="animation-delay:1.9s;"></div>
-		<div class="box2 onlywide animated bounceOutRight" style="animation-delay:1.8s;"></div>
-		<div class="box2 onlywide animated bounceOutRight" style="animation-delay:1.7s;"></div>
-	</div>
-	<a id="about" onclick="showabout()" class="animated fadeIn" style="animation-delay:2.2s;">About me</a>
-	<a id="work" onclick="showwork()" class="animated fadeIn" style="animation-delay:2.2s;">Experience</a>
-	<a id="contact" onclick="showcontact()" class="animated fadeIn" style="animation-delay:2.2s;">Contact Me</a>
-	<div id="middle" class="animated slideInDown" style="animation-delay:2.0s;">
-		<h1>Arpit Garg</h1>
-		<h2>Data Science Enthusiast / Software Developer / Human</h2>
-		<div id="menu">
-			<a onclick="showabout()">About Me</a>
-			<a onclick="showwork()">Work</a>
-			<a onclick="showcontact()">Contact Me</a>
-		</div>
-		<table>
-			<tr>
-				<td class="animated zoomIn" style="animation-delay:2.8s;"><a class="social" target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/arpit2412/"><i class="fab fa-linkedin"></i></a></td>
-				<td class="animated zoomIn" style="animation-delay:2.8s;"><a class="social" target="_blank" rel="noopener noreferrer" href="https://github.com/arpit2412/"><i class="fab fa-github"></i></a></td>
-				<td class="animated zoomIn" style="animation-delay:2.2s;"><a class="social" target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/arpit.garg.39395/"><i class="fab fa-facebook"></i></a></td>
-				<td class="animated zoomIn" style="animation-delay:2.4s;"><a class="social" target="_blank" rel="noopener noreferrer" href="https://twitter.com/arpit2412"><i class="fab fa-twitter"></i></a></td>
-				<td class="animated zoomIn" style="animation-delay:2.6s;"><a class="social" target="_blank" rel="noopener noreferrer" href="https://www.instagram.com/arpitrick/"><i class="fab fa-instagram"></i></a></td>
-			</tr>
-		</table>
-	</div>
-	<div id="middle" data-iframe-width="150" data-iframe-height="270" data-share-badge-id="0ab0e50a-05c2-4f68-b4a7-83560446bbe1" data-share-badge-host="https://www.youracclaim.com"></div><script type="text/javascript" async src="//cdn.youracclaim.com/assets/utilities/embed.js"></script>
-	<div id="work_container" class="container">
-		<div onclick="closework()"><i class="fas fa-angle-right"></i></div>
-		<h1>Current Jobs</h1>
-		<section>
-			<h2><u>Teaching Assistant: Matlab and C</u></h2>
-			<h3>The University of Adelaide</h3>
-			<h4>March 2020 - Present</h4>
-			<p>
-				<ul>
-					<li>Assisteing students in programming of MATLAB and C language</li>
-					<li>Collaborating  closely  with  professors and other  teaching  assistants to  prepare  data-driven  reporting  to evaluate students and give recommendations by assisting student’s assignment on portal</li>
-					<li>Delivering pre-lab talks outlining background information and core concepts</li> 
-					<li>Grading students on time, delivered valuable comments in students mistakes and gave responses to requests</li>
-					<li>Analyzing student grade records, identified trends and areas to improve</li>
-				</ul>
-			</p>
-			<div id="used">
-				<div><i class="fas fa-circle"></i>&nbsp;Matlab</div>
-				<div><i class="fas fa-circle"></i>&nbsp;C Programming</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Confidence</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Time Management</div>
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Arpit Garg</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper-->
+			<div id="wrapper">
+
+				<!-- Nav -->
+					<nav id="nav">
+						<a href="#" class="icon solid fa-home"><span>Home</span></a>
+						<a href="#about" class="icon solid fa-folder"><span>About me</span></a>
+						<a href="#contact" class="icon solid fa-envelope"><span>Contact</span></a>
+						<a href="https://github.com/arpit2412" class="icon brands fa-github"><span>Github</span></a>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Me -->
+							<article id="home" class="panel intro">
+								<header>
+									<h1>Arpit Garg</h1>
+									Master of Data Science<br />
+									The University of Adelaide
+									<p>~Active Learner ~Always Overfit</p>
+									
+
+								</header>
+								<a href="#about" class="jumplink pic">
+									<span class="arrow icon solid fa-chevron-right"><span>See my work</span></span>
+									<img src="images/IMG_6500.jpg" alt="" />
+								</a>
+							</article>
+
+						<!-- Work -->
+							<article id="about" class="panel">
+								<header>
+									<h2>About me</h2>
+								</header>
+								<p>
+									Hello peeps, <br />
+									I'm a data science post-graduate from The University of Adelaide. My research areas are Generative Adeversarial Networks (GANs) and I am focusing on Unpaired Image to Image translation using GANs working under supervision of Dr Rafael Felix Alves, AIML. Also, working on Natural Language Processing (Text and Audio). <br />
+									Between these studies I worked as a summer research scholar for Centre for Research on Engineering Software Technologies (CREST, The University of Adelaide) and Cyber Security Cooperative Research Centre (CSCRC) and developed a novel methodology of automated security patch classification. <br />
+								</p>
+								<header>
+									<h2>Teaching</h2>
+								</header>
+								<p>
+									As a part-time, I also worked as teaching assistant (2020 - Present) for few subjects which involves: Programming (Matlab and C), Software Engineering Research Project, Introduction to Software Engineering, Big Data and Analysis, Object Oriented Programming. I was also an International Peer Study Support Mentor in 2020. <br /> <br />
+									Furthermore, I did my bachelors in Computer Science and Engineering from India and worked with Indian Navy, Defence Laboratory and IBM with parallel to my studies.<br />
+									STAY TUNED!!
+								</p>
+								<header>
+									<h2>Awards and Certifications</h2>
+								</header>
+								<header>
+									<h4>Master of Data Science</h4>
+								</header>
+								<p>
+									<ul>
+										<li>Adelaide Graduate Award</li>
+										<li>Google Secret Hiring FooBar (Shortlisted) - 2021</li>
+										<li>AWS Certified Cloud Practitioner </li>
+										<li>Global IQ Connect</li>
+										<li>Talking with Aussies</li>
+									</ul>		
+								</p>
+								<header>
+									<h4>Bachelors of Computer Science and Engineering</h4>
+								</header>
+								<p>
+									<ul>
+										<li>Student of the year 2018-2019</li>
+										<li>Best Industrial Training Award</li>
+										<li>Outstanding Contribution Award 2017-2018</li>
+										<li>Outstanding Contribution Award 2016-2017</li>
+									</ul>	
+								</p>
+								<!--
+								<section>
+									<div class="row">
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/01.jpeg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic02.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic03.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic04.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic05.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic06.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic07.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic08.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic09.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic10.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic11.jpg" alt=""></a>
+										</div>
+										<div class="col-4 col-6-medium col-12-small">
+											<a href="#" class="image fit"><img src="images/pic12.jpg" alt=""></a>
+										</div>
+									</div>
+								</section> -->
+							</article>
+
+						<!-- Contact -->
+							<article id="contact" class="panel">
+								<header>
+									<h2>Working Hours: 24 / 7</h2>
+								</header>
+								<header>
+									<h2>Contact Me</h2>
+								</header>
+								<p>Email: arpit.rikki2412@gmail.com</p>
+								<p>Mobile: +61-480145230</p>
+								<p>Linkedin: https://www.linkedin.com/in/arpit2412/</p>
+								<p>Github: https://github.com/arpit2412</p>
+								<p>Twitter: https://twitter.com/arpit2412</p>
+								<!--
+								<form action="#" method="post">
+									<div>
+										<div class="row">
+											<div class="col-6 col-12-medium">
+												<input type="text" name="name" placeholder="Name" />
+											</div>
+											<div class="col-6 col-12-medium">
+												<input type="text" name="email" placeholder="Email" />
+											</div>
+											<div class="col-12">
+												<input type="text" name="subject" placeholder="Subject" />
+											</div>
+											<div class="col-12">
+												<textarea name="message" placeholder="Message" rows="6"></textarea>
+											</div>
+											<div class="col-12">
+												<input type="submit" value="Send Message" />
+											</div>
+										</div>
+									</div>
+								</form>
+							</article>
+
+					</div> -->
+
+				<!-- Footer -->
+					<div id="footer">
+						<ul class="copyright">
+							<li>&copy; arpit2412.</li><li>Design curtsy: HTML5 UP</li>
+						</ul>
+					</div>
+
 			</div>
-		</section>
-		<section>
-			<h2><u>International Peer Study Support Mentor</u></h2>
-			<h3>The University of Adelaide</h3>
-			<h4>July 2020 - Present</h4>
-			<p>
-				<ul>
-					<li>Organised  weekly  meetings,  to  aid new students,relied  on  my  interpersonal  skills  such as  communicational skills and learning to adapt to each student toprovide the best possible help</li>
-					<li>Helped students to settle into university life, by acting as a contact point. Through responsibility, organisational skills, and time management</li>
-				</ul>
-			</p>
-			<div id="used">
-				<div><i class="fas fa-circle"></i>&nbsp;Dedication</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Communication</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Enthusiasm</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Resolution</div>
-			</div>
-		</section>
-		<h1>Professional Experience</h1>
-		<section>
-			<h2><u>IT Consultant</h2></u>
-			<h3>Modelle, Sydney</h3>
-			<h4>February 2020 </h4>
-			<p>
-				<ul>
-					<li>Designed, implemented and monitored web pages for continuous improvements using cPanel</li>
-					<li>Diagnosed 25+ errors on website and applied numerous enhancements to improve overall userexperience</li>
-					<li>Managed software improvements and developer training to integrate sites 
-					Leveraged knowledge of Python and Java to develop and deploy new technologies including data analysis and pose-estimation</li>
-					<li>Devised new promotional material to attract website visitors and leads</li>
-				</ul>
 
-			</p>
-			<div id="used">
-				<div><i class="fas fa-circle"></i>&nbsp;HTML5</div>
-				<div><i class="fas fa-circle"></i>&nbsp;CSS3</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Javascript</div>
-				<div><i class="fas fa-circle"></i>&nbsp;BootStrap</div>
-			</div>
-		</section>
-		<section>
-			<h2><u>Research Intern</h2></u>
-			<h3>Indian Defence Laboratory, India</h3>
-			<h4>December 2018 - March 2019</h4>
-			<p>
-				<ul>
-					<li>Experimental design, data processing & analysis to perform robust evaluations of systems and computer vision algorithms practiced OpenCV and Digital Image Processing</li>
-					<li>Researched and data analyzedonperformance of 40+ image processingalgorithms concerningobject  geometry to reduce tuning required by end-user</li>
-					<li>Researched and  applied  Machine  Learning  and Deep Learning techniques  to  solve  face  detection,  pose estimation,  object  detection  and  traffic  analysis  problems on  the  Region  of  Interest through MATLAB  and Python</li>
-					<li>Collaborated with team members to design and implement software systems for computer vision applicationsutilizedin defence services</li>
-					<li>Handled Laboratory  APIs  to evaluate algorithms  on  real  data (about  90k  images)and  applied  reverse engineering for increasing efficiency</li> 
-				</ul>
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
 
-			</p>
-			<div id="used">
-				<div><i class="fas fa-circle"></i>&nbsp;Digital Image Processing</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Computer Vision</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Machine Learning</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Deep Learning</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Python</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Matlab</div>
-			</div>
-		</section>
-
-		<section>
-			<h2><u>Research Intern</h2></u>
-			<h3>Indian Navy, India</h3>
-			<h4>May 2018 - July 2018</h4>
-			<p>
-				<ul>
-					<li>Designed 30+ ammunitions for naval ships and submarines including torpedoes, missiles and gunsusing JavaFx</li>
-					<li>Researched and outlined various meters required on submarines and ships including radars and gauge meters</li>
-					<li>Worked with naval officers and team to create gameplay algorithms,helps to select best strategy according to given conditions</li>
-					<li>Programmed multiple tools toreduce time spent intuning levels by 10%,and gives users more control</li>
-					<li>Directly reported to the Head Scientist as well as liaising closely with Indian Navy(Weapons And Electronics Systems Engg Establishment) technical team to resolve bugs and discuss new content</li>
-					<li>All planned components are currently deployed on defence vehicles</li>
-				</ul>
-
-			</p>
-			<div id="used">
-				<div><i class="fas fa-circle"></i>&nbsp;Algorithms</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Java</div>
-				<div><i class="fas fa-circle"></i>&nbsp;JavaFx</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Adobe Illustrator</div>
-				<div><i class="fas fa-circle"></i>&nbsp;Adoe Photoshop</div>
-			</div>
-		</section>
-		<h1>Publications</h1>
-		<section>
-			<h2>Blockchain: An Analysis on next-generation Internet</h2>
-		</section>
-		<div id="used">
-			<div><i class="fas fa-circle"></i>&nbsp;Blockchain</div>
-		</div>
-
-
-	</div>
-	<div id="about_container" class="container">
-		<div onclick="closeabout()"><i class="fas fa-angle-left"></i></div>
-		<h1>About Me</h1>
-		<section>
-			<p>
-				I am a graduate student studying Master of Data Science at The University of Adelaide, Australia. I completed my Bachelors of Technology in Computer Science and Engineering from Poornima College of Engineering, India. I worked with Indian Defence Laboratory and Indian Navy as an intern. My area of interests are Computer Vision, Deep Learning, Machine Learning and Generative Adeversarial Networks.
-			</p>
-			<p>
-				Currently, I am working as a Teaching Assistant of Matlab and C programming in The University of Adelaide. I am also an Interntaional Peer Study Support (IPSS) Mentor in the university and looking for opportunities to enhance my knowledge. 
-			</p>
-		</section>
-		<section>
-			<h2>Technical Skills</h2>
-			<p>
-				<ul>
-					<li>Programming: Java, C/C++, Python, R, Matlab</li>
-					<li>Web: HTML/CSS/ Bootstrap</li>
-					<li>Database: SQL, NoSQL</li>
-					<li>Tech: Apache Subversion (SVN),Machine Learning,Data Analysis, Tableau,  Gretl,   Weka, Data Virtualisation, Git, Data Science</li>
-				</ul>
-			</p>
-		</section>
-	</div>
-	<div id="contact_container" class="container">
-		<div onclick="closecontact()"><i class="fas fa-angle-down"></i></div>
-		<h1>Contact</h1>
-		<section>
-			<h2>Contact Details:</h2>
-			<p>
-				<ul class="entry-content" style="list-style-type: square;">
-					<li>Univeristy email: a1784072@student.adelaide.edu.au</li>
-					<li>Email: arpit.rikki2412@gmail.com</li>
-					<li>Mobile: +61-480145230</li>
-					<li>Address: 15, Belford Avenue, Devon Park, South Australia, 5008</li>
-				</ul>
-			</p>
-		</section>
-	</div>
-	<div id="footer">
-		Theme Courtesy <br> <a href="https://imfunniee.github.io">(imfunniee)</a>
-	</div>
-	<script src="index.js" type="text/javascript"></script>
-	<script src="particles.js"></script>
-	<script src="app.js"></script>
-</body>
+	</body>
 </html>
