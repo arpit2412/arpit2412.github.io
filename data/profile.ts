@@ -16,9 +16,11 @@ export const profile = {
     tiktok: "https://www.tiktok.com/@AIParameters",
     instagram: "https://www.instagram.com/AIParameters",
     facebook: "https://www.facebook.com/AIParameters",
+    imdb: "https://www.imdb.com/name/nm16969018/",
+    a2ai: "https://a2ai.com.au",
   },
   bio: [
-    "Senior ML engineer and published researcher specialising in large language models, multimodal AI, computer vision, machine unlearning, and efficient training systems.",
+    "Senior ML engineer and published researcher specialising in large language models, multimodal AI, computer vision, machine unlearning, and efficient training systems. Co-founder of A2.AI (a2ai.com.au).",
     "Recognised for shipping research-grade systems into production at scale — from TikTok's Trust & Safety MLLMs to VFX pipelines on Mad Max: Furiosa, Deadpool, Mickey 17, Sonic 3 and Sinners.",
     "Inventor on a US provisional patent (attention mechanism) and a granted UK design patent (AI-Assisted Rural & Indigenous Healthcare Robot). Investigator on a A$2.1M grant powering frontier-scale training on 256× NVIDIA H200 GPUs.",
   ],

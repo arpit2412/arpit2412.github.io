@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { profile } from "@/data/profile";
-import { Mail, Github, Linkedin, GraduationCap, MapPin, Youtube, Instagram, Facebook } from "lucide-react";
+import { Mail, Github, Linkedin, GraduationCap, MapPin, Youtube, Instagram, Facebook, Rocket } from "lucide-react";
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -87,6 +87,16 @@ export default function Footer() {
               <GraduationCap className="w-4 h-4" />
               <span className="link-underline">Google Scholar</span>
             </a>
+            <br />
+            <a
+              href={profile.links.a2ai}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 text-ink-200 hover:text-gold transition-colors group"
+            >
+              <Rocket className="w-4 h-4" />
+              <span className="link-underline">A2.AI — Co-founder</span>
+            </a>
           </div>
         </div>
 
@@ -103,6 +113,9 @@ export default function Footer() {
           </a>
           <a href={profile.links.facebook} target="_blank" rel="noreferrer" aria-label="Facebook" className="text-ink-300 hover:text-gold transition-colors">
             <Facebook className="w-5 h-5" />
+          </a>
+          <a href={profile.links.imdb} target="_blank" rel="noreferrer" aria-label="IMDb" className="text-ink-300 hover:text-gold transition-colors">
+            <span className="text-[11px] font-bold tracking-wide border border-current rounded px-1 py-0.5">IMDb</span>
           </a>
         </div>
 
