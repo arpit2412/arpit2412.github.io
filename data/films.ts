@@ -3,16 +3,16 @@ export type Film = {
   year?: number;
   studio?: string;
   role: string;
-  banner: string;       // horizontal 16:9
-  poster: string;       // portrait 2:3
+  banner: string;       // horizontal 16:9 — atmospheric marquee imagery
+  poster: string;       // portrait 2:3 — official poster art
   themeNote: string;    // short alt / story descriptor
 };
 
 // VFX work at Rising Sun Pictures — ML pipelines for deepfake / gaze / generative shots.
-// Imagery: thematic cinematic photography from Unsplash (license-free, commercial-OK).
-// Each photo evokes the film's mood rather than reproducing copyrighted poster art.
-const u = (id: string, fit: "wide" | "tall" = "wide") =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${fit === "wide" ? 1600 : 1000}&h=${fit === "wide" ? 900 : 1500}&q=85`;
+// Marquee banners: license-free cinematic photography (Unsplash) evoking each film's mood.
+// Title-card posters: official poster art (via Wikipedia / upload.wikimedia.org).
+const u = (id: string) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&h=900&q=85`;
 
 export const films: Film[] = [
   {
@@ -21,8 +21,17 @@ export const films: Film[] = [
     studio: "Warner Bros.",
     role: "VFX ML Research",
     banner: u("photo-1547235001-d703406d3f17"),
-    poster: u("photo-1547235001-d703406d3f17", "tall"),
-    themeNote: "Dusty wasteland tonal study",
+    poster: "https://upload.wikimedia.org/wikipedia/en/3/34/Furiosa_A_Mad_Max_Saga.jpg",
+    themeNote: "Furiosa: A Mad Max Saga poster",
+  },
+  {
+    title: "Mortal Kombat II",
+    year: 2025,
+    studio: "Warner Bros.",
+    role: "VFX ML Research",
+    banner: u("photo-1517457373958-b7bdd4587205"),
+    poster: "https://upload.wikimedia.org/wikipedia/en/9/9a/Mortal_Kombat_II_%28film%29_poster.jpg",
+    themeNote: "Mortal Kombat II poster",
   },
   {
     title: "Deadpool & Wolverine",
@@ -30,8 +39,8 @@ export const films: Film[] = [
     studio: "Marvel Studios",
     role: "VFX ML Research",
     banner: u("photo-1487029752779-a0c17b1f5ec9"),
-    poster: u("photo-1487029752779-a0c17b1f5ec9", "tall"),
-    themeNote: "Neon, red, sharp light",
+    poster: "https://upload.wikimedia.org/wikipedia/en/4/4c/Deadpool_%26_Wolverine_poster.jpg",
+    themeNote: "Deadpool & Wolverine poster",
   },
   {
     title: "Mickey 17",
@@ -39,8 +48,8 @@ export const films: Film[] = [
     studio: "Warner Bros.",
     role: "VFX ML Research",
     banner: u("photo-1749215419683-23847ec40e9a"),
-    poster: u("photo-1749215419683-23847ec40e9a", "tall"),
-    themeNote: "Sci-fi exterior, vintage future",
+    poster: "https://upload.wikimedia.org/wikipedia/en/2/2d/Mickey_17_film_poster.png",
+    themeNote: "Mickey 17 poster",
   },
   {
     title: "Sonic the Hedgehog 3",
@@ -48,8 +57,8 @@ export const films: Film[] = [
     studio: "Paramount",
     role: "VFX ML Research",
     banner: u("photo-1576975220179-dd57b19f7537"),
-    poster: u("photo-1576975220179-dd57b19f7537", "tall"),
-    themeNote: "Blue motion, kinetic energy",
+    poster: "https://upload.wikimedia.org/wikipedia/en/f/f2/Sonic_the_Hedgehog_3_film_poster.jpg",
+    themeNote: "Sonic the Hedgehog 3 poster",
   },
   {
     title: "Sinners",
@@ -57,8 +66,8 @@ export const films: Film[] = [
     studio: "Warner Bros.",
     role: "VFX ML Research",
     banner: u("photo-1511406361295-0a1ff814c0ce"),
-    poster: u("photo-1511406361295-0a1ff814c0ce", "tall"),
-    themeNote: "Noir corridor, single light source",
+    poster: "https://upload.wikimedia.org/wikipedia/en/5/5f/Sinners_%282025_film%29_poster.jpg",
+    themeNote: "Sinners poster",
   },
   {
     title: "La Brea",
@@ -66,7 +75,7 @@ export const films: Film[] = [
     studio: "NBC",
     role: "VFX ML Research",
     banner: u("photo-1625319714489-ed25251bdb4b"),
-    poster: u("photo-1625319714489-ed25251bdb4b", "tall"),
-    themeNote: "Primordial green, layered foliage",
+    poster: "https://upload.wikimedia.org/wikipedia/en/d/d6/La_Brea_%28TV_series%29_Title_Card.png",
+    themeNote: "La Brea title card",
   },
 ];
