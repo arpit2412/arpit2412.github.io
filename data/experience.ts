@@ -12,11 +12,11 @@ export const experience: Experience[] = [
   {
     role: "Research Fellow & Visiting Research Scientist",
     org: "AIML, University of Adelaide · CSIRO",
-    meta: "A$2.1M Grant Investigator",
+    meta: "A$2.1M Grant Co-Investigator",
     location: "Adelaide, Australia",
     dates: "May 2025 — Present",
     bullets: [
-      "Lead investigator on an A$2.1M ResetData grant to train frontier-scale foundation models (language, multimodal, reasoning) on a 256× NVIDIA H200 cluster.",
+      "Co-investigator on an A$2.1M ResetData grant to train frontier-scale foundation models (language, multimodal, reasoning) on a 256× NVIDIA H200 cluster.",
       "Owned end-to-end training methodology, alignment, controllability research, and stability/throughput validation of the multi-million-dollar datacenter.",
       "Authored compute and memory-efficient LLM training that simultaneously reduces wall-clock time and peak GPU memory; covered by a US provisional patent.",
       "Lead research on machine unlearning, LoRA / PEFT, and stable vision-language alignment — accepted at CVPR 2026 (SineProject), multiple NeurIPS 2026 submissions, TPAMI under review.",
