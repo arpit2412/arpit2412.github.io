@@ -11,6 +11,30 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "context-window",
+    file: "/blog/context-window.html",
+    title: "The Window — Why Your Chatbot Slows Down",
+    blurb:
+      "An interactive, jargon-free explainer of the context window: what the model can actually see, why doubling the conversation quadruples the cost, and what 'lost in the middle' really means.",
+    readTime: "~ 15 min",
+    topic: "Explainer",
+    date: "2026",
+    cover:
+      "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
+    slug: "llm-harness",
+    file: "/blog/llm-harness.html",
+    title: "The Harness — What Wraps the Brain",
+    blurb:
+      "The model is only part of the story. An interactive tour of the six things that wrap a language model — turning a single chat turn into an agent that can read, search, run code, and act.",
+    readTime: "~ 15 min",
+    topic: "Explainer",
+    date: "2026",
+    cover:
+      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
     slug: "attention-atlas",
     file: "/blog/attention-atlas.html",
     title: "The Attention Atlas",

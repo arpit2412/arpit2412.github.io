@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Harness — what wraps the brain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --paper: #F2EBDD;
+  --paper-deep: #E8DFCD;
+  --ink: #1A1612;
+  --ink-soft: #4A413A;
+  --ink-faint: #8A7F71;
+  --red: #C8341F;
+  --red-deep: #8A1F0F;
+  --ochre: #D4A24C;
+  --ochre-deep: #9C6F1F;
+  --cobalt: #1F4E8A;
+  --moss: #4A6B3A;
+  --line: rgba(26, 22, 18, 0.14);
+  --line-soft: rgba(26, 22, 18, 0.06);
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Newsreader", Georgia, serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.65;
+  font-weight: 400;
+  overflow-x: hidden;
+  position: relative;
+  cursor: default;
+}
+
+/* paper grain + grid */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(var(--line-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+  background-size: 48px 48px;
+  z-index: 1;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.45;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+
+main, header, section, nav { position: relative; z-index: 3; }
+
+/* scroll progress */
+.scroll-track {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 100;
+  pointer-events: none;
+}
+.scroll-bar {
+  height: 100%;
+  width: 0;
+  background: var(--red);
+  transition: width 0.05s linear;
+}
+
+/* TOP NAV */
+.topnav {
+  position: fixed;
+  top: 24px; left: 32px; right: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 50;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.topnav > * { pointer-events: auto; }
+.topnav-mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topnav-dot {
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+.topnav-meta {
+  color: var(--ink-faint);
+}
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 120px 64px 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.2s forwards;
+}
+.hero-eyebrow::before, .hero-eyebrow::after {
+  content: "";
+  height: 1px;
+  background: var(--red);
+  flex: 0 0 48px;
+}
+.hero-eyebrow::after { flex: 1; max-width: 240px; }
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "SOFT" 30, "wght" 380;
+  font-size: clamp(72px, 12vw, 200px);
+  line-height: 0.88;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin-bottom: 48px;
+}
+.hero h1 .line {
+  display: block;
+  overflow: hidden;
+}
+.hero h1 .line span {
+  display: inline-block;
+  transform: translateY(110%);
+  animation: lineUp 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.hero h1 .line:nth-child(1) span { animation-delay: 0.3s; }
+.hero h1 .line:nth-child(2) span { animation-delay: 0.45s; }
+.hero h1 .line:nth-child(3) span { animation-delay: 0.6s; }
+@keyframes lineUp {
+  to { transform: translateY(0); }
+}
+
+.hero h1 em {
+  font-style: italic;
+  font-variation-settings: "opsz" 144, "SOFT" 80, "wght" 380;
+  color: var(--red);
+}
+
+.hero-tag {
+  font-size: 22px;
+  line-height: 1.4;
+  max-width: 620px;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 400;
+  margin-bottom: 64px;
+  opacity: 0;
+  animation: fadeUp 1s 0.9s forwards;
+}
+.hero-tag em {
+  font-style: italic;
+  color: var(--ink);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-foot {
+  display: flex;
+  gap: 64px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  opacity: 0;
+  animation: fadeUp 1s 1.2s forwards;
+}
+.hero-foot-item strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 4px;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* hero diagram */
+.hero-diagram {
+  position: absolute;
+  top: 50%;
+  right: 64px;
+  transform: translateY(-50%);
+  width: 420px;
+  height: 420px;
+  pointer-events: none;
+  opacity: 0;
+  animation: fadeUp 1.5s 0.8s forwards;
+}
+@media (max-width: 1100px) {
+  .hero-diagram { display: none; }
+}
+
+.hero-diagram circle.brain {
+  fill: var(--red);
+}
+.hero-diagram .wrap-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: drawWrap 2.5s 1s ease-out forwards;
+}
+.hero-diagram .wrap-path.delay {
+  animation-delay: 1.4s;
+  animation-duration: 2.5s;
+}
+@keyframes drawWrap {
+  to { stroke-dashoffset: 0; }
+}
+.hero-diagram .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink-faint);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: fadeIn 1s 3s forwards;
+}
+@keyframes fadeIn { to { opacity: 1; } }
+
+.hero-diagram .tick {
+  stroke: var(--ink-faint);
+  stroke-width: 0.5;
+  opacity: 0;
+  animation: fadeIn 1s 3s forwards;
+}
+
+.scroll-cue {
+  position: absolute;
+  bottom: 32px;
+  left: 64px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  animation: fadeUp 1s 2s forwards;
+}
+.scroll-cue::after {
+  content: "↓";
+  font-size: 14px;
+  animation: bob 1.8s ease-in-out infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+
+/* SECTION SCAFFOLDING */
+section.chapter {
+  padding: 120px 64px;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+}
+section.chapter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 64px;
+  right: 64px;
+  height: 1px;
+  background: var(--line);
+}
+
+.chap-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 24px;
+}
+.chap-num::before {
+  content: "";
+  display: inline-block;
+  width: 32px;
+  height: 1px;
+  background: var(--red);
+  margin-right: 16px;
+  vertical-align: middle;
+}
+
+h2.chap-title {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 96, "SOFT" 50, "wght" 400;
+  font-size: clamp(48px, 7vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  margin-bottom: 40px;
+  max-width: 900px;
+}
+h2.chap-title em {
+  font-style: italic;
+  color: var(--red);
+  font-variation-settings: "opsz" 96, "SOFT" 80, "wght" 400;
+}
+
+.chap-intro {
+  font-size: 22px;
+  line-height: 1.5;
+  max-width: 660px;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 380;
+  margin-bottom: 64px;
+}
+.chap-intro em { color: var(--ink); font-style: italic; }
+
+.prose {
+  max-width: 660px;
+  font-size: 18px;
+  line-height: 1.7;
+}
+.prose p { margin-bottom: 1.25em; }
+.prose strong { font-weight: 600; color: var(--ink); }
+.prose em { font-style: italic; }
+
+/* footnote markers */
+sup.fn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--red);
+  cursor: pointer;
+  margin-left: 1px;
+  vertical-align: super;
+  line-height: 0;
+}
+sup.fn a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted currentColor;
+  padding: 0 2px;
+}
+sup.fn a:hover { background: var(--red); color: var(--paper); border-color: var(--red); }
+
+a.inline-link {
+  color: var(--ink);
+  border-bottom: 1px solid var(--red);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a.inline-link:hover { color: var(--red); }
+
+/* STAT COUNTERS */
+.counters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 80px 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+.counter {
+  padding: 48px 32px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.counter:last-child { border-right: none; }
+
+.counter-num {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "SOFT" 30, "wght" 350;
+  font-size: clamp(80px, 10vw, 140px);
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+.counter-num .suffix {
+  font-size: 0.4em;
+  color: var(--red);
+  vertical-align: super;
+  margin-left: 4px;
+}
+.counter-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 24px;
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .counters { grid-template-columns: 1fr; }
+  .counter { border-right: none; border-bottom: 1px solid var(--line); }
+  .counter:last-child { border-bottom: none; }
+}
+
+/* PULL QUOTE */
+.pullquote {
+  margin: 80px 0;
+  padding: 64px 80px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  text-align: center;
+}
+.pullquote::before {
+  content: "“";
+  font-family: var(--font-display);
+  font-size: 280px;
+  color: var(--red);
+  position: absolute;
+  top: -40px;
+  left: 0;
+  line-height: 1;
+  font-variation-settings: "opsz" 144, "SOFT" 100, "wght" 300;
+  opacity: 0.2;
+}
+.pullquote q {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 60, "SOFT" 70, "wght" 380;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  quotes: none;
+  font-style: italic;
+}
+.pullquote cite {
+  display: block;
+  margin-top: 32px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-style: normal;
+}
+
+/* ORBITAL COMPONENTS */
+.orbital {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 1;
+  margin: 80px auto;
+}
+.orbital-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  font-style: italic;
+  z-index: 10;
+  box-shadow: 0 0 0 8px var(--paper), 0 0 0 9px var(--ink);
+}
+.orbital-center::after {
+  content: "the model";
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--ochre);
+  margin-top: 4px;
+}
+.orbital-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px dashed var(--line);
+  animation: rotate 80s linear infinite;
+}
+@keyframes rotate {
+  to { transform: rotate(360deg); }
+}
+.orbital-comp {
+  position: absolute;
+  width: 130px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 5;
+}
+.orbital-comp::before {
+  content: "";
+  position: absolute;
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  top: -4px;
+  left: -4px;
+  transition: transform 0.3s;
+}
+.orbital-comp:hover {
+  background: var(--ink);
+  color: var(--paper);
+  transform: scale(1.08);
+  z-index: 20;
+}
+.orbital-comp:hover::before { transform: scale(1.5); background: var(--ochre); }
+.orbital-comp.active {
+  background: var(--red);
+  color: var(--paper);
+  border-color: var(--red);
+  z-index: 20;
+}
+.orbital-comp.active::before { background: var(--ochre); }
+.oc-num {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 4px;
+}
+.oc-name {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.orbital-comp[data-pos="0"] { top: 0; left: 50%; transform: translate(-50%, 0); }
+.orbital-comp[data-pos="1"] { top: 25%; right: 0; transform: translate(0, -50%); }
+.orbital-comp[data-pos="2"] { bottom: 25%; right: 0; transform: translate(0, 50%); }
+.orbital-comp[data-pos="3"] { bottom: 0; left: 50%; transform: translate(-50%, 0); }
+.orbital-comp[data-pos="4"] { bottom: 25%; left: 0; transform: translate(0, 50%); }
+.orbital-comp[data-pos="5"] { top: 25%; left: 0; transform: translate(0, -50%); }
+
+.orbital-comp[data-pos="0"]:hover, .orbital-comp[data-pos="0"].active { transform: translate(-50%, 0) scale(1.08); }
+.orbital-comp[data-pos="1"]:hover, .orbital-comp[data-pos="1"].active { transform: translate(0, -50%) scale(1.08); }
+.orbital-comp[data-pos="2"]:hover, .orbital-comp[data-pos="2"].active { transform: translate(0, 50%) scale(1.08); }
+.orbital-comp[data-pos="3"]:hover, .orbital-comp[data-pos="3"].active { transform: translate(-50%, 0) scale(1.08); }
+.orbital-comp[data-pos="4"]:hover, .orbital-comp[data-pos="4"].active { transform: translate(0, 50%) scale(1.08); }
+.orbital-comp[data-pos="5"]:hover, .orbital-comp[data-pos="5"].active { transform: translate(0, -50%) scale(1.08); }
+
+.orbital-spoke {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 1px;
+  height: 35%;
+  background: var(--line);
+  transform-origin: top center;
+  z-index: 1;
+}
+
+.comp-detail-panel {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 40px;
+  margin-top: 32px;
+  border-radius: 0;
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+}
+.comp-detail-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 60px; height: 60px;
+  border-top: 1px solid var(--ochre);
+  border-left: 1px solid var(--ochre);
+}
+.comp-detail-panel::after {
+  content: "";
+  position: absolute;
+  bottom: 0; right: 0;
+  width: 60px; height: 60px;
+  border-bottom: 1px solid var(--ochre);
+  border-right: 1px solid var(--ochre);
+}
+.cd-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--ochre);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+.cd-name {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 60, "SOFT" 60, "wght" 400;
+  font-size: 42px;
+  margin-bottom: 16px;
+  font-style: italic;
+}
+.cd-desc {
+  font-size: 17px;
+  line-height: 1.6;
+  max-width: 640px;
+  color: rgba(242, 235, 221, 0.85);
+  font-family: var(--font-body);
+}
+.cd-desc em { color: var(--ochre); font-style: italic; }
+
+/* LOOP DIAGRAM */
+.loop-stage {
+  background: var(--ink);
+  color: var(--paper);
+  margin: 80px -64px 0;
+  padding: 80px 64px;
+  position: relative;
+  overflow: hidden;
+}
+.loop-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(242, 235, 221, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(242, 235, 221, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.loop-stage > * { position: relative; z-index: 1; }
+
+.loop-stage .chap-num { color: var(--ochre); }
+.loop-stage .chap-num::before { background: var(--ochre); }
+.loop-stage h2.chap-title { color: var(--paper); }
+.loop-stage h2.chap-title em { color: var(--ochre); }
+.loop-stage .chap-intro { color: rgba(242, 235, 221, 0.75); }
+.loop-stage .chap-intro em { color: var(--paper); }
+
+.loop-diagram-wrap {
+  max-width: 980px;
+  margin: 48px auto 0;
+}
+
+.loop-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.loop-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid rgba(242, 235, 221, 0.3);
+  color: var(--paper);
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+.btn:hover { border-color: var(--ochre); color: var(--ochre); }
+.btn.active { background: var(--ochre); color: var(--ink); border-color: var(--ochre); }
+
+.loop-caption {
+  text-align: center;
+  margin-top: 32px;
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 380;
+  font-size: 20px;
+  font-style: italic;
+  color: var(--paper);
+  min-height: 2em;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
+
+/* TERMINAL */
+.terminal-block {
+  background: #14110D;
+  border: 1px solid var(--line);
+  padding: 24px 28px;
+  margin: 48px auto;
+  max-width: 760px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.8;
+  color: #C5BBA7;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 380px;
+}
+.terminal-block::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 32px;
+  background: #0A0907;
+  display: flex;
+  border-bottom: 1px solid rgba(242, 235, 221, 0.06);
+}
+.terminal-dots {
+  position: absolute;
+  top: 11px;
+  left: 14px;
+  display: flex;
+  gap: 6px;
+}
+.terminal-dots span {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #3a342d;
+}
+.terminal-title {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+}
+.terminal-body {
+  padding-top: 24px;
+}
+.t-line { display: block; min-height: 1.5em; }
+.t-prompt { color: var(--ochre); }
+.t-key { color: #E84A3D; }
+.t-fn { color: #7BB3E0; }
+.t-str { color: #B8C97A; }
+.t-com { color: #6A6258; font-style: italic; }
+.t-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--ochre);
+  vertical-align: text-bottom;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* BAR CHART */
+.chart-section {
+  margin: 80px 0;
+}
+.benchmark {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 48px;
+  margin-top: 32px;
+}
+.benchmark-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.benchmark-title {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 450;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.benchmark-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.bars {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 4px 24px;
+  align-items: center;
+}
+.bar-label {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 24, "wght" 500;
+  font-size: 15px;
+  color: var(--ink);
+}
+.bar-track {
+  height: 36px;
+  background: var(--paper-deep);
+  position: relative;
+  display: flex;
+  gap: 2px;
+}
+.bar-seg {
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--paper);
+  letter-spacing: 0.05em;
+  width: 0;
+  transition: width 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bar-seg.b-opus { background: var(--red); }
+.bar-seg.b-sonnet { background: var(--ochre); color: var(--ink); }
+.bar-seg.b-haiku { background: var(--moss); }
+.bar-legend {
+  display: flex;
+  gap: 24px;
+  margin-top: 32px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  flex-wrap: wrap;
+}
+.bar-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bar-legend-item::before {
+  content: "";
+  width: 14px; height: 14px;
+  display: inline-block;
+}
+.bar-legend-item.opus::before { background: var(--red); }
+.bar-legend-item.sonnet::before { background: var(--ochre); }
+.bar-legend-item.haiku::before { background: var(--moss); }
+
+.benchmark-source {
+  margin-top: 16px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+  font-style: italic;
+}
+
+/* BIG NUMBERS GALLERY */
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+  margin: 48px 0;
+}
+.evidence-card {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 32px;
+  position: relative;
+}
+.evidence-card::before {
+  content: "";
+  position: absolute;
+  top: -1px; right: -1px;
+  width: 24px; height: 24px;
+  background: var(--red);
+}
+.evidence-card .ev-source {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 8px;
+}
+.evidence-card .ev-num {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 96, "SOFT" 50, "wght" 400;
+  font-size: 72px;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.evidence-card .ev-num em {
+  font-style: italic;
+  color: var(--red);
+  font-variation-settings: "opsz" 96, "SOFT" 90, "wght" 400;
+}
+.evidence-card .ev-desc {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+@media (max-width: 720px) {
+  .evidence-grid { grid-template-columns: 1fr; }
+}
+
+/* HARNESS COMPARISON */
+.harness-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 48px 0 32px;
+}
+.h-card {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.h-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 0;
+}
+.h-card:hover::before { transform: translateY(0); }
+.h-card.active::before { transform: translateY(0); }
+.h-card:hover, .h-card.active { color: var(--paper); }
+.h-card:hover .h-svg path, .h-card:hover .h-svg circle, .h-card:hover .h-svg rect,
+.h-card.active .h-svg path, .h-card.active .h-svg circle, .h-card.active .h-svg rect {
+  stroke: var(--ochre);
+}
+.h-card > * { position: relative; z-index: 1; }
+.h-svg {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+}
+.h-svg path, .h-svg circle, .h-svg rect {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  transition: stroke 0.3s;
+}
+.h-name {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 500;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin-bottom: 4px;
+}
+.h-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.h-card:hover .h-tag, .h-card.active .h-tag { color: var(--ochre); }
+
+.h-detail {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 48px;
+  position: relative;
+}
+.h-detail::before {
+  content: "";
+  position: absolute;
+  top: -1px; left: 32px;
+  width: 24px; height: 12px;
+  background: var(--ink);
+  transform: translateY(-100%);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+.h-detail-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  margin-bottom: 12px;
+}
+.h-detail-name {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 60, "SOFT" 60, "wght" 400;
+  font-size: 40px;
+  font-style: italic;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+.h-detail-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(242, 235, 221, 0.5);
+  margin-bottom: 20px;
+}
+.h-detail-desc {
+  font-size: 16px;
+  line-height: 1.6;
+  max-width: 700px;
+  color: rgba(242, 235, 221, 0.85);
+  margin-bottom: 24px;
+}
+.h-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 32px;
+  max-width: 700px;
+}
+.h-detail-row {
+  border-top: 1px solid rgba(242, 235, 221, 0.15);
+  padding-top: 12px;
+}
+.h-detail-key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  margin-bottom: 4px;
+}
+.h-detail-val {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--paper);
+}
+@media (max-width: 720px) {
+  .h-detail-grid { grid-template-columns: 1fr; }
+}
+
+/* PLAYGROUND */
+.lab {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 48px;
+  margin: 48px 0;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 48px;
+}
+@media (max-width: 800px) {
+  .lab { grid-template-columns: 1fr; padding: 32px; }
+}
+.lab-controls h3 {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 500;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  margin-bottom: 24px;
+}
+.dial-row {
+  margin-bottom: 24px;
+}
+.dial-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.dial-val {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 14px;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 2px;
+  background: var(--ink);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  background: var(--red);
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 0 0 1px var(--ink);
+}
+input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.15); }
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  background: var(--red);
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  cursor: grab;
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.lab-output {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  min-height: 320px;
+}
+.lab-output::before {
+  content: "OUTPUT";
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--ochre);
+}
+.lab-passrate {
+  margin-bottom: 24px;
+}
+.lab-passrate-num {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144, "SOFT" 40, "wght" 350;
+  font-size: 96px;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  color: var(--paper);
+}
+.lab-passrate-num .suffix { font-size: 0.4em; color: var(--ochre); vertical-align: super; }
+.lab-passrate-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(242, 235, 221, 0.5);
+  margin-top: 4px;
+}
+.lab-stats {
+  display: flex;
+  gap: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(242, 235, 221, 0.15);
+}
+.lab-stat-key {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ochre);
+}
+.lab-stat-val {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 500;
+  font-size: 24px;
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}
+.lab-meter {
+  height: 4px;
+  background: rgba(242, 235, 221, 0.15);
+  margin-top: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.lab-meter-fill {
+  height: 100%;
+  background: var(--ochre);
+  width: 50%;
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* WHY MATTERS — final */
+.takeaways {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 48px 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+.takeaway {
+  padding: 40px 32px;
+  border-right: 1px solid var(--line);
+  position: relative;
+}
+.takeaway:last-child { border-right: none; }
+.takeaway-num {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 96, "SOFT" 80, "wght" 400;
+  font-size: 64px;
+  font-style: italic;
+  color: var(--red);
+  line-height: 1;
+  margin-bottom: 16px;
+}
+.takeaway h4 {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 36, "wght" 500;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+  line-height: 1.2;
+}
+.takeaway p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+@media (max-width: 800px) {
+  .takeaways { grid-template-columns: 1fr; }
+  .takeaway { border-right: none; border-bottom: 1px solid var(--line); }
+  .takeaway:last-child { border-bottom: none; }
+}
+
+/* REFERENCES */
+.refs-section {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 96px 64px;
+  margin: 0 -64px -120px;
+}
+.refs-section .chap-num { color: var(--ochre); }
+.refs-section .chap-num::before { background: var(--ochre); }
+.refs-section h2.chap-title { color: var(--paper); }
+.refs-section .chap-intro { color: rgba(242, 235, 221, 0.65); }
+
+.refs-list {
+  list-style: none;
+  counter-reset: ref;
+  max-width: 980px;
+  margin-top: 48px;
+}
+.refs-list li {
+  counter-increment: ref;
+  padding: 20px 0 20px 64px;
+  border-bottom: 1px solid rgba(242, 235, 221, 0.1);
+  position: relative;
+  font-size: 14px;
+  line-height: 1.5;
+  transition: padding-left 0.3s;
+}
+.refs-list li:hover { padding-left: 72px; }
+.refs-list li::before {
+  content: counter(ref, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 20px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ochre);
+  letter-spacing: 0.1em;
+}
+.refs-list li:target {
+  background: rgba(212, 162, 76, 0.08);
+  padding-left: 80px;
+}
+.refs-list li:target::before { color: var(--red); }
+.ref-title {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 24, "wght" 500;
+  font-size: 17px;
+  color: var(--paper);
+  display: block;
+  margin-bottom: 4px;
+}
+.ref-meta {
+  color: rgba(242, 235, 221, 0.55);
+  font-family: var(--font-body);
+}
+.refs-list a {
+  color: var(--ochre);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  border-bottom: 1px dotted var(--ochre);
+  margin-left: 8px;
+}
+.refs-list a:hover { color: var(--red); border-color: var(--red); }
+
+.footer-mark {
+  margin-top: 64px;
+  padding-top: 32px;
+  border-top: 1px solid rgba(242, 235, 221, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(242, 235, 221, 0.4);
+}
+
+/* particles on loop */
+.packet {
+  fill: var(--ochre);
+}
+.packet.r { fill: var(--red); }
+
+@media (max-width: 720px) {
+  .hero { padding: 100px 24px 60px; }
+  section.chapter { padding: 80px 24px; }
+  section.chapter::before { left: 24px; right: 24px; }
+  .loop-stage { margin: 80px -24px 0; padding: 60px 24px; }
+  .refs-section { padding: 64px 24px; margin: 0 -24px -120px; }
+  .topnav { top: 16px; left: 16px; right: 16px; font-size: 10px; }
+  .scroll-cue { left: 24px; }
+  .counter-num { font-size: 64px; }
+  .lab { padding: 24px; }
+  .benchmark { padding: 24px; }
+  .pullquote { padding: 40px 16px; }
+  .pullquote::before { font-size: 180px; top: -20px; }
+  .bars { grid-template-columns: 70px 1fr; gap: 4px 12px; }
+  .bar-label { font-size: 13px; }
+  .h-detail { padding: 32px 24px; }
+}
+
+/* fade-in on scroll */
+.reveal { opacity: 0; transform: translateY(40px); transition: opacity 1s, transform 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.reveal.in { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="scroll-track"><div class="scroll-bar" id="scrollBar"></div></div>
+
+<nav class="topnav">
+  <div class="topnav-mark">
+    <span class="topnav-dot"></span>
+    <span>Field guide · 2026</span>
+  </div>
+  <div class="topnav-meta">By Dr Arpit Garg · No. 01 — The Harness</div>
+</nav>
+
+<header class="hero">
+  <div class="hero-eyebrow">Concept dossier</div>
+  <h1>
+    <span class="line"><span>The thing</span></span>
+    <span class="line"><span>that wraps</span></span>
+    <span class="line"><span>the <em>brain</em>.</span></span>
+  </h1>
+  <p class="hero-tag">
+    A language model alone is just a function. What turns it into something that can <em>read your files, run code, fix its own mistakes</em> — is the scaffolding around it. Engineers are calling it the <em>harness</em>, and it is now considered the real product.
+  </p>
+  <div class="hero-foot">
+    <div class="hero-foot-item">Made by<strong>Dr Arpit Garg</strong></div>
+    <div class="hero-foot-item">An interactive deep dive<strong>~ 8 min read</strong></div>
+    <div class="hero-foot-item">References<strong>16 sources, 2026</strong></div>
+    <div class="hero-foot-item">Format<strong>Scroll, click, drag</strong></div>
+  </div>
+
+  <svg class="hero-diagram" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
+    <!-- frame ticks -->
+    <g>
+      <line class="tick" x1="20" y1="20" x2="40" y2="20"/>
+      <line class="tick" x1="20" y1="20" x2="20" y2="40"/>
+      <line class="tick" x1="400" y1="20" x2="380" y2="20"/>
+      <line class="tick" x1="400" y1="20" x2="400" y2="40"/>
+      <line class="tick" x1="20" y1="400" x2="40" y2="400"/>
+      <line class="tick" x1="20" y1="400" x2="20" y2="380"/>
+      <line class="tick" x1="400" y1="400" x2="380" y2="400"/>
+      <line class="tick" x1="400" y1="400" x2="400" y2="380"/>
+    </g>
+
+    <!-- the LLM -->
+    <circle cx="210" cy="210" r="32" class="brain"/>
+    <text x="210" y="216" text-anchor="middle" font-family="JetBrains Mono" font-size="11" font-weight="700" fill="#F2EBDD" letter-spacing="0.1em">LLM</text>
+
+    <!-- harness layers wrapping -->
+    <circle cx="210" cy="210" r="70" class="wrap-path"/>
+    <circle cx="210" cy="210" r="110" class="wrap-path delay"/>
+    <circle cx="210" cy="210" r="155" class="wrap-path delay" style="animation-delay: 1.8s;"/>
+
+    <!-- spokes -->
+    <line x1="210" y1="80" x2="210" y2="55" stroke="#1A1612" stroke-width="0.5" stroke-dasharray="2 3" opacity="0" style="animation: fadeIn 1s 2.5s forwards;"/>
+    <line x1="340" y1="210" x2="365" y2="210" stroke="#1A1612" stroke-width="0.5" stroke-dasharray="2 3" opacity="0" style="animation: fadeIn 1s 2.5s forwards;"/>
+    <line x1="210" y1="340" x2="210" y2="365" stroke="#1A1612" stroke-width="0.5" stroke-dasharray="2 3" opacity="0" style="animation: fadeIn 1s 2.5s forwards;"/>
+    <line x1="80" y1="210" x2="55" y2="210" stroke="#1A1612" stroke-width="0.5" stroke-dasharray="2 3" opacity="0" style="animation: fadeIn 1s 2.5s forwards;"/>
+
+    <text x="210" y="42" text-anchor="middle" class="label">tools</text>
+    <text x="385" y="214" class="label">memory</text>
+    <text x="210" y="385" text-anchor="middle" class="label">loop</text>
+    <text x="35" y="214" text-anchor="end" class="label">context</text>
+
+    <text x="295" y="125" class="label" style="animation-delay: 3.5s;">guardrails</text>
+    <text x="125" y="125" text-anchor="end" class="label" style="animation-delay: 3.5s;">tracing</text>
+
+    <line x1="290" y1="130" x2="305" y2="115" stroke="#1A1612" stroke-width="0.5" opacity="0" style="animation: fadeIn 1s 3.2s forwards;"/>
+    <line x1="130" y1="130" x2="115" y2="115" stroke="#1A1612" stroke-width="0.5" opacity="0" style="animation: fadeIn 1s 3.2s forwards;"/>
+
+    <text x="210" y="395" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#8A7F71" letter-spacing="0.2em" opacity="0" style="animation: fadeIn 1s 4s forwards;">FIG. 01 / SCHEMATIC</text>
+  </svg>
+
+  <div class="scroll-cue">scroll to begin</div>
+</header>
+
+<!-- CHAPTER 1: THE BIG REVEAL -->
+<section class="chapter" id="ch1">
+  <div class="chap-num">Chapter 01 · The discovery</div>
+  <h2 class="chap-title reveal">Only <em>1.6%</em> of Claude Code is actually <em>the model</em>.</h2>
+  <p class="chap-intro reveal">In March 2026, Anthropic accidentally shipped a 60-megabyte source map with an npm release. For a few hours, the entire codebase of their flagship coding agent was public. Researchers counted the lines. What they found rewrote the industry's mental model.<sup class="fn"><a href="#r11">11</a></sup></p>
+
+  <div class="counters">
+    <div class="counter">
+      <div class="counter-num"><span data-count="512" data-suffix="k">0</span></div>
+      <div class="counter-label">Lines of code<br/>in Claude Code v2.1.88</div>
+    </div>
+    <div class="counter">
+      <div class="counter-num"><span data-count="98" data-decimal="0.4">0</span><span class="suffix">%</span></div>
+      <div class="counter-label">Is harness — routing,<br/>recovery, control</div>
+    </div>
+    <div class="counter">
+      <div class="counter-num"><span data-count="1" data-decimal="0.6">0</span><span class="suffix">%</span></div>
+      <div class="counter-label">Is AI decision logic.<br/>The rest is plumbing.</div>
+    </div>
+  </div>
+
+  <div class="prose reveal">
+    <p>The clearest working definition comes from Adnan Masood: the harness is <em>the scaffolding around an LLM that turns it into a working agent — the loop, tool calls, context management, memory, guardrails, and tracing.</em><sup class="fn"><a href="#r1">1</a></sup> Parallel Web Systems offers a different metaphor for the same thing: the harness is like the governor on an engine — it prevents unwanted behaviour while letting productive work continue.<sup class="fn"><a href="#r6">6</a></sup></p>
+    <p>The terminology is recent but the structure is not. Anthropic popularized the phrase. OpenAI calls the same thing <em>harness engineering</em>. A 2026 academic survey formalized it as a system distinct from the model weights themselves.<sup class="fn"><a href="#r8">8</a></sup> The vocabulary spread because, as one writer put it, it named something developers had already been building without a shared word for.<sup class="fn"><a href="#r5">5</a></sup></p>
+  </div>
+
+  <div class="pullquote reveal">
+    <q>The model is interchangeable — the harness is not.</q>
+    <cite>Karan Prasad, Obvix Labs, after reverse-engineering the leaked source<sup class="fn"><a href="#r11">11</a></sup></cite>
+  </div>
+</section>
+
+<!-- CHAPTER 2: ANATOMY -->
+<section class="chapter" id="ch2">
+  <div class="chap-num">Chapter 02 · Anatomy</div>
+  <h2 class="chap-title reveal">Six things wrap <em>every</em> production model.</h2>
+  <p class="chap-intro reveal">Different teams name them differently. MongoDB calls them the six components. Masood lists seven. The labels vary; the responsibilities are the same. <em>Click any organ to inspect.</em></p>
+
+  <div class="orbital">
+    <div class="orbital-center">M</div>
+
+    <div class="orbital-comp" data-pos="0" data-key="loop">
+      <div class="oc-num">01</div>
+      <div class="oc-name">The loop</div>
+    </div>
+    <div class="orbital-comp" data-pos="1" data-key="tools">
+      <div class="oc-num">02</div>
+      <div class="oc-name">Tools</div>
+    </div>
+    <div class="orbital-comp" data-pos="2" data-key="context">
+      <div class="oc-num">03</div>
+      <div class="oc-name">Context</div>
+    </div>
+    <div class="orbital-comp" data-pos="3" data-key="memory">
+      <div class="oc-num">04</div>
+      <div class="oc-name">Memory</div>
+    </div>
+    <div class="orbital-comp" data-pos="4" data-key="control">
+      <div class="oc-num">05</div>
+      <div class="oc-name">Control flow</div>
+    </div>
+    <div class="orbital-comp" data-pos="5" data-key="safety">
+      <div class="oc-num">06</div>
+      <div class="oc-name">Guardrails</div>
+    </div>
+  </div>
+
+  <div class="comp-detail-panel" id="compDetail">
+    <div class="cd-num">Select an organ above</div>
+    <div class="cd-name">All six</div>
+    <div class="cd-desc">Most production harnesses converge on these. Click any segment to see what it does, why it matters, and what fails when it's missing.</div>
+  </div>
+</section>
+
+<!-- CHAPTER 3: THE LOOP — dark section -->
+<section class="loop-stage chapter" id="ch3">
+  <div class="chap-num">Chapter 03 · The loop</div>
+  <h2 class="chap-title reveal">A single turn is a chat. <em>A loop</em> is an agent.</h2>
+  <p class="chap-intro reveal">Watch a request travel through the harness. Little packets of work move along the paths in real time. The defining edge is the one that loops back: <em>append result → call model again.</em> That's what turns prediction into action.</p>
+
+  <div class="loop-diagram-wrap">
+    <svg class="loop-svg" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="rgba(242, 235, 221, 0.45)"/>
+        </marker>
+        <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#D4A24C"/>
+        </marker>
+
+        <!-- path definitions for particles -->
+        <path id="p1" d="M 130 200 L 245 130" fill="none"/>
+        <path id="p2" d="M 365 130 L 425 130" fill="none"/>
+        <path id="p3" d="M 545 130 L 655 200" fill="none"/>
+        <path id="p4" d="M 655 270 L 545 270" fill="none"/>
+        <path id="p5" d="M 425 270 L 365 270" fill="none"/>
+        <path id="p6" d="M 305 270 Q 250 240 305 130" fill="none"/>
+      </defs>
+
+      <!-- frame -->
+      <rect x="20" y="20" width="760" height="360" fill="none" stroke="rgba(242,235,221,0.15)" stroke-width="0.5" stroke-dasharray="4 4"/>
+      <text x="32" y="42" font-family="JetBrains Mono" font-size="10" fill="rgba(242,235,221,0.4)" letter-spacing="0.1em">HARNESS BOUNDARY</text>
+
+      <!-- USER -->
+      <g>
+        <rect x="40" y="170" width="90" height="60" fill="none" stroke="rgba(242,235,221,0.6)" stroke-width="1"/>
+        <text x="85" y="195" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#F2EBDD">user</text>
+        <text x="85" y="215" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(242,235,221,0.5)" letter-spacing="0.08em">PROMPT</text>
+      </g>
+
+      <!-- LLM -->
+      <g>
+        <rect x="245" y="100" width="120" height="60" fill="none" stroke="#D4A24C" stroke-width="1.5"/>
+        <text x="305" y="125" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#D4A24C">model</text>
+        <text x="305" y="145" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(212,162,76,0.7)" letter-spacing="0.08em">GENERATE</text>
+      </g>
+
+      <!-- PARSE -->
+      <g>
+        <rect x="425" y="100" width="120" height="60" fill="none" stroke="rgba(242,235,221,0.6)" stroke-width="1"/>
+        <text x="485" y="125" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#F2EBDD">parse</text>
+        <text x="485" y="145" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(242,235,221,0.5)" letter-spacing="0.08em">EXTRACT CALLS</text>
+      </g>
+
+      <!-- TOOLS -->
+      <g>
+        <rect x="655" y="170" width="105" height="60" fill="none" stroke="#C8341F" stroke-width="1.5"/>
+        <text x="707" y="195" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#C8341F">tools</text>
+        <text x="707" y="215" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(200,52,31,0.8)" letter-spacing="0.08em">EXECUTE</text>
+      </g>
+
+      <!-- CONTEXT -->
+      <g>
+        <rect x="425" y="240" width="120" height="60" fill="none" stroke="rgba(242,235,221,0.6)" stroke-width="1"/>
+        <text x="485" y="265" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#F2EBDD">context</text>
+        <text x="485" y="285" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(242,235,221,0.5)" letter-spacing="0.08em">APPEND RESULT</text>
+      </g>
+
+      <!-- ANSWER -->
+      <g>
+        <rect x="245" y="240" width="120" height="60" fill="none" stroke="rgba(242,235,221,0.6)" stroke-width="1"/>
+        <text x="305" y="265" text-anchor="middle" font-family="Fraunces" font-style="italic" font-size="16" fill="#F2EBDD">answer</text>
+        <text x="305" y="285" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="rgba(242,235,221,0.5)" letter-spacing="0.08em">RETURN</text>
+      </g>
+
+      <!-- edges -->
+      <path d="M 130 200 L 245 130" stroke="rgba(242,235,221,0.45)" stroke-width="1" fill="none" marker-end="url(#arrL)"/>
+      <path d="M 365 130 L 425 130" stroke="rgba(242,235,221,0.45)" stroke-width="1" fill="none" marker-end="url(#arrL)"/>
+      <path d="M 545 130 L 655 200" stroke="rgba(242,235,221,0.45)" stroke-width="1" fill="none" marker-end="url(#arrL)"/>
+      <path d="M 655 270 L 545 270" stroke="rgba(242,235,221,0.45)" stroke-width="1" fill="none" marker-end="url(#arrL)"/>
+      <path d="M 425 270 L 365 270" stroke="rgba(242,235,221,0.45)" stroke-width="1" fill="none" marker-end="url(#arrL)"/>
+
+      <!-- LOOP edge — gold dashed -->
+      <path d="M 305 240 Q 230 200 305 160" stroke="#D4A24C" stroke-width="1.5" fill="none" marker-end="url(#arrO)" stroke-dasharray="6 4"/>
+      <text x="220" y="200" font-family="JetBrains Mono" font-size="10" fill="#D4A24C" letter-spacing="0.1em" font-style="italic">LOOP</text>
+
+      <!-- return to user -->
+      <path d="M 245 270 L 130 220" stroke="rgba(242,235,221,0.45)" stroke-width="1" fill="none" marker-end="url(#arrL)"/>
+
+      <!-- ANIMATED PARTICLES -->
+      <circle r="4" class="packet r">
+        <animateMotion dur="6s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#p1"/>
+        </animateMotion>
+      </circle>
+      <circle r="4" class="packet">
+        <animateMotion dur="6s" begin="1s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#p2"/>
+        </animateMotion>
+      </circle>
+      <circle r="4" class="packet">
+        <animateMotion dur="6s" begin="2s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#p3"/>
+        </animateMotion>
+      </circle>
+      <circle r="4" class="packet">
+        <animateMotion dur="6s" begin="3s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#p4"/>
+        </animateMotion>
+      </circle>
+      <circle r="4" class="packet">
+        <animateMotion dur="6s" begin="4s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#p5"/>
+        </animateMotion>
+      </circle>
+      <circle r="3.5" class="packet" style="fill: #D4A24C;">
+        <animateMotion dur="6s" begin="5s" repeatCount="indefinite" rotate="auto">
+          <mpath href="#p6"/>
+        </animateMotion>
+      </circle>
+
+      <!-- legend -->
+      <g>
+        <circle cx="40" cy="350" r="4" class="packet r"/>
+        <text x="52" y="354" font-family="JetBrains Mono" font-size="10" fill="rgba(242,235,221,0.6)" letter-spacing="0.05em">user-bound packet</text>
+        <circle cx="220" cy="350" r="4" class="packet"/>
+        <text x="232" y="354" font-family="JetBrains Mono" font-size="10" fill="rgba(242,235,221,0.6)" letter-spacing="0.05em">tool result / context</text>
+      </g>
+    </svg>
+
+    <p class="loop-caption" id="loopCaption">A live loop. Watch the gold dashed line — that's where chat becomes agent.</p>
+  </div>
+
+  <h3 style="margin-top: 80px; font-family: var(--font-display); font-size: 20px; font-weight: 500; color: var(--ochre); letter-spacing: 0.05em; text-transform: uppercase;">The loop, in code</h3>
+
+  <div class="terminal-block">
+    <div class="terminal-dots"><span></span><span></span><span></span></div>
+    <div class="terminal-title">harness.py — agent loop</div>
+    <div class="terminal-body" id="terminal"></div>
+  </div>
+</section>
+
+<!-- CHAPTER 4: EVIDENCE -->
+<section class="chapter" id="ch4">
+  <div class="chap-num">Chapter 04 · The evidence</div>
+  <h2 class="chap-title reveal">Same model. Same task. <em>38 points</em> apart.</h2>
+  <p class="chap-intro reveal">If harness were just a wrapper, swapping it would barely move the needle. Across multiple independent benchmarks in 2026, changing the harness produced bigger gains than upgrading the model itself.</p>
+
+  <div class="chart-section">
+    <div class="benchmark reveal">
+      <div class="benchmark-head">
+        <h3 class="benchmark-title">Pass rate on real-world coding tasks</h3>
+        <div class="benchmark-meta">Harness Bench · 300+ tasks · Jan 2026<sup class="fn"><a href="#r13">13</a></sup></div>
+      </div>
+      <div class="bars" id="bars">
+        <div class="bar-label">Claude Code</div>
+        <div class="bar-track">
+          <div class="bar-seg b-opus" data-w="100">100%</div>
+          <div class="bar-seg b-sonnet" data-w="100">100%</div>
+          <div class="bar-seg b-haiku" data-w="69">69%</div>
+        </div>
+        <div class="bar-label">Cursor</div>
+        <div class="bar-track">
+          <div class="bar-seg b-opus" data-w="85">85%</div>
+          <div class="bar-seg b-sonnet" data-w="85">85%</div>
+          <div class="bar-seg b-haiku" data-w="54">54%</div>
+        </div>
+        <div class="bar-label">Aider</div>
+        <div class="bar-track">
+          <div class="bar-seg b-opus" data-w="85">85%</div>
+          <div class="bar-seg b-sonnet" data-w="62">62%</div>
+          <div class="bar-seg b-haiku" data-w="38">38%</div>
+        </div>
+      </div>
+      <div class="bar-legend">
+        <span class="bar-legend-item opus">Opus 4.5</span>
+        <span class="bar-legend-item sonnet">Sonnet 4.5</span>
+        <span class="bar-legend-item haiku">Haiku 4.5</span>
+      </div>
+      <p class="benchmark-source">Note: scaled to 33% per segment for visual width. Real-time middleware domain; results don't generalize universally.</p>
+    </div>
+  </div>
+
+  <h3 style="font-family: var(--font-display); font-size: 24px; font-weight: 500; margin-top: 64px; margin-bottom: 24px; letter-spacing: -0.01em;">Four more findings, four different benchmarks.</h3>
+
+  <div class="evidence-grid">
+    <div class="evidence-card reveal">
+      <div class="ev-source">CORE-Bench</div>
+      <div class="ev-num"><em>+36</em> pp</div>
+      <div class="ev-desc">Claude Opus rose from 42% with a minimal scaffold to <strong>78%</strong> inside a full coding harness.<sup class="fn"><a href="#r16">16</a></sup></div>
+    </div>
+    <div class="evidence-card reveal">
+      <div class="ev-source">Matt Mayer · independent test</div>
+      <div class="ev-num"><em>+16</em> pp</div>
+      <div class="ev-desc">Same Claude Opus: 77% in Claude Code, <strong>93%</strong> in Cursor. The model didn't change. The harness did.<sup class="fn"><a href="#r16">16</a></sup></div>
+    </div>
+    <div class="evidence-card reveal">
+      <div class="ev-source">Endor Labs functionality</div>
+      <div class="ev-num"><em>+3.9</em> pp</div>
+      <div class="ev-desc">Opus 4.7 moved from Claude Code to Cursor: 87.2% → <strong>91.1%</strong>. Modest, but real, on production code.<sup class="fn"><a href="#r14">14</a></sup></div>
+    </div>
+    <div class="evidence-card reveal">
+      <div class="ev-source">Meta-Harness · Stanford</div>
+      <div class="ev-num"><em>6×</em></div>
+      <div class="ev-desc">Stanford reports up to a <strong>six-fold performance gap</strong> on the same benchmark, fixed model, harness varied.<sup class="fn"><a href="#r9">9</a></sup></div>
+    </div>
+  </div>
+
+  <div class="prose" style="margin-top: 48px;">
+    <p>The counter-evidence is worth flagging too. MongoDB notes that Scale AI's SWE-Atlas found harness choice within the margin of error for some model families, and METR's benchmarks show Claude Code and Codex don't always outperform a basic scaffold.<sup class="fn"><a href="#r10">10</a></sup> Both effects are real — they dominate in different regimes. Harness matters most on long-horizon, multi-step, real-world tasks. Less on short benchmark items.</p>
+  </div>
+</section>
+
+<!-- CHAPTER 5: HARNESS PICKER -->
+<section class="chapter" id="ch5">
+  <div class="chap-num">Chapter 05 · The contenders</div>
+  <h2 class="chap-title reveal">Five real harnesses, <em>five different bets</em>.</h2>
+  <p class="chap-intro reveal">Each makes architectural choices the others reject. Tap any card to see what it optimizes for, where it wins, and what it trades away.</p>
+
+  <div class="harness-cards" id="harnessCards">
+    <div class="h-card active" data-h="cc">
+      <svg class="h-svg" viewBox="0 0 56 56">
+        <rect x="6" y="14" width="44" height="32"/>
+        <path d="M 14 24 L 20 30 L 14 36"/>
+        <path d="M 26 38 L 38 38"/>
+      </svg>
+      <div class="h-name">Claude Code</div>
+      <div class="h-tag">Anthropic · CLI</div>
+    </div>
+    <div class="h-card" data-h="cursor">
+      <svg class="h-svg" viewBox="0 0 56 56">
+        <path d="M 14 10 L 14 46 L 22 38 L 30 46 L 36 42 L 28 34 L 40 32 Z"/>
+      </svg>
+      <div class="h-name">Cursor</div>
+      <div class="h-tag">Anysphere · IDE</div>
+    </div>
+    <div class="h-card" data-h="aider">
+      <svg class="h-svg" viewBox="0 0 56 56">
+        <circle cx="14" cy="14" r="6"/>
+        <circle cx="42" cy="14" r="6"/>
+        <circle cx="28" cy="42" r="6"/>
+        <path d="M 14 20 L 28 36 M 42 20 L 28 36 M 14 14 L 42 14"/>
+      </svg>
+      <div class="h-name">Aider</div>
+      <div class="h-tag">Open source · CLI</div>
+    </div>
+    <div class="h-card" data-h="codex">
+      <svg class="h-svg" viewBox="0 0 56 56">
+        <rect x="8" y="12" width="40" height="32"/>
+        <path d="M 14 22 L 18 28 L 14 34 M 22 34 L 30 34"/>
+      </svg>
+      <div class="h-name">Codex CLI</div>
+      <div class="h-tag">OpenAI · Rust</div>
+    </div>
+    <div class="h-card" data-h="auto">
+      <svg class="h-svg" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="8"/>
+        <circle cx="28" cy="28" r="18" stroke-dasharray="3 3"/>
+        <path d="M 28 6 L 28 10 M 50 28 L 46 28 M 28 50 L 28 46 M 6 28 L 10 28"/>
+      </svg>
+      <div class="h-name">AutoGPT</div>
+      <div class="h-tag">2023 · Pioneer</div>
+    </div>
+  </div>
+
+  <div class="h-detail" id="hDetail">
+    <div class="h-detail-num">No. 01 / 05</div>
+    <div class="h-detail-name">Claude Code</div>
+    <div class="h-detail-meta">Anthropic · Terminal-based agent · TypeScript on Bun</div>
+    <div class="h-detail-desc">A CLI coding harness from Anthropic. The leaked source revealed a 512k-line codebase, of which only ~1.6% is model-decision logic — the rest is tool routing, context discipline, permission gating, and recovery. Strongest on autonomous, multi-step work; hits 92.1% on Terminal-Bench 2.0.<sup class="fn"><a href="#r16">16</a></sup></div>
+    <div class="h-detail-grid">
+      <div class="h-detail-row">
+        <div class="h-detail-key">Tools</div>
+        <div class="h-detail-val">Bash, file I/O, edit, grep, web search, MCP servers</div>
+      </div>
+      <div class="h-detail-row">
+        <div class="h-detail-key">Memory</div>
+        <div class="h-detail-val">CLAUDE.md as durable per-project memory</div>
+      </div>
+      <div class="h-detail-row">
+        <div class="h-detail-key">Best at</div>
+        <div class="h-detail-val">Long-running autonomous tasks; plan-execute cycles</div>
+      </div>
+      <div class="h-detail-row">
+        <div class="h-detail-key">Tradeoff</div>
+        <div class="h-detail-val">~5× more expensive per task than lighter harnesses</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 6: PLAYGROUND -->
+<section class="chapter" id="ch6">
+  <div class="chap-num">Chapter 06 · Tune your own</div>
+  <h2 class="chap-title reveal">Drag the dials. <em>Watch the math.</em></h2>
+  <p class="chap-intro reveal">A toy model of harness configuration. The numbers are illustrative — they track the directional findings from the benchmarks above, but they are not a real eval. Use them to build intuition.</p>
+
+  <div class="lab">
+    <div class="lab-controls">
+      <h3>Harness configuration</h3>
+
+      <div class="dial-row">
+        <div class="dial-head"><span>Tools available</span><span class="dial-val" id="d-tools">6</span></div>
+        <input type="range" min="1" max="12" value="6" id="r-tools">
+      </div>
+      <div class="dial-row">
+        <div class="dial-head"><span>Context budget</span><span class="dial-val" id="d-ctx">5</span></div>
+        <input type="range" min="1" max="10" value="5" id="r-ctx">
+      </div>
+      <div class="dial-row">
+        <div class="dial-head"><span>Max loop steps</span><span class="dial-val" id="d-loop">20</span></div>
+        <input type="range" min="1" max="80" value="20" id="r-loop">
+      </div>
+      <div class="dial-row">
+        <div class="dial-head"><span>Guardrail strictness</span><span class="dial-val" id="d-guard">5</span></div>
+        <input type="range" min="0" max="10" value="5" id="r-guard">
+      </div>
+      <div class="dial-row">
+        <div class="dial-head"><span>Memory layer</span><span class="dial-val" id="d-mem">on</span></div>
+        <input type="range" min="0" max="1" value="1" id="r-mem">
+      </div>
+    </div>
+
+    <div class="lab-output">
+      <div class="lab-passrate">
+        <div class="lab-passrate-num"><span id="passNum">72</span><span class="suffix">%</span></div>
+        <div class="lab-passrate-label">Estimated pass rate</div>
+        <div class="lab-meter"><div class="lab-meter-fill" id="passMeter"></div></div>
+      </div>
+      <div class="lab-stats">
+        <div>
+          <div class="lab-stat-key">Cost / task</div>
+          <div class="lab-stat-val">$<span id="costNum">0.42</span></div>
+        </div>
+        <div>
+          <div class="lab-stat-key">Incidents / 1k</div>
+          <div class="lab-stat-val" id="incNum">2.1</div>
+        </div>
+        <div>
+          <div class="lab-stat-key">Profile</div>
+          <div class="lab-stat-val" style="font-style: italic;" id="profileLabel">balanced</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 7: WHY NOW -->
+<section class="chapter" id="ch7">
+  <div class="chap-num">Chapter 07 · Why now</div>
+  <h2 class="chap-title reveal">Three reasons the word <em>harness</em> showed up in 2026.</h2>
+
+  <div class="takeaways">
+    <div class="takeaway reveal">
+      <div class="takeaway-num">i.</div>
+      <h4>Model gains are getting harder to extract.</h4>
+      <p>Moving a model between harnesses now produces bigger functionality gains than moving from last quarter's model to this quarter's. When upgrades cost millions and harness swaps cost engineering hours, attention shifts.<sup class="fn"><a href="#r14">14</a></sup></p>
+    </div>
+    <div class="takeaway reveal">
+      <div class="takeaway-num">ii.</div>
+      <h4>Enterprise failures are operational, not cognitive.</h4>
+      <p>Up to 88% of enterprise AI agent projects fail to reach production. The failures rarely look like <em>the model wasn't smart enough</em>. They look like <em>it called the wrong API, didn't retry, lost state, and silently dropped the request.</em><sup class="fn"><a href="#r1">1</a></sup></p>
+    </div>
+    <div class="takeaway reveal">
+      <div class="takeaway-num">iii.</div>
+      <h4>Harnesses are starting to optimize themselves.</h4>
+      <p>Stanford's <em>Meta-Harness</em> paper demonstrated an LLM that reads its own execution traces and rewrites its own scaffolding code — beating the best hand-tuned baselines. The bottleneck doesn't disappear; it moves up a level.<sup class="fn"><a href="#r9">9</a></sup></p>
+    </div>
+  </div>
+
+  <div class="pullquote reveal">
+    <q>The model is the brain. The harness is the hands.</q>
+    <cite>Vishal Mysore, DEV Community<sup class="fn"><a href="#r8">8</a></sup></cite>
+  </div>
+
+  <div class="prose reveal" style="margin-top: 48px;">
+    <p>LangChain's Harrison Chase framed the longer arc plainly. Harnesses are not going away. There is sometimes a sentiment that models will absorb more of the scaffolding — Chase argues this is not true. A lot of the scaffolding needed in 2023 is no longer needed; it has been replaced by other types of scaffolding. An agent, by definition, is a model interacting with tools and data. There will always be a system around the model to facilitate that.<sup class="fn"><a href="#r3">3</a></sup></p>
+    <p>If you're building with AI in 2026, the practical implication is simple: <strong>another month spent tuning your harness will probably move your metrics more than waiting for the next model release.</strong> That's a sentence nobody could have written in 2023.</p>
+  </div>
+</section>
+
+<!-- REFERENCES -->
+<section class="refs-section chapter" id="refs">
+  <div class="chap-num">References</div>
+  <h2 class="chap-title">Sixteen <em>sources</em>, all 2025–2026.</h2>
+  <p class="chap-intro">A new field with a thin canon. Each link goes to the original.</p>
+
+  <ol class="refs-list">
+    <li id="r1"><span class="ref-title">Masood, A. — Agent Harness Engineering: The Rise of the AI Control Plane</span><span class="ref-meta">Medium, April 2026.</span><a href="https://medium.com/@adnanmasood/agent-harness-engineering-the-rise-of-the-ai-control-plane-938ead884b1d" target="_blank">open ↗</a></li>
+    <li id="r2"><span class="ref-title">AgenticMSP — What the Heck is an AI Harness?</span><span class="ref-meta">Substack, April 2026.</span><a href="https://agenticmsp.substack.com/p/what-the-heck-is-an-ai-harness-and" target="_blank">open ↗</a></li>
+    <li id="r3"><span class="ref-title">LangChain — Your harness, your memory</span><span class="ref-meta">LangChain blog, April 2026.</span><a href="https://www.langchain.com/blog/your-harness-your-memory" target="_blank">open ↗</a></li>
+    <li id="r4"><span class="ref-title">Harness Developer Hub — Worker Agents</span><span class="ref-meta">Harness.io documentation, 2026.</span><a href="https://developer.harness.io/docs/platform/harness-ai/harness-agents/" target="_blank">open ↗</a></li>
+    <li id="r5"><span class="ref-title">Firecrawl — What Is an Agent Harness?</span><span class="ref-meta">Firecrawl blog, April 2026.</span><a href="https://www.firecrawl.dev/blog/what-is-an-agent-harness" target="_blank">open ↗</a></li>
+    <li id="r6"><span class="ref-title">Parallel Web Systems — What is an agent harness?</span><span class="ref-meta">Parallel.ai, December 2025.</span><a href="https://parallel.ai/articles/what-is-an-agent-harness" target="_blank">open ↗</a></li>
+    <li id="r7"><span class="ref-title">Fowler, M. — Harness engineering for coding agent users</span><span class="ref-meta">martinfowler.com, April 2026.</span><a href="https://martinfowler.com/articles/harness-engineering.html" target="_blank">open ↗</a></li>
+    <li id="r8"><span class="ref-title">Mysore, V. — Harness Engineering: The Infrastructure Layer</span><span class="ref-meta">DEV Community, May 2026.</span><a href="https://dev.to/vishalmysore/harness-engineering-the-infrastructure-layer-that-makes-ai-agents-actually-work-4nl1" target="_blank">open ↗</a></li>
+    <li id="r9"><span class="ref-title">Lee, Y. — Meta-Harness: End-to-End Optimization of Model Harnesses</span><span class="ref-meta">arXiv:2603.28052, Stanford, March 2026.</span><a href="https://arxiv.org/html/2603.28052v1" target="_blank">open ↗</a></li>
+    <li id="r10"><span class="ref-title">MongoDB — The Agent Harness: Why the LLM Is the Smallest Part</span><span class="ref-meta">MongoDB engineering, May 2026.</span><a href="https://www.mongodb.com/company/blog/technical/agent-harness-why-llm-is-smallest-part-of-your-agent-system" target="_blank">open ↗</a></li>
+    <li id="r11"><span class="ref-title">TechTimes — Claude Code 98% Harness: VILA-Lab Analysis</span><span class="ref-meta">TechTimes, May 2026.</span><a href="https://www.techtimes.com/articles/316928/20260521/claude-code-study-four-competing-teams-built-same-agent-harness-pointing-real-ai-moat.htm" target="_blank">open ↗</a></li>
+    <li id="r12"><span class="ref-title">Menon Lab — Meta-Harness: The Agent That Rewrites Its Own Scaffolding</span><span class="ref-meta">themenonlab.blog, March 2026.</span><a href="https://themenonlab.blog/blog/meta-harness-self-evolving-agent-scaffolding" target="_blank">open ↗</a></li>
+    <li id="r13"><span class="ref-title">Upchurch, J. — Harness Bench: Real World AI Benchmarking</span><span class="ref-meta">Medium, January 2026.</span><a href="https://medium.com/@jason.upchurch/harness-bench-real-world-ai-benchmarking-9b927c55ac02" target="_blank">open ↗</a></li>
+    <li id="r14"><span class="ref-title">MindStudio — Agent Harnesses Beat Model Upgrades</span><span class="ref-meta">MindStudio blog, May 2026.</span><a href="https://www.mindstudio.ai/blog/agent-harnesses-beat-model-upgrades-5-benchmarks" target="_blank">open ↗</a></li>
+    <li id="r15"><span class="ref-title">Chachamaru127 — claude-code-harness</span><span class="ref-meta">GitHub, 2026.</span><a href="https://github.com/Chachamaru127/claude-code-harness" target="_blank">open ↗</a></li>
+    <li id="r16"><span class="ref-title">Digital Thoughts — AI Coding Harness Comparison</span><span class="ref-meta">thoughts.jock.pl, April 2026.</span><a href="https://thoughts.jock.pl/p/ai-coding-harness-agents-2026" target="_blank">open ↗</a></li>
+  </ol>
+
+  <div class="footer-mark">
+    <span>END · NO. 01</span>
+    <span>Made by Dr Arpit Garg · May 2026</span>
+    <span>The Harness</span>
+  </div>
+</section>
+
+<script>
+// ============ SCROLL PROGRESS ============
+const scrollBar = document.getElementById('scrollBar');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const max = h.scrollHeight - h.clientHeight;
+  scrollBar.style.width = (h.scrollTop / max * 100) + '%';
+}, { passive: true });
+
+// ============ REVEAL ON SCROLL ============
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -80px 0px' });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+// ============ COUNTERS ============
+function animateCount(el) {
+  const target = parseFloat(el.dataset.count);
+  const decimal = parseFloat(el.dataset.decimal || 0);
+  const suffix = el.dataset.suffix || '';
+  const duration = 1800;
+  const start = performance.now();
+  const finalVal = target + decimal;
+  function tick(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const v = finalVal * eased;
+    if (decimal > 0) {
+      el.textContent = v.toFixed(1) + suffix;
+    } else {
+      el.textContent = Math.round(v) + suffix;
+    }
+    if (t < 1) requestAnimationFrame(tick);
+    else el.textContent = (decimal > 0 ? finalVal.toFixed(1) : Math.round(finalVal)) + suffix;
+  }
+  requestAnimationFrame(tick);
+}
+const counterIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      animateCount(e.target);
+      counterIO.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('[data-count]').forEach(el => counterIO.observe(el));
+
+// ============ BAR CHART ANIMATION ============
+const barIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      document.querySelectorAll('.bar-seg').forEach((seg, i) => {
+        const w = +seg.dataset.w;
+        // each segment occupies up to 33% of the track when at 100
+        const widthPct = (w / 100) * 33;
+        setTimeout(() => {
+          seg.style.width = widthPct + '%';
+        }, i * 80);
+      });
+      barIO.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.4 });
+const bars = document.getElementById('bars');
+if (bars) barIO.observe(bars);
+
+// ============ COMPONENTS ============
+const components = {
+  loop: {
+    num: "Organ 01",
+    name: "the loop",
+    desc: "Calls the model, parses its output, executes any tool calls, feeds the results back, and decides when to stop. Without a loop, the model gets one shot per request. With one, it can plan, act, observe, and revise <em>for as many turns as the task needs</em>. The loop also enforces termination: max steps, budget caps, and the model's own done signal."
+  },
+  tools: {
+    num: "Organ 02",
+    name: "tools",
+    desc: "Bash, file edits, web search, APIs, MCP servers — anything the model is allowed to invoke. The harness defines the catalog, the schema the model uses, and the runtime that executes calls. Adding a tool needs <em>no model retraining</em>. Just a schema and an executor."
+  },
+  context: {
+    num: "Organ 03",
+    name: "context",
+    desc: "What goes in the window each turn: system prompt, conversation history, retrieved docs, compaction when the window fills. The Meta-Harness paper found <em>changing only how context is managed can swing benchmark accuracy by ten points or more</em>. This is often the most consequential layer."
+  },
+  memory: {
+    num: "Organ 04",
+    name: "memory",
+    desc: "Scratchpads, task lists, short and long-term memory across turns and sessions. LLMs are stateless by default. Every new session starts blind unless the harness stores prior state and reinjects it. <em>CLAUDE.md files, conversation summaries, and vector stores all live here.</em>"
+  },
+  control: {
+    num: "Organ 05",
+    name: "control flow",
+    desc: "Retries, timeouts, step limits, budget caps, error recovery. When a tool call fails or the model loops in confusion, the harness decides what happens next: <em>retry with different inputs, escalate to a human, fall back to a simpler strategy, or abort.</em>"
+  },
+  safety: {
+    num: "Organ 06",
+    name: "guardrails",
+    desc: "Permission prompts, sandboxing, approval gates, output filters. Asking before <code style='background: rgba(212,162,76,0.15); padding: 2px 6px; color: #D4A24C;'>rm -rf</code>, blocking calls to disallowed APIs, scanning generated content. <em>Easier to maintain in the harness than in the prompt</em> — guardrails can be updated independently."
+  }
+};
+
+const detailPanel = document.getElementById('compDetail');
+document.querySelectorAll('.orbital-comp').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.orbital-comp').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    const c = components[card.dataset.key];
+    detailPanel.innerHTML = `
+      <div class="cd-num">${c.num}</div>
+      <div class="cd-name">${c.name}</div>
+      <div class="cd-desc">${c.desc}</div>
+    `;
+  });
+});
+
+// ============ HARNESS PICKER ============
+const harnesses = {
+  cc: {
+    num: "No. 01 / 05",
+    name: "Claude Code",
+    meta: "Anthropic · Terminal-based agent · TypeScript on Bun",
+    desc: "A CLI coding harness from Anthropic. The leaked source revealed a 512k-line codebase, of which only ~1.6% is model-decision logic — the rest is tool routing, context discipline, permission gating, and recovery. Strongest on autonomous, multi-step work; hits 92.1% on Terminal-Bench 2.0.",
+    tools: "Bash, file I/O, edit, grep, web search, MCP servers",
+    memory: "CLAUDE.md as durable per-project memory",
+    best: "Long-running autonomous tasks; plan-execute cycles",
+    trade: "~5× more expensive per task than lighter harnesses"
+  },
+  cursor: {
+    num: "No. 02 / 05",
+    name: "Cursor",
+    meta: "Anysphere · IDE harness · VS Code fork",
+    desc: "An IDE-native harness built around inline edits and diff review. Surprisingly strong on coding benchmarks even with non-native models — Matt Mayer's independent test put Claude Opus at 93% in Cursor versus 77% in Claude Code on the same tasks.",
+    tools: "Codebase indexing, multi-file edit, inline diff review",
+    memory: "Automatic context retrieval from your repo",
+    best: "Human-in-the-loop editing, fast iteration",
+    trade: "Requires the editor; not headless"
+  },
+  aider: {
+    num: "No. 03 / 05",
+    name: "Aider",
+    meta: "Open source · Python · CLI pair programmer",
+    desc: "A pair-programming CLI harness centered on git. Every change is committed automatically, making it easy to undo. Lighter scaffold than Claude Code — but Upchurch's bench found Aider delivered the best cost efficiency, sitting in the top-left high-performance, low-cost corner.",
+    tools: "File edits, git, shell",
+    memory: "Explicit files-in-chat set, user-controlled",
+    best: "Targeted edits, cost-sensitive work",
+    trade: "Less autonomous on multi-step tasks"
+  },
+  codex: {
+    num: "No. 04 / 05",
+    name: "Codex CLI",
+    meta: "OpenAI · Originally TypeScript, now ~95% Rust",
+    desc: "OpenAI's answer to Claude Code. Independent benchmarking on Terminal-Bench 2.0 puts Codex CLI at 77.3% versus Claude Code's 92.1% on overnight autonomous tasks. Tends to read more holistically across files — sometimes fixing things you didn't ask about.",
+    tools: "Shell, file ops, web; tight repo awareness",
+    memory: "Repository maps and runtime controls",
+    best: "Cross-file reasoning, broad bug fixes",
+    trade: "May rewrite files you didn't mention"
+  },
+  auto: {
+    num: "No. 05 / 05",
+    name: "AutoGPT",
+    meta: "Open source · Python · 2023 pioneer",
+    desc: "The 2023 progenitor of the modern autonomous-agent harness. Loop runs without per-step user approval; the model sets its own subgoals. Less used in production today, but its design vocabulary — planning loops, subgoal trees, self-critique — shaped everything that followed.",
+    tools: "Web browsing, file I/O, shell, plugins",
+    memory: "Vector store for long-term recall",
+    best: "Open-ended exploratory tasks",
+    trade: "Low reliability without strong guardrails"
+  }
+};
+
+const hDetail = document.getElementById('hDetail');
+document.querySelectorAll('.h-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.h-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    const h = harnesses[card.dataset.h];
+    hDetail.innerHTML = `
+      <div class="h-detail-num">${h.num}</div>
+      <div class="h-detail-name">${h.name}</div>
+      <div class="h-detail-meta">${h.meta}</div>
+      <div class="h-detail-desc">${h.desc}</div>
+      <div class="h-detail-grid">
+        <div class="h-detail-row"><div class="h-detail-key">Tools</div><div class="h-detail-val">${h.tools}</div></div>
+        <div class="h-detail-row"><div class="h-detail-key">Memory</div><div class="h-detail-val">${h.memory}</div></div>
+        <div class="h-detail-row"><div class="h-detail-key">Best at</div><div class="h-detail-val">${h.best}</div></div>
+        <div class="h-detail-row"><div class="h-detail-key">Tradeoff</div><div class="h-detail-val">${h.trade}</div></div>
+      </div>
+    `;
+  });
+});
+
+// ============ LAB PLAYGROUND ============
+const rTools = document.getElementById('r-tools');
+const rCtx = document.getElementById('r-ctx');
+const rLoop = document.getElementById('r-loop');
+const rGuard = document.getElementById('r-guard');
+const rMem = document.getElementById('r-mem');
+
+function updateLab() {
+  const t = +rTools.value;
+  const c = +rCtx.value;
+  const l = +rLoop.value;
+  const g = +rGuard.value;
+  const m = +rMem.value;
+
+  document.getElementById('d-tools').textContent = t;
+  document.getElementById('d-ctx').textContent = c;
+  document.getElementById('d-loop').textContent = l;
+  document.getElementById('d-guard').textContent = g;
+  document.getElementById('d-mem').textContent = m ? 'on' : 'off';
+
+  // toy model — directional, not real
+  let pass = 30 + t * 2.5 + c * 4.5 + Math.log(l + 1) * 9 - Math.abs(g - 5) * 1.4 + m * 8;
+  pass = Math.max(12, Math.min(98, pass));
+
+  const cost = (0.06 + t * 0.04 + c * 0.07 + l * 0.012 + m * 0.05).toFixed(2);
+  const inc = Math.max(0.1, 14 - g * 1.2 + t * 0.35 - c * 0.25 - m * 0.5).toFixed(1);
+
+  document.getElementById('passNum').textContent = Math.round(pass);
+  document.getElementById('costNum').textContent = cost;
+  document.getElementById('incNum').textContent = inc;
+  document.getElementById('passMeter').style.width = pass + '%';
+
+  // profile
+  let profile = 'balanced';
+  if (t >= 9 && l >= 40) profile = 'autonomous';
+  else if (g >= 8 && t <= 4) profile = 'cautious';
+  else if (t <= 3 && l <= 10) profile = 'minimal';
+  else if (c >= 8 && m) profile = 'memorious';
+  else if (pass >= 85) profile = 'tuned';
+  else if (pass <= 40) profile = 'undercooked';
+  document.getElementById('profileLabel').textContent = profile;
+}
+[rTools, rCtx, rLoop, rGuard, rMem].forEach(r => r.addEventListener('input', updateLab));
+updateLab();
+
+// ============ LOOP CAPTION CYCLE ============
+const loopCaptions = [
+  "A live loop. Watch the gold dashed line — that's where chat becomes agent.",
+  "Step 1: the user's prompt enters the harness, wrapped with system instructions.",
+  "Step 2: the model generates output — possibly text, possibly tool calls.",
+  "Step 3: the harness parses output, dispatches tool calls to the right runtime.",
+  "Step 4: bash, files, APIs — whatever the tool does, results return to the harness.",
+  "Step 5: results append to context. The model is called again. The loop turns.",
+  "Step 6: when the model signals done, the harness returns a final answer to the user."
+];
+let lci = 0;
+const loopCap = document.getElementById('loopCaption');
+setInterval(() => {
+  lci = (lci + 1) % loopCaptions.length;
+  loopCap.style.opacity = 0;
+  setTimeout(() => {
+    loopCap.textContent = loopCaptions[lci];
+    loopCap.style.opacity = 1;
+  }, 300);
+}, 3500);
+loopCap.style.transition = 'opacity 0.3s';
+
+// ============ TERMINAL TYPING ============
+const code = [
+  { t: "<span class='t-com'># the agent loop — about 30 lines, the heart of every harness</span>", d: 0 },
+  { t: "", d: 30 },
+  { t: "<span class='t-key'>def</span> <span class='t-fn'>run_agent</span>(prompt, tools, max_steps=<span class='t-str'>30</span>):", d: 30 },
+  { t: "    context = [system_prompt, prompt]", d: 30 },
+  { t: "", d: 20 },
+  { t: "    <span class='t-key'>for</span> step <span class='t-key'>in</span> <span class='t-fn'>range</span>(max_steps):", d: 30 },
+  { t: "        <span class='t-com'># 1. call the model</span>", d: 25 },
+  { t: "        output = model.<span class='t-fn'>generate</span>(context, tools=tools)", d: 30 },
+  { t: "", d: 20 },
+  { t: "        <span class='t-com'># 2. is it done?</span>", d: 25 },
+  { t: "        <span class='t-key'>if</span> output.is_final:", d: 30 },
+  { t: "            <span class='t-key'>return</span> output.text", d: 30 },
+  { t: "", d: 20 },
+  { t: "        <span class='t-com'># 3. execute every tool call</span>", d: 25 },
+  { t: "        <span class='t-key'>for</span> call <span class='t-key'>in</span> output.tool_calls:", d: 30 },
+  { t: "            <span class='t-key'>if</span> needs_approval(call): <span class='t-fn'>ask_user</span>(call)", d: 30 },
+  { t: "            result = tools[call.name].<span class='t-fn'>run</span>(**call.args)", d: 30 },
+  { t: "            context.<span class='t-fn'>append</span>(result)  <span class='t-com'># feed back</span>", d: 30 },
+  { t: "", d: 20 },
+  { t: "        <span class='t-com'># 4. trim if window full</span>", d: 25 },
+  { t: "        <span class='t-key'>if</span> <span class='t-fn'>tokens</span>(context) > LIMIT: context = <span class='t-fn'>compact</span>(context)", d: 30 },
+  { t: "", d: 20 },
+  { t: "    <span class='t-key'>raise</span> StepLimitExceeded()  <span class='t-com'># budget cap</span>", d: 30 },
+];
+
+const termBody = document.getElementById('terminal');
+async function typeTerminal() {
+  while (true) {
+    termBody.innerHTML = '';
+    for (const line of code) {
+      const lineEl = document.createElement('span');
+      lineEl.className = 't-line';
+      lineEl.innerHTML = line.t || '&nbsp;';
+      termBody.appendChild(lineEl);
+      await new Promise(r => setTimeout(r, line.d));
+    }
+    const cursor = document.createElement('span');
+    cursor.className = 't-cursor';
+    termBody.appendChild(cursor);
+    await new Promise(r => setTimeout(r, 5000));
+  }
+}
+
+// only run terminal animation when scrolled near
+const termIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      typeTerminal();
+      termIO.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.2 });
+termIO.observe(termBody);
+
+// ============ MAGNETIC BUTTONS (subtle hover sway on h-cards) ============
+document.querySelectorAll('.h-card, .evidence-card').forEach(card => {
+  card.addEventListener('mousemove', (e) => {
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left - r.width / 2) / r.width;
+    const y = (e.clientY - r.top - r.height / 2) / r.height;
+    card.style.transform = `translate(${x * 3}px, ${y * 3}px)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+  });
+});
+
+</script>
+</body>
+</html>
