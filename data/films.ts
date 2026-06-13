@@ -70,6 +70,15 @@ export const films: Film[] = [
     themeNote: "Sinners poster",
   },
   {
+    title: "Michael",
+    year: 2026,
+    studio: "Lionsgate",
+    role: "VFX ML Research",
+    banner: u("photo-1493225457124-a3eb161ffa5f"),
+    poster: "https://upload.wikimedia.org/wikipedia/en/3/37/Michael_%282026_film_poster%29.png",
+    themeNote: "Michael (2026) poster",
+  },
+  {
     title: "La Brea",
     year: 2023,
     studio: "NBC",
