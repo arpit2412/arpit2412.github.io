@@ -180,7 +180,7 @@ export default function FilmsMarquee() {
 
         {/* Word-by-word display heading */}
         <h2 className="font-display text-6xl text-ink-100 max-w-4xl">
-          {["Eight", "features."].map((word, i) => (
+          {["Nine", "features."].map((word, i) => (
             <motion.span
               key={i}
               initial={{ y: "100%", opacity: 0 }}

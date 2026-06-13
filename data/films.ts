@@ -79,6 +79,15 @@ export const films: Film[] = [
     themeNote: "Michael (2026) poster",
   },
   {
+    title: "A Complete Unknown",
+    year: 2024,
+    studio: "Searchlight Pictures",
+    role: "VFX ML Research",
+    banner: u("photo-1510915361894-db8b60106cb1"),
+    poster: "https://upload.wikimedia.org/wikipedia/en/d/d5/A_Complete_Unknown_poster.jpg",
+    themeNote: "A Complete Unknown poster",
+  },
+  {
     title: "La Brea",
     year: 2023,
     studio: "NBC",
