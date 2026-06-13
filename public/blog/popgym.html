@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>POPGym, considered as a language model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=JetBrains+Mono:wght@400;600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3ede1;
+    --paper-deep: #ebe2d0;
+    --ink: #1a1814;
+    --ink-soft: #3a342a;
+    --rule: #1a1814;
+    --accent: #c8442a;
+    --accent-soft: #e07a5f;
+    --highlight: #f2c14e;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --serif: 'Fraunces', 'Times New Roman', serif;
+    --sans: 'Inter Tight', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 14, "SOFT" 30;
+    line-height: 1.55;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(200, 68, 42, 0.04) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(26, 24, 20, 0.05) 0, transparent 45%);
+  }
+
+  /* paper grain */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.35;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2.5rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ── MASTHEAD ─────────────────────────────────────── */
+  .masthead {
+    border-bottom: 1.5px solid var(--rule);
+    padding: 2rem 0 1rem;
+    margin-bottom: 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .masthead .vol { font-weight: 600; }
+  .masthead .date { font-style: italic; text-transform: none; letter-spacing: 0.05em; }
+
+  /* ── HEADER ───────────────────────────────────────── */
+  header {
+    padding: 1rem 0 5rem;
+    border-bottom: 4px double var(--rule);
+    margin-bottom: 4rem;
+    position: relative;
+  }
+
+  header .kicker {
+    font-family: var(--sans);
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    font-size: 0.72rem;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 144, "wght" 400, "SOFT" 100;
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.035em;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+  h1 .alt {
+    font-style: normal;
+    font-variation-settings: "opsz" 144, "wght" 600;
+  }
+  h1 .punct { color: var(--accent); font-style: normal; }
+
+  .deck {
+    font-family: var(--serif);
+    font-size: 1.35rem;
+    line-height: 1.45;
+    max-width: 38ch;
+    color: var(--ink-soft);
+    font-style: italic;
+    margin-top: 2rem;
+    padding-left: 1.5rem;
+    border-left: 2px solid var(--accent);
+  }
+
+  .byline {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 0;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+  }
+  .byline span { color: var(--accent); }
+
+  /* ── SECTIONS ─────────────────────────────────────── */
+  section { margin-bottom: 6rem; }
+
+  .section-num {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 72, "wght" 500;
+    font-size: clamp(2rem, 4.5vw, 3.2rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 2rem;
+    max-width: 22ch;
+  }
+  h2 em {
+    font-variation-settings: "opsz" 72, "wght" 400;
+    color: var(--accent);
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1rem;
+    color: var(--ink);
+  }
+
+  p {
+    font-size: 1.12rem;
+    line-height: 1.7;
+    margin-bottom: 1.2rem;
+    max-width: 65ch;
+  }
+
+  p .lead-cap::first-letter,
+  .lead::first-letter {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 144, "wght" 600;
+    font-size: 4.5rem;
+    float: left;
+    line-height: 0.85;
+    padding: 0.4rem 0.7rem 0 0;
+    color: var(--accent);
+  }
+
+  strong {
+    font-weight: 600;
+    font-variation-settings: "opsz" 14, "wght" 600;
+  }
+
+  em.term {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── THE CORE ANALOGY (interactive flip) ──────────── */
+  .analogy-deck {
+    margin: 3rem 0;
+  }
+
+  .analogy-toggle {
+    display: inline-flex;
+    background: var(--ink);
+    border-radius: 999px;
+    padding: 4px;
+    margin-bottom: 2rem;
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 20px rgba(26,24,20,0.15);
+  }
+  .analogy-toggle button {
+    background: transparent;
+    color: var(--paper);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+  }
+  .analogy-toggle button.active {
+    background: var(--accent);
+    color: var(--paper);
+  }
+
+  .analogy-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1rem;
+  }
+
+  .analogy-card {
+    background: var(--paper-deep);
+    border: 1.5px solid var(--rule);
+    padding: 1.75rem;
+    position: relative;
+    transition: all 0.5s cubic-bezier(.2,.7,.2,1);
+    min-height: 200px;
+  }
+  .analogy-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 6px 6px 0 var(--rule);
+  }
+  .analogy-card .card-num {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+  }
+  .analogy-card .card-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--ink-soft);
+    margin-bottom: 0.7rem;
+  }
+  .analogy-card .card-term {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 72, "wght" 500;
+    font-size: 1.6rem;
+    line-height: 1.1;
+    margin-bottom: 0.8rem;
+    transition: all 0.4s ease;
+  }
+  .analogy-card.rl-mode .card-term { color: var(--ink); }
+  .analogy-card.lm-mode .card-term { color: var(--accent); font-style: italic; }
+  .analogy-card .card-desc {
+    font-family: var(--sans);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* ── DIAGRAM ──────────────────────────────────────── */
+  .diagram-wrap {
+    background: var(--paper-deep);
+    border: 1.5px solid var(--rule);
+    padding: 2.5rem 2rem;
+    margin: 3rem 0;
+    position: relative;
+  }
+  .diagram-wrap::before {
+    content: "FIG. 01";
+    position: absolute;
+    top: -0.7rem;
+    left: 1.5rem;
+    background: var(--paper);
+    padding: 0 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+  }
+  .diagram-wrap .fig-caption {
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    font-style: italic;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-top: 1rem;
+    max-width: 50ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
+  /* ── ENV PICKER ───────────────────────────────────── */
+  .env-explorer {
+    margin: 3rem 0;
+  }
+  .env-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border-bottom: 1.5px solid var(--rule);
+    margin-bottom: 0;
+  }
+  .env-tab {
+    background: transparent;
+    border: none;
+    border-top: 1.5px solid var(--rule);
+    border-left: 1.5px solid var(--rule);
+    padding: 0.9rem 1.4rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.2s ease;
+    position: relative;
+    top: 1.5px;
+  }
+  .env-tab:last-child { border-right: 1.5px solid var(--rule); }
+  .env-tab:hover { background: var(--paper-deep); color: var(--ink); }
+  .env-tab.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .env-content {
+    border: 1.5px solid var(--rule);
+    border-top: none;
+    padding: 2rem;
+    background: var(--paper-deep);
+    min-height: 280px;
+  }
+  .env-panel { display: none; animation: fadeIn 0.4s ease; }
+  .env-panel.active { display: block; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .env-panel h4 {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 72, "wght" 500;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    font-style: italic;
+  }
+  .env-panel .env-sub {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+  }
+  .env-panel p {
+    font-size: 1.02rem;
+    margin-bottom: 1rem;
+  }
+  .env-mapping {
+    margin-top: 1.5rem;
+    padding: 1.2rem;
+    background: var(--paper);
+    border-left: 3px solid var(--accent);
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  .env-mapping .lbl {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+
+  /* ── COMPARISON TABLE ─────────────────────────────── */
+  .compare-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 2rem 0;
+    font-family: var(--sans);
+    font-size: 0.95rem;
+  }
+  .compare-table thead {
+    border-bottom: 2px solid var(--ink);
+  }
+  .compare-table th {
+    text-align: left;
+    padding: 0.9rem 1rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+  }
+  .compare-table th:nth-child(2) { color: var(--ink); }
+  .compare-table th:nth-child(3) { color: var(--accent); }
+  .compare-table td {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(26,24,20,0.15);
+    vertical-align: top;
+  }
+  .compare-table td:first-child {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    width: 20%;
+    font-weight: 600;
+  }
+  .compare-table tr:hover { background: rgba(200,68,42,0.04); }
+
+  /* ── PULL QUOTE ───────────────────────────────────── */
+  .pull-quote {
+    font-family: var(--serif);
+    font-variation-settings: "opsz" 144, "wght" 400;
+    font-style: italic;
+    font-size: clamp(1.8rem, 3.8vw, 2.8rem);
+    line-height: 1.15;
+    color: var(--ink);
+    padding: 3rem 0 3rem 0;
+    margin: 4rem 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+    text-align: center;
+  }
+  .pull-quote::before {
+    content: "❝";
+    position: absolute;
+    top: -0.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--paper);
+    padding: 0 1.2rem;
+    color: var(--accent);
+    font-size: 2rem;
+    font-style: normal;
+  }
+  .pull-quote em { color: var(--accent); }
+  .pull-quote .attrib {
+    display: block;
+    margin-top: 1.5rem;
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--ink-soft);
+  }
+
+  /* ── DIVERGENCE ───────────────────────────────────── */
+  .divergence {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1.5px solid var(--rule);
+    margin: 3rem 0;
+  }
+  .div-col {
+    padding: 2rem;
+  }
+  .div-col:first-child {
+    background: var(--paper-deep);
+    border-right: 1.5px solid var(--rule);
+  }
+  .div-col h4 {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+  .div-col p {
+    font-size: 0.98rem;
+    margin-bottom: 0.8rem;
+  }
+  @media (max-width: 700px) {
+    .divergence { grid-template-columns: 1fr; }
+    .div-col:first-child { border-right: none; border-bottom: 1.5px solid var(--rule); }
+  }
+
+  /* ── FOOTER ───────────────────────────────────────── */
+  footer {
+    border-top: 4px double var(--rule);
+    padding: 3rem 0 4rem;
+    margin-top: 5rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  footer .end-mark {
+    color: var(--accent);
+    font-size: 1.2rem;
+    letter-spacing: 0;
+  }
+
+  /* ── ENTRANCE ANIMATION ───────────────────────────── */
+  .fade-up {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(.2,.7,.2,1);
+  }
+  .fade-up.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 700px) {
+    .container { padding: 0 1.5rem; }
+    .masthead { font-size: 0.65rem; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
+    .byline { position: static; margin-top: 2rem; }
+    .compare-table { font-size: 0.85rem; }
+    .compare-table th, .compare-table td { padding: 0.7rem 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="masthead">
+    <span class="vol">Vol. I · Note No. 003</span>
+    <span class="date">A working note · An interactive reading</span>
+    <span class="vol">Reinforcement &amp; Language</span>
+  </div>
+
+  <header>
+    <div class="kicker">An interactive explainer</div>
+    <h1>
+      POPGym, <span class="alt">considered</span><br>
+      as a <span class="punct">·</span> language <span class="alt">model<span class="punct">.</span></span>
+    </h1>
+    <p class="deck">
+      What if partially-observable reinforcement learning is just next-token prediction
+      wearing a different costume? A look inside a benchmark — and the structural rhyme
+      it shares with how we train language.
+    </p>
+    <div class="byline">Reading time <span>~ 8 min</span> · Interactive</div>
+  </header>
+
+  <!-- ════════════ §01 ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 01 — Premise</span>
+    <h2>An agent that <em>cannot see</em> needs the same thing a model that <em>has not read ahead</em> needs.</h2>
+    <p class="lead">
+      Both have to make a decision under uncertainty, with only a sliver of the world available
+      to them, by leaning on what came before. POPGym is a benchmark designed to stress-test
+      exactly this — the memory and inference machinery an agent uses when its observations
+      hide the truth. Strip away the surface, and the engineering problem it poses looks
+      remarkably like the one a language model solves a trillion times during training.
+    </p>
+    <p>
+      The rest of this note walks through how POPGym is set up, then maps each piece —
+      observation, action, reward, episode, model — onto the corresponding gear in language
+      model training. Use the toggle below to flip any concept between its <em class="term">RL framing</em>
+      and its <em class="term">language framing</em>.
+    </p>
+  </section>
+
+  <!-- ════════════ §02 — THE ANALOGY DECK ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 02 — The core mapping</span>
+    <h2>Six gears, two costumes.</h2>
+    <p>
+      Each card holds one piece of the machine. Click the toggle to switch how it's named.
+      Same gear, different costume — and that is the whole argument.
+    </p>
+
+    <div class="analogy-deck">
+      <div class="analogy-toggle" role="tablist">
+        <button class="active" data-mode="rl">Reinforcement framing</button>
+        <button data-mode="lm">Language framing</button>
+      </div>
+
+      <div class="analogy-cards" id="analogyCards">
+        <!-- cards injected by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ §03 — HOW POPGYM IS SET UP ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 03 — Anatomy of POPGym</span>
+    <h2>How a single POPGym <em>episode</em> actually runs.</h2>
+    <p>
+      POPGym is a collection of <strong>15 partially-observable environments</strong>, each with
+      three difficulty levels (Easy, Medium, Hard). An agent is dropped into one, given a sliver
+      of observation at each step, and asked to act. The environment hides things on purpose —
+      sometimes a card you flipped 30 steps ago, sometimes the position of a hidden ship,
+      sometimes the next term in a sequence you've been watching scroll past.
+    </p>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg" aria-label="POPGym loop diagram">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1a1814"/>
+          </marker>
+          <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#c8442a"/>
+          </marker>
+        </defs>
+
+        <!-- env box -->
+        <rect x="60" y="40" width="260" height="160" rx="2" fill="#ebe2d0" stroke="#1a1814" stroke-width="1.5"/>
+        <text x="190" y="70" text-anchor="middle" font-family="JetBrains Mono" font-size="11" letter-spacing="2" fill="#c8442a">ENVIRONMENT</text>
+        <text x="190" y="120" text-anchor="middle" font-family="Fraunces" font-size="28" font-style="italic" fill="#1a1814">hidden state</text>
+        <text x="190" y="150" text-anchor="middle" font-family="Fraunces" font-size="14" fill="#3a342a">s₀, s₁, s₂, ... sₜ</text>
+        <text x="190" y="180" text-anchor="middle" font-family="Inter Tight" font-size="11" fill="#3a342a">(you don't get to see this)</text>
+
+        <!-- agent box -->
+        <rect x="580" y="40" width="260" height="160" rx="2" fill="#ebe2d0" stroke="#1a1814" stroke-width="1.5"/>
+        <text x="710" y="70" text-anchor="middle" font-family="JetBrains Mono" font-size="11" letter-spacing="2" fill="#c8442a">AGENT (w/ memory)</text>
+        <text x="710" y="120" text-anchor="middle" font-family="Fraunces" font-size="28" font-style="italic" fill="#1a1814">π(aₜ | o≤ₜ)</text>
+        <text x="710" y="150" text-anchor="middle" font-family="Fraunces" font-size="14" fill="#3a342a">policy conditioned on history</text>
+        <text x="710" y="180" text-anchor="middle" font-family="Inter Tight" font-size="11" fill="#3a342a">(this is the part that learns)</text>
+
+        <!-- top arrow: obs + reward -->
+        <path d="M 320 90 Q 450 30 580 90" stroke="#1a1814" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+        <text x="450" y="35" text-anchor="middle" font-family="JetBrains Mono" font-size="11" letter-spacing="1" fill="#1a1814">observation oₜ · reward rₜ</text>
+
+        <!-- bottom arrow: action -->
+        <path d="M 580 160 Q 450 230 320 160" stroke="#c8442a" stroke-width="1.5" fill="none" marker-end="url(#arrow-red)"/>
+        <text x="450" y="225" text-anchor="middle" font-family="JetBrains Mono" font-size="11" letter-spacing="1" fill="#c8442a">action aₜ</text>
+
+        <!-- bottom annotation -->
+        <line x1="60" y1="260" x2="840" y2="260" stroke="#1a1814" stroke-width="0.5" stroke-dasharray="2 4"/>
+        <text x="450" y="290" text-anchor="middle" font-family="Fraunces" font-size="16" font-style="italic" fill="#1a1814">repeat for an entire episode — the agent's only window onto the world is the sequence o₀, o₁, ..., oₜ</text>
+        <text x="450" y="320" text-anchor="middle" font-family="Inter Tight" font-size="12" fill="#3a342a">at episode end, the reward signal is used to update the policy</text>
+      </svg>
+      <div class="fig-caption">The POPGym loop. The hidden state on the left is the whole point: the agent must <em>infer</em> what it cannot see, from the trail of observations it has seen so far.</div>
+    </div>
+
+    <p>
+      The environments are deliberately lightweight — small observation vectors, fast simulation,
+      episodes that fit in a few thousand steps. The whole point is that you can train memory
+      architectures on a consumer GPU in an afternoon and actually compare them. Below: pick any
+      environment to see what it asks of the agent, and what that task looks like through a
+      language-modeling lens.
+    </p>
+  </section>
+
+  <!-- ════════════ §04 — ENV EXPLORER ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 04 — A guided tour of four environments</span>
+    <h2>Four tasks. Four <em>familiar</em> training signals.</h2>
+
+    <div class="env-explorer">
+      <div class="env-tabs" role="tablist">
+        <button class="env-tab active" data-env="repeat">Repeat Previous</button>
+        <button class="env-tab" data-env="concentration">Concentration</button>
+        <button class="env-tab" data-env="autoencode">Autoencode</button>
+        <button class="env-tab" data-env="battleship">Battleship</button>
+      </div>
+
+      <div class="env-content">
+
+        <div class="env-panel active" data-env="repeat">
+          <h4>Repeat Previous</h4>
+          <div class="env-sub">k-step delay · sequence recall</div>
+          <p>The environment shows the agent a token at each step. The agent's job is to output the token it saw <em>k steps ago</em>. That's it. It looks trivial, but it forces the model to maintain a sliding window of past observations with perfect fidelity — exactly the failure mode that breaks weak memory architectures.</p>
+          <div class="env-mapping">
+            <span class="lbl">In language terms</span>
+            This is a copying task. It's the same thing a transformer does when it has to attend back to an earlier token in the context window and reproduce it verbatim. Same mechanism — induction head, retrieval over a key-value cache — just dressed as an RL reward instead of a cross-entropy loss.
+          </div>
+        </div>
+
+        <div class="env-panel" data-env="concentration">
+          <h4>Concentration</h4>
+          <div class="env-sub">card-matching · long-range memory</div>
+          <p>The memory card game. Cards are face-down; the agent flips one, then another, and gets a reward if they match. To play well it has to remember every card it has previously seen and where it was, sometimes dozens of steps back.</p>
+          <div class="env-mapping">
+            <span class="lbl">In language terms</span>
+            A long-context retrieval problem. The agent is being trained to encode arbitrary tokens (card identities) into a key-addressable memory and to read them out by location. This is the same capability that lets a language model answer questions about a fact mentioned 8,000 tokens earlier.
+          </div>
+        </div>
+
+        <div class="env-panel" data-env="autoencode">
+          <h4>Autoencode</h4>
+          <div class="env-sub">observe-then-reproduce · sequence compression</div>
+          <p>The agent watches a sequence of tokens stream past. At a signal, the stream stops, and now the agent has to output that same sequence back, in order. The entire input must be compressed into the recurrent state, then decoded.</p>
+          <div class="env-mapping">
+            <span class="lbl">In language terms</span>
+            This is the encoder-decoder bottleneck, plain and simple. It's what a seq2seq model does when it reads a sentence, collapses it into a hidden state, and reconstructs it. POPGym is asking: can your memory architecture serve as a competent autoencoder under RL supervision?
+          </div>
+        </div>
+
+        <div class="env-panel" data-env="battleship">
+          <h4>Battleship</h4>
+          <div class="env-sub">hidden-board inference · active search</div>
+          <p>A grid hides ships. The agent fires at coordinates and gets hit/miss feedback. To play well it must build an internal belief over where ships <em>might</em> be, update that belief with each shot, and choose its next shot to be maximally informative.</p>
+          <div class="env-mapping">
+            <span class="lbl">In language terms</span>
+            This is exactly the kind of Bayesian-updating-in-latent-space that a chain-of-thought model does when it works through a problem: maintain a hypothesis, test it against new evidence, refine. The agent is learning to do inference in its hidden state, and the reward is shaping that hidden state the way log-likelihood shapes a language model's.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ §05 — PULL QUOTE ════════════ -->
+  <div class="pull-quote fade-up">
+    Both regimes are doing the same trick:<br>
+    <em>compressing a history into a representation</em><br>
+    that makes the next token — or the next action — predictable.
+    <span class="attrib">— The thesis, in one line</span>
+  </div>
+
+  <!-- ════════════ §06 — THE TABLE ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 05 — Side by side</span>
+    <h2>The mechanical correspondence.</h2>
+    <p>
+      Once you line them up, the parallels stop feeling metaphorical and start feeling
+      structural. The objects being optimised, the gradient signals, the architectural
+      choices — they rhyme to an uncomfortable degree.
+    </p>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>Concept</th><th>POPGym (RL)</th><th>Language model training</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Input</td>
+          <td>Observation vector oₜ at each step</td>
+          <td>Token embedding xₜ at each position</td>
+        </tr>
+        <tr>
+          <td>Context</td>
+          <td>Sequence of past observations o₀..oₜ</td>
+          <td>Sequence of past tokens x₀..xₜ</td>
+        </tr>
+        <tr>
+          <td>Hidden state</td>
+          <td>Recurrent/attentional memory hₜ</td>
+          <td>Recurrent/attentional memory hₜ — same architectures</td>
+        </tr>
+        <tr>
+          <td>Output</td>
+          <td>Action distribution π(aₜ | h≤ₜ)</td>
+          <td>Next-token distribution p(xₜ₊₁ | h≤ₜ)</td>
+        </tr>
+        <tr>
+          <td>Supervision</td>
+          <td>Scalar reward, possibly delayed</td>
+          <td>Cross-entropy against the true next token</td>
+        </tr>
+        <tr>
+          <td>Optimised quantity</td>
+          <td>Expected discounted return</td>
+          <td>Expected log-likelihood</td>
+        </tr>
+        <tr>
+          <td>Episode</td>
+          <td>One run from start state to terminal</td>
+          <td>One document / one packed sequence</td>
+        </tr>
+        <tr>
+          <td>Architecture</td>
+          <td>LSTM, GRU, Transformer, S4, Mamba, ...</td>
+          <td>LSTM, GRU, Transformer, S4, Mamba, ...</td>
+        </tr>
+        <tr>
+          <td>Failure mode</td>
+          <td>Forgetting useful past observations</td>
+          <td>Forgetting useful past tokens</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The architectures column is the giveaway. POPGym's paper benchmarks the same family of
+      sequence models — recurrent, attentional, state-space — that show up in every modern
+      language model. They aren't borrowing the tools metaphorically; they're literally the
+      same code, with a different loss function bolted on the end.
+    </p>
+  </section>
+
+  <!-- ════════════ §07 — WHERE THEY DIVERGE ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 06 — But not identical</span>
+    <h2>Where the analogy <em>strains.</em></h2>
+    <p>
+      Being honest about the disanalogies is the whole point of taking the analogy seriously.
+      Three places where they come apart:
+    </p>
+
+    <div class="divergence">
+      <div class="div-col">
+        <h4>① The supervision signal</h4>
+        <p>
+          A language model gets a dense, immediate, low-variance signal: every position
+          carries a gradient. A POPGym agent might play a full episode and receive a single
+          scalar at the end. The information per step is orders of magnitude lower, which is
+          why RL is so much harder to train stably.
+        </p>
+      </div>
+      <div class="div-col">
+        <h4>② The data distribution is non-stationary</h4>
+        <p>
+          The language model sees a fixed corpus. The POPGym agent's training distribution
+          is its own policy — which is changing. The data it learns from is shaped by the
+          model it's trying to learn. There is no equivalent feedback loop in standard
+          pre-training.
+        </p>
+      </div>
+      <div class="div-col">
+        <h4>③ Action ≠ token</h4>
+        <p>
+          A token is descriptive: it predicts the world. An action is causal: it changes
+          the world. The agent's output is fed back into the system that produces its next
+          input, so the choices it makes <em>shape its own future observations</em>. This
+          is closer to an autoregressive language model generating its own continuation than
+          to one being trained on text.
+        </p>
+      </div>
+      <div class="div-col">
+        <h4>④ Reward shaping vs. likelihood</h4>
+        <p>
+          Language modelling optimises log-likelihood of a fixed target. RL optimises
+          expected return under a reward function that <em>someone designed</em>. The choice
+          of reward is itself an inductive bias, and a brittle one — a fact RLHF practitioners
+          know painfully well.
+        </p>
+      </div>
+    </div>
+
+    <p style="margin-top: 2rem;">
+      The interesting move — and the one worth working out carefully — is point ③. The closest
+      language-modelling analogue to an RL agent isn't a pre-trained LM at all. It's an LM
+      <em>generating</em>, where each emitted token becomes part of the prompt for the next.
+      That's a closed loop, like RL, and it's where the disanalogies start to dissolve.
+      RLHF and chain-of-thought aren't accidents — they're exactly the regime where language
+      modelling and RL collapse into the same problem.
+    </p>
+  </section>
+
+  <!-- ════════════ §08 — TAKEAWAY ════════════ -->
+  <section class="fade-up">
+    <span class="section-num">§ 07 — Takeaway</span>
+    <h2>If you squint, POPGym is a unit test for <em>memory</em>.</h2>
+    <p>
+      Strip the RL costume away and what POPGym actually measures is whether a sequence
+      model can compress a history into a state that supports future prediction. That's a
+      question that doesn't belong to RL or to language — it belongs to sequence modelling
+      itself. The benchmark is useful precisely because it isolates that question from the
+      noise of visual perception or natural language.
+    </p>
+    <p>
+      So if you're working through the hypothesis that <strong>reinforcement learning and
+      language model training are doing the same thing</strong> — POPGym is one of the cleanest
+      places to actually test it. Same architectures, comparable failure modes, and the
+      supervision signal is the variable you can change. It's the experimental setup that
+      isolates exactly the disanalogy that matters: dense vs. sparse, descriptive vs.
+      causal, fixed corpus vs. self-generated.
+    </p>
+    <p>
+      The work, then, is to take a memory architecture that succeeds on a POPGym task,
+      take its language-modelling cousin, and ask: is the representation it learns the
+      same kind of thing? That's a real experiment, not a metaphor.
+    </p>
+  </section>
+
+  <footer>
+    <span>POPGym &middot; Considered as a Language Model</span>
+    <span class="end-mark">— ❦ —</span>
+    <span>An interactive working note</span>
+  </footer>
+
+</div>
+
+<script>
+  // ── ANALOGY CARDS ─────────────────────────────────────
+  const concepts = [
+    {
+      rl:  { term: 'Observation',          desc: 'A partial slice of the environment\'s state, given at each timestep.' },
+      lm:  { term: 'Token embedding',      desc: 'A partial slice of the document — one position, one vector.' }
+    },
+    {
+      rl:  { term: 'Action',               desc: 'The agent\'s output. Discrete or continuous. Fed back into the env.' },
+      lm:  { term: 'Next-token prediction', desc: 'The model\'s output distribution over the vocabulary.' }
+    },
+    {
+      rl:  { term: 'Episode',              desc: 'A trajectory from start to terminal — the unit of experience.' },
+      lm:  { term: 'Document',             desc: 'A packed sequence of tokens — the unit of training data.' }
+    },
+    {
+      rl:  { term: 'Reward',               desc: 'A scalar telling you how well you did. Often sparse, often delayed.' },
+      lm:  { term: 'Cross-entropy loss',   desc: 'A scalar telling you how wrong your distribution was. Dense, per-position.' }
+    },
+    {
+      rl:  { term: 'Memory architecture',  desc: 'The thing that summarises the history. RNN, Transformer, SSM, etc.' },
+      lm:  { term: 'Sequence backbone',    desc: 'Exactly the same architectures — literally the same code paths.' }
+    },
+    {
+      rl:  { term: 'Policy π(a|h)',        desc: 'The conditional distribution from which the agent samples actions.' },
+      lm:  { term: 'LM head p(x|h)',       desc: 'The conditional distribution from which the model samples tokens.' }
+    }
+  ];
+
+  const cardContainer = document.getElementById('analogyCards');
+
+  function renderCards(mode) {
+    cardContainer.innerHTML = '';
+    concepts.forEach((c, i) => {
+      const data = c[mode];
+      const card = document.createElement('div');
+      card.className = 'analogy-card ' + mode + '-mode';
+      card.innerHTML = `
+        <span class="card-num">0${i+1}</span>
+        <div class="card-label">${mode === 'rl' ? 'RL term' : 'LM term'}</div>
+        <div class="card-term">${data.term}</div>
+        <div class="card-desc">${data.desc}</div>
+      `;
+      cardContainer.appendChild(card);
+    });
+  }
+  renderCards('rl');
+
+  document.querySelectorAll('.analogy-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.analogy-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCards(btn.dataset.mode);
+    });
+  });
+
+  // ── ENV TABS ──────────────────────────────────────────
+  document.querySelectorAll('.env-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const env = tab.dataset.env;
+      document.querySelectorAll('.env-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.env-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelector(`.env-panel[data-env="${env}"]`).classList.add('active');
+    });
+  });
+
+  // ── FADE-IN ON SCROLL ─────────────────────────────────
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.fade-up').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>

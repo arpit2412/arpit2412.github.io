@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoLCATs · A Technical Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  MathJax = {
+    loader: { load: ['[tex]/boldsymbol'] },
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      packages: { '[+]': ['boldsymbol'] },
+      macros: {
+        bm: ['{\\boldsymbol{#1}}', 1]
+      }
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+  :root {
+    --ink: #15110d;
+    --ink-soft: #15110daa;
+    --paper: #f3ecdd;
+    --paper-deep: #e6dbc2;
+    --paper-card: #faf5e8;
+    --accent: #b8391f;
+    --accent-soft: #d97d52;
+    --teal: #2c6e6b;
+    --rule: #15110d22;
+    --rule-strong: #15110d55;
+    --serif: 'Fraunces', 'Times New Roman', serif;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 5% 5%, #d97d5222 0%, transparent 45%),
+      radial-gradient(circle at 95% 70%, #2c6e6b15 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 100; opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 60px 40px 120px;
+  }
+
+  /* Masthead */
+  .masthead {
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 14px 0;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  .masthead .dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--accent); border-radius: 50%;
+    margin-right: 8px; vertical-align: middle;
+  }
+
+  /* Title block */
+  .title-block {
+    padding: 70px 0 36px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.2em;
+    color: var(--accent); margin-bottom: 22px;
+  }
+
+  h1 {
+    font-family: var(--serif); font-weight: 800;
+    font-size: clamp(42px, 6.5vw, 76px);
+    line-height: 1.0; letter-spacing: -0.03em;
+    margin-bottom: 28px;
+    font-variation-settings: "opsz" 144;
+  }
+  h1 .italic { font-style: italic; font-weight: 400; color: var(--accent); }
+
+  .deck {
+    font-size: 21px; line-height: 1.45;
+    font-style: italic; max-width: 680px;
+    opacity: 0.82;
+  }
+
+  .byline {
+    margin-top: 30px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    opacity: 0.6;
+  }
+
+  /* TOC */
+  .toc {
+    margin: 32px 0 0;
+    padding: 20px 0;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px 24px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .toc a {
+    color: var(--ink); text-decoration: none;
+    display: block; padding: 4px 0;
+    border-left: 2px solid var(--accent);
+    padding-left: 10px;
+    transition: padding 0.2s;
+  }
+  .toc a:hover { padding-left: 14px; color: var(--accent); }
+  .toc a span { color: var(--accent); margin-right: 8px; font-weight: 600; }
+
+  /* Section structure */
+  section {
+    padding: 56px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  h2 {
+    font-family: var(--serif); font-weight: 800;
+    font-size: 36px; line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 28px;
+    position: relative; padding-left: 38px;
+  }
+  h2::before {
+    content: attr(data-num);
+    position: absolute; left: 0; top: 14px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--accent); font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  h3 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: 22px; margin: 36px 0 14px;
+    font-style: italic;
+    color: var(--ink);
+  }
+
+  h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin: 28px 0 10px;
+  }
+
+  p { margin-bottom: 16px; }
+
+  em.term {
+    font-style: normal; font-weight: 600;
+    background: linear-gradient(to top, var(--accent-soft) 30%, transparent 30%);
+    padding: 0 2px;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--paper-deep);
+    padding: 2px 6px; border-radius: 2px;
+  }
+
+  /* Math block container */
+  .math-block {
+    background: var(--paper-card);
+    border-left: 3px solid var(--accent);
+    padding: 18px 24px;
+    margin: 22px 0;
+    border-radius: 0 4px 4px 0;
+    overflow-x: auto;
+    position: relative;
+  }
+  .math-block .eq-tag {
+    position: absolute;
+    right: 14px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    opacity: 0.6;
+    letter-spacing: 0.1em;
+  }
+  .math-block.notag .eq-tag { display: none; }
+
+  /* Figure container */
+  figure {
+    margin: 36px 0;
+    background: var(--paper-card);
+    padding: 32px 28px 22px;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+  }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption {
+    margin-top: 18px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    font-style: italic;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+  }
+  figcaption .fig-num {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-right: 10px;
+    font-weight: 600;
+  }
+
+  /* Callout box */
+  .callout {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 28px 32px;
+    margin: 28px 0;
+    border-radius: 4px;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .callout h4 {
+    color: var(--accent-soft);
+    margin: 0 0 10px;
+  }
+  .callout strong { color: var(--paper); }
+
+  /* Pull quote */
+  .pull-quote {
+    font-family: var(--serif);
+    font-style: italic; font-size: 26px;
+    line-height: 1.35;
+    padding: 32px 0 32px 28px;
+    margin: 36px 0;
+    border-left: 3px solid var(--accent);
+    letter-spacing: -0.01em;
+  }
+
+  /* Stats row */
+  .numbers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    margin: 32px 0;
+  }
+  .stat {
+    padding: 24px 18px;
+    border-right: 1px solid var(--rule);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-num {
+    font-family: var(--serif); font-weight: 800;
+    font-size: 44px; line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  .stat-label {
+    font-family: var(--mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    line-height: 1.4; opacity: 0.75;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 14px;
+    background: var(--paper-card);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    background: var(--paper-deep);
+    color: var(--ink);
+    font-weight: 600;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 600; font-family: var(--serif); font-style: italic; }
+
+  /* Footer */
+  footer {
+    padding: 48px 0 0;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    opacity: 0.6; text-align: center;
+  }
+  footer a {
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+  }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .container { padding: 40px 22px 80px; }
+    h1 { font-size: 38px; }
+    h2 { font-size: 26px; padding-left: 32px; }
+    .deck { font-size: 17px; }
+    .pull-quote { font-size: 19px; padding-left: 18px; }
+    figure { padding: 20px 14px 16px; }
+    .math-block { padding: 14px 16px; font-size: 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="masthead">
+    <span><span class="dot"></span>LoLCATs · Technical Walkthrough</span>
+    <span>arXiv:2410.10254 · ICLR 2025</span>
+  </div>
+
+  <header class="title-block">
+    <div class="eyebrow">Method paper · Subquadratic LLMs · Stanford / Together AI / Caltech</div>
+    <h1>Low-Rank<br>Linearizing,<br><span class="italic">formally.</span></h1>
+    <p class="deck">A research-scientist's tour of LoLCATs: attention transfer as a feature-map distillation problem, LoRA as residual correction, and a block-wise schedule that makes 405B-parameter linearization tractable.</p>
+    <div class="byline">Zhang · Arora · Chalamala · Wu · Spector · Singhal · Ramesh · Ré</div>
+
+    <nav class="toc">
+      <a href="#problem"><span>01</span>The problem</a>
+      <a href="#prelim"><span>02</span>Preliminaries</a>
+      <a href="#framework"><span>03</span>Framework</a>
+      <a href="#architecture"><span>04</span>Architecture</a>
+      <a href="#blockwise"><span>05</span>Block-wise schedule</a>
+      <a href="#results"><span>06</span>Empirical results</a>
+    </nav>
+  </header>
+
+  <!-- ============ SECTION 1 ============ -->
+  <section id="problem">
+    <h2 data-num="01">The problem, precisely</h2>
+
+    <p>Causal softmax attention is $\mathcal{O}(L^2 d)$ in compute and $\mathcal{O}(L d)$ in KV-cache memory during decoding, where $L$ is sequence length and $d$ is head dimension. Linear attention reduces these to $\mathcal{O}(L d d')$ compute and $\mathcal{O}(d d')$ recurrent state — independent of $L$ during generation. The question is not whether subquadratic attention exists, but whether one can <em class="term">transplant</em> it into a model that has already been pretrained for trillions of tokens.</p>
+
+    <p>Prior linearization methods (SUPRA, Mamba-in-Llama, Mohawk) fall short on three axes simultaneously:</p>
+
+    <table>
+      <thead>
+        <tr><th>Failure mode</th><th>Symptom</th><th>Magnitude</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Quality</td><td>5-shot MMLU drop vs. base model</td><td>23.4 – 28.2 points</td></tr>
+        <tr><td>Token cost</td><td>Linearizing-stage corpus size</td><td>20 – 100B tokens</td></tr>
+        <tr><td>Scale ceiling</td><td>Largest model linearized</td><td>≤ 8B parameters</td></tr>
+      </tbody>
+    </table>
+
+    <p>LoLCATs reframes the goal: rather than treat linearization as <em>re-pretraining a different architecture</em>, treat it as <em class="term">approximating a fixed nonlinear operator</em> (softmax attention) with a learnable subquadratic one (parameterized linear attention), then absorb the residual approximation error via LoRA.</p>
+  </section>
+
+  <!-- ============ SECTION 2 ============ -->
+  <section id="prelim">
+    <h2 data-num="02">Preliminaries: softmax → linear attention</h2>
+
+    <p>For a single head with queries $\bm{q}, \bm{k}, \bm{v} \in \mathbb{R}^{L \times d}$, causal softmax attention computes</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Eq. 1</span>
+      $$ \bm{y}_n = \sum_{i=1}^{n} \frac{\exp(\bm{q}_n^\top \bm{k}_i / \sqrt{d})}{\sum_{j=1}^{n} \exp(\bm{q}_n^\top \bm{k}_j / \sqrt{d})} \, \bm{v}_i $$
+    </div>
+
+    <p>The exponential $\exp(\bm{q}^\top \bm{k}/\sqrt{d})$ is a positive-definite kernel $\mathcal{K}(\bm{q}, \bm{k})$. By Mercer's theorem, any such kernel admits a feature-map factorization $\mathcal{K}(\bm{q},\bm{k}) = \phi(\bm{q})^\top \phi(\bm{k})$ for some $\phi : \mathbb{R}^d \to \mathbb{R}^{d'}$. For softmax, the exact $\phi$ has infinite dimension; the linear-attention trick is to <em>approximate</em> it with a tractable $\phi$. Substituting and rearranging:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Eq. 2</span>
+      $$ \hat{\bm{y}}_n = \frac{\phi(\bm{q}_n)^\top \left( \sum_{i=1}^{n} \phi(\bm{k}_i) \bm{v}_i^\top \right)}{\phi(\bm{q}_n)^\top \sum_{i=1}^{n} \phi(\bm{k}_i)} $$
+    </div>
+
+    <p>The crucial observation is associativity: by computing the bracketed $\sum_i \phi(\bm{k}_i) \bm{v}_i^\top \in \mathbb{R}^{d' \times d}$ <em>first</em>, attention becomes a linear recurrence. Define the running state $\bm{s}_n$ and normalizer $\bm{z}_n$:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Eq. 3</span>
+      $$ \bm{s}_n = \bm{s}_{n-1} + \phi(\bm{k}_n) \bm{v}_n^\top, \qquad \bm{z}_n = \bm{z}_{n-1} + \phi(\bm{k}_n), \qquad \hat{\bm{y}}_n = \frac{\phi(\bm{q}_n)^\top \bm{s}_n}{\phi(\bm{q}_n)^\top \bm{z}_n} $$
+    </div>
+
+    <p>This collapses generation memory from $\mathcal{O}(Ld)$ (the KV cache) to $\mathcal{O}(dd')$ (a fixed-size recurrent state). The figure below makes the geometry of the cost reduction concrete.</p>
+
+    <figure>
+      <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <defs>
+          <linearGradient id="quadGrad" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#b8391f" stop-opacity="0.85"/>
+            <stop offset="100%" stop-color="#b8391f" stop-opacity="0.3"/>
+          </linearGradient>
+          <linearGradient id="linGrad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stop-color="#2c6e6b" stop-opacity="0.85"/>
+            <stop offset="100%" stop-color="#2c6e6b" stop-opacity="0.6"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Axes -->
+        <line x1="60" y1="270" x2="640" y2="270" stroke="#15110d" stroke-width="1.5"/>
+        <line x1="60" y1="270" x2="60" y2="40" stroke="#15110d" stroke-width="1.5"/>
+
+        <!-- Quadratic curve -->
+        <path d="M 60,270 Q 220,270 320,200 T 580,50" fill="none" stroke="#b8391f" stroke-width="2.5"/>
+        <path d="M 60,270 Q 220,270 320,200 T 580,50 L 580,270 L 60,270 Z" fill="url(#quadGrad)" opacity="0.25"/>
+
+        <!-- Linear line -->
+        <line x1="60" y1="270" x2="580" y2="200" stroke="#2c6e6b" stroke-width="2.5"/>
+
+        <!-- Labels -->
+        <text x="595" y="55" font-size="11" fill="#b8391f" font-weight="600">Softmax: O(L² d)</text>
+        <text x="595" y="205" font-size="11" fill="#2c6e6b" font-weight="600">Linear: O(L d d')</text>
+
+        <!-- Axis labels -->
+        <text x="350" y="298" font-size="11" fill="#15110d" text-anchor="middle">Sequence length L →</text>
+        <text x="40" y="155" font-size="11" fill="#15110d" text-anchor="middle" transform="rotate(-90 40 155)">Compute / Memory →</text>
+
+        <!-- Tick marks for context lengths -->
+        <line x1="220" y1="270" x2="220" y2="275" stroke="#15110d"/>
+        <text x="220" y="288" font-size="9" fill="#15110d" text-anchor="middle">2K</text>
+        <line x1="380" y1="270" x2="380" y2="275" stroke="#15110d"/>
+        <text x="380" y="288" font-size="9" fill="#15110d" text-anchor="middle">8K</text>
+        <line x1="540" y1="270" x2="540" y2="275" stroke="#15110d"/>
+        <text x="540" y="288" font-size="9" fill="#15110d" text-anchor="middle">32K</text>
+
+        <!-- Title -->
+        <text x="350" y="25" font-size="13" fill="#15110d" text-anchor="middle" font-weight="600" font-family="Fraunces, serif" font-style="italic">Cost scaling, softmax vs. linear attention</text>
+      </svg>
+      <figcaption><span class="fig-num">Figure 1</span> The motivating asymmetry. Softmax attention's $L^2$ term dominates at long context; linear attention removes it. The crossover is what makes long-context inference economically interesting.</figcaption>
+    </figure>
+
+    <p>Almost every linear-attention paper since Katharopoulos et al. (2020) has been a proposal for $\phi$: ELU+1, performer features, T2R (ReLU on a learned projection), Hedgehog (split softmax), etc. The defining choice of LoLCATs is to <em>learn</em> $\phi$ specifically to match the softmax kernel of a <em>specific pretrained model</em>, layer by layer, head by head.</p>
+  </section>
+
+  <!-- ============ SECTION 3 ============ -->
+  <section id="framework">
+    <h2 data-num="03">The two-stage framework</h2>
+
+    <p>LoLCATs decomposes linearization into two surgical objectives, training entirely different parameter sets in each.</p>
+
+    <figure>
+      <svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <!-- Stage 1 box -->
+        <rect x="30" y="40" width="310" height="280" fill="none" stroke="#15110d" stroke-width="1.5" rx="4"/>
+        <text x="185" y="32" text-anchor="middle" font-size="12" font-weight="600" fill="#b8391f">STAGE 1 · ATTENTION TRANSFER</text>
+
+        <!-- Stage 2 box -->
+        <rect x="380" y="40" width="310" height="280" fill="none" stroke="#15110d" stroke-width="1.5" rx="4"/>
+        <text x="535" y="32" text-anchor="middle" font-size="12" font-weight="600" fill="#b8391f">STAGE 2 · LoRA RECOVERY</text>
+
+        <!-- STAGE 1 contents -->
+        <!-- Input -->
+        <text x="185" y="62" text-anchor="middle" font-size="10" fill="#15110d">input x</text>
+        <rect x="155" y="68" width="60" height="20" fill="#f3ecdd" stroke="#15110d"/>
+        <text x="185" y="82" text-anchor="middle" font-size="9" fill="#15110d">x ∈ ℝ^(L×d)</text>
+
+        <!-- Two parallel paths -->
+        <line x1="185" y1="88" x2="120" y2="110" stroke="#15110d" stroke-width="1"/>
+        <line x1="185" y1="88" x2="250" y2="110" stroke="#15110d" stroke-width="1"/>
+
+        <!-- Left: Softmax (frozen) -->
+        <rect x="60" y="110" width="120" height="44" fill="#e6dbc2" stroke="#15110d"/>
+        <text x="120" y="128" text-anchor="middle" font-size="10" font-weight="600">Softmax Attn</text>
+        <text x="120" y="142" text-anchor="middle" font-size="9" fill="#b8391f">❄ FROZEN</text>
+
+        <!-- Right: Linear (trainable) -->
+        <rect x="190" y="110" width="120" height="44" fill="#d97d5233" stroke="#b8391f" stroke-width="1.5"/>
+        <text x="250" y="128" text-anchor="middle" font-size="10" font-weight="600">Linear Attn φ_q, φ_k</text>
+        <text x="250" y="142" text-anchor="middle" font-size="9" fill="#b8391f">⚙ TRAIN</text>
+
+        <!-- Outputs -->
+        <text x="120" y="172" text-anchor="middle" font-size="11" font-style="italic" fill="#15110d">y (teacher)</text>
+        <text x="250" y="172" text-anchor="middle" font-size="11" font-style="italic" fill="#b8391f">ŷ (student)</text>
+
+        <!-- MSE -->
+        <path d="M 120 178 Q 185 220 250 178" fill="none" stroke="#15110d" stroke-width="1" stroke-dasharray="3,3"/>
+        <rect x="140" y="220" width="90" height="34" fill="#15110d"/>
+        <text x="185" y="237" text-anchor="middle" font-size="10" fill="#f3ecdd">MSE(y, ŷ)</text>
+        <text x="185" y="248" text-anchor="middle" font-size="8" fill="#d97d52">backprop → φ only</text>
+
+        <text x="185" y="280" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">teacher-forcing:</text>
+        <text x="185" y="294" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">y flows to next layer,</text>
+        <text x="185" y="308" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">not ŷ</text>
+
+        <!-- STAGE 2 contents -->
+        <text x="535" y="62" text-anchor="middle" font-size="10" fill="#15110d">input x</text>
+        <rect x="505" y="68" width="60" height="20" fill="#f3ecdd" stroke="#15110d"/>
+        <text x="535" y="82" text-anchor="middle" font-size="9">x ∈ ℝ^(L×d)</text>
+
+        <!-- Single path: Linear with LoRA -->
+        <line x1="535" y1="88" x2="535" y2="105" stroke="#15110d" stroke-width="1"/>
+
+        <rect x="430" y="108" width="210" height="50" fill="#d97d5233" stroke="#b8391f" stroke-width="1.5"/>
+        <text x="535" y="124" text-anchor="middle" font-size="10" font-weight="600">Linear Attn (trained φ)</text>
+        <text x="535" y="138" text-anchor="middle" font-size="9" fill="#15110d">W_q' = W_q + B_q A_q  ← LoRA</text>
+        <text x="535" y="151" text-anchor="middle" font-size="9" fill="#15110d">(same for k, v, o)</text>
+
+        <line x1="535" y1="158" x2="535" y2="180" stroke="#15110d" stroke-width="1"/>
+
+        <rect x="450" y="180" width="170" height="40" fill="#15110d"/>
+        <text x="535" y="197" text-anchor="middle" font-size="10" fill="#f3ecdd" font-weight="600">Next-token loss</text>
+        <text x="535" y="210" text-anchor="middle" font-size="9" fill="#d97d52">−Σ log P(u_(t+1) | u_(1:t))</text>
+
+        <text x="535" y="244" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">end-to-end training,</text>
+        <text x="535" y="258" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">but only low-rank</text>
+        <text x="535" y="272" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">B, A matrices update</text>
+
+        <!-- Param counts -->
+        <text x="535" y="298" text-anchor="middle" font-size="9" fill="#b8391f" font-weight="600">rank r = 8</text>
+        <text x="535" y="310" text-anchor="middle" font-size="9" fill="#b8391f">&lt; 0.09% of params</text>
+
+        <!-- Arrow between stages -->
+        <line x1="345" y1="180" x2="375" y2="180" stroke="#15110d" stroke-width="2"/>
+        <polygon points="370,175 380,180 370,185" fill="#15110d"/>
+      </svg>
+      <figcaption><span class="fig-num">Figure 2</span> The two-stage LoLCATs procedure. Stage 1 trains <em>only</em> the feature maps $\phi_q, \phi_k$ to minimize output MSE against the frozen softmax teacher — a per-layer distillation. Stage 2 swaps softmax for the trained linear attention and trains LoRA adapters on the attention projections end-to-end under next-token loss.</figcaption>
+    </figure>
+
+    <h3>Stage 1 — Attention transfer</h3>
+
+    <p>For each layer $m$ and head $h$, parameterize the feature maps as a shallow learnable layer:</p>
+
+    <div class="math-block notag">
+      $$ \phi_q(\bm{q}_n) := f(\bm{q}_n \tilde{\bm{W}}_{(q)} + \tilde{\bm{b}}_{(q)}), \qquad \phi_k(\bm{k}_i) := f(\bm{k}_i \tilde{\bm{W}}_{(k)} + \tilde{\bm{b}}_{(k)}) $$
+    </div>
+
+    <p>with $\tilde{\bm{W}} \in \mathbb{R}^{d \times d'}$, $\tilde{\bm{b}} \in \mathbb{R}^{d'}$, and $f$ a nonlinearity. The training objective is the per-head output MSE averaged over $H$ heads and $M$ layers:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Eq. 5</span>
+      $$ \mathcal{L}_{\text{MSE}} = \frac{1}{MH} \sum_{m=1}^{M} \sum_{h=1}^{H} \mathcal{L}_{\text{MSE}}^{h,m}, \qquad \mathcal{L}_{\text{MSE}}^{h,m} = \frac{1}{Ld} \sum_{n=1}^{L} \big\| \bm{y}_n - \hat{\bm{y}}_n \big\|^2 $$
+    </div>
+
+    <p>Two implementation details matter:</p>
+
+    <p><strong>Teacher-forcing across layers.</strong> Even though $\phi$ is being trained jointly across layers, the inputs to layer $m+1$ are the true softmax outputs $\bm{y}^{(m)}$, not the student outputs $\hat{\bm{y}}^{(m)}$. This decouples per-layer optimization and prevents the student error from compounding through the depth of the network during training. It also means $\bm{y}$ can be computed once per forward pass via FlashAttention and reused.</p>
+
+    <p><strong>Output-MSE, not attention-weight MSE.</strong> Hedgehog (Zhang et al., 2024) supervises on the $L \times L$ attention matrix directly:</p>
+
+    <div class="math-block notag">
+      $$ \mathcal{L}_{\text{Hedgehog}} = \sum_{i,j} \text{KL}\big( \text{softmax}_j(\bm{q}_i^\top \bm{k}_j) \,\big\|\, \tfrac{\phi(\bm{q}_i)^\top \phi(\bm{k}_j)}{\sum_{j'} \phi(\bm{q}_i)^\top \phi(\bm{k}_{j'})} \big) $$
+    </div>
+
+    <p>This is $\mathcal{O}(L^2)$ in memory and rules out FlashAttention. LoLCATs supervises on the <em>contracted</em> output $\bm{y}_n \in \mathbb{R}^d$, dropping to $\mathcal{O}(L)$ — which is what makes the method viable at 405B scale.</p>
+
+    <h3>Stage 2 — LoRA recovery</h3>
+
+    <p>After Stage 1, $\hat{\bm{y}} \approx \bm{y}$ in expectation but not exactly. Substituting the linear approximation throughout the network shifts the residual stream; the cross-entropy loss creeps up. Instead of full finetuning, LoLCATs applies LoRA only to the four attention projections $\bm{W}_q, \bm{W}_k, \bm{W}_v, \bm{W}_o$:</p>
+
+    <div class="math-block notag">
+      $$ \bm{W}' = \bm{W} + \Delta \bm{W}, \qquad \Delta \bm{W} = \bm{B} \bm{A}, \qquad \bm{B} \in \mathbb{R}^{d \times r}, \; \bm{A} \in \mathbb{R}^{r \times d} $$
+    </div>
+
+    <p>with $r = 8$. This is sufficient to absorb the approximation residual without disturbing the rest of the model.</p>
+
+    <div class="callout">
+      <h4>Parameter accounting · Llama 3 8B</h4>
+      <p><strong>Stage 1:</strong> 32 layers × 32 heads × 2 feature maps × (128 × 64) ≈ <strong>16.8M params</strong> — about 0.2% of the model. Trainable on a single 40 GB GPU.</p>
+      <p style="margin-top:10px;"><strong>Stage 2:</strong> LoRA at $r=8$ on four projections, 32 layers: ≈ <strong>6.5M params</strong> — under 0.09% of the model.</p>
+      <p style="margin-top:10px;"><strong>Tokens:</strong> 40M total. Prior methods used 20–100B. That is a <strong>500–2500× reduction</strong>.</p>
+    </div>
+  </section>
+
+  <!-- ============ SECTION 4 ============ -->
+  <section id="architecture">
+    <h2 data-num="04">Architectural extension: sliding window + linear</h2>
+
+    <p>The naive framework above works, but bare linear attention has a known weakness: it cannot represent the sharp, local, peaky distributions that softmax produces near the diagonal (recent tokens). The MSE residual is dominated by these failures. LoLCATs Part 2 introduces a hybrid that respects this structure.</p>
+
+    <p>Split each sequence position $n$ into a recent window of size $W$ and a long-range tail. Run exact softmax attention over the window, linear attention over everything before it:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Eq. 6</span>
+      $$ \hat{\bm{y}}_n = \underbrace{\sum_{i = n-W}^{n} \frac{\exp(\bm{q}_n^\top \bm{k}_i / \sqrt{d})}{Z_n^{\text{win}} + Z_n^{\text{lin}}} \bm{v}_i}_{\text{sliding window, exact}} \; + \; \underbrace{\frac{\phi_q(\bm{q}_n)^\top \sum_{i=1}^{n-W-1} \phi_k(\bm{k}_i) \bm{v}_i^\top}{Z_n^{\text{win}} + Z_n^{\text{lin}}}}_{\text{linear long-range}} $$
+    </div>
+
+    <p>where $Z_n^{\text{win}}$ and $Z_n^{\text{lin}}$ are the two normalizers summed for a shared denominator. The local window keeps compute at $\mathcal{O}(LW d)$ — still linear in $L$ for fixed $W$ — and crucially gives the model an exact handle on local context, while linear attention handles the diluted long-range signal where its approximation is much closer to softmax behavior anyway.</p>
+
+    <figure>
+      <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <!-- Causal mask grid -->
+        <defs>
+          <pattern id="diag" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="6" stroke="#2c6e6b" stroke-width="1.2"/>
+          </pattern>
+        </defs>
+
+        <text x="350" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#15110d">Hybrid attention mask: window + linear</text>
+
+        <!-- Grid -->
+        <g transform="translate(180, 50)">
+          <!-- Linear (everything before window) -->
+          <polygon points="0,200 160,200 160,40" fill="url(#diag)" stroke="#2c6e6b" stroke-width="1.5"/>
+          <!-- Window (band) -->
+          <polygon points="160,40 200,0 200,200 160,200" fill="#b8391f" opacity="0.85"/>
+
+          <!-- Axes -->
+          <line x1="0" y1="0" x2="0" y2="200" stroke="#15110d" stroke-width="1.5"/>
+          <line x1="0" y1="200" x2="200" y2="200" stroke="#15110d" stroke-width="1.5"/>
+
+          <!-- Labels on axes -->
+          <text x="-10" y="10" text-anchor="end" font-size="10" fill="#15110d">n=1</text>
+          <text x="-10" y="200" text-anchor="end" font-size="10" fill="#15110d">n=L</text>
+          <text x="0" y="218" text-anchor="middle" font-size="10" fill="#15110d">i=1</text>
+          <text x="200" y="218" text-anchor="middle" font-size="10" fill="#15110d">i=L</text>
+
+          <text x="100" y="232" text-anchor="middle" font-size="10" font-style="italic" fill="#15110d">key index i →</text>
+          <text x="-40" y="100" text-anchor="middle" font-size="10" font-style="italic" fill="#15110d" transform="rotate(-90 -40 100)">query n →</text>
+        </g>
+
+        <!-- Legend -->
+        <g transform="translate(440, 70)">
+          <rect x="0" y="0" width="20" height="20" fill="#b8391f" opacity="0.85"/>
+          <text x="28" y="14" font-size="11" fill="#15110d">Sliding window: exact softmax over last W tokens</text>
+
+          <rect x="0" y="32" width="20" height="20" fill="url(#diag)" stroke="#2c6e6b"/>
+          <text x="28" y="46" font-size="11" fill="#15110d">Linear attention: φ(q)·φ(k) over tail</text>
+
+          <text x="0" y="86" font-size="10" font-style="italic" fill="#15110d" font-family="Fraunces, serif">Both terms share a single</text>
+          <text x="0" y="100" font-size="10" font-style="italic" fill="#15110d" font-family="Fraunces, serif">denominator (Eq. 6), giving a</text>
+          <text x="0" y="114" font-size="10" font-style="italic" fill="#15110d" font-family="Fraunces, serif">proper probability distribution</text>
+          <text x="0" y="128" font-size="10" font-style="italic" fill="#15110d" font-family="Fraunces, serif">across the full context.</text>
+
+          <text x="0" y="160" font-size="10" fill="#b8391f" font-weight="600">Cost: O(L·W·d) + O(L·d·d')</text>
+          <text x="0" y="176" font-size="10" fill="#b8391f">→ still linear in L</text>
+        </g>
+      </svg>
+      <figcaption><span class="fig-num">Figure 3</span> The hybrid mask. Sharp local structure (red band) is preserved exactly via softmax over the last $W$ tokens; the diffuse long-range tail (teal hatching) is handled by linear attention. Sharing a denominator keeps the output a normalized convex combination of values.</figcaption>
+    </figure>
+
+    <h3>Feature-map choices</h3>
+
+    <p>The paper compares three parameterizations of $\phi$, with concrete implications for representational capacity:</p>
+
+    <table>
+      <thead>
+        <tr><th>Map</th><th>Form</th><th>Output dim</th><th>Property</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>T2R</td><td>$\text{ReLU}(\bm{q} \tilde{\bm{W}} + \tilde{\bm{b}})$</td><td>$d' = d$</td><td>Cheap; loses sign info</td></tr>
+        <tr><td>Hedgehog</td><td>$[\text{SM}_d(\bm{q}\tilde{\bm{W}}) \,\oplus\, \text{SM}_d(-\bm{q}\tilde{\bm{W}})]$</td><td>$d' = 2d$</td><td>Preserves both signs; softmax-like</td></tr>
+        <tr><td>LoLCATs default</td><td>Hedgehog inside window+linear hybrid</td><td>$d' = 2d$</td><td>Lowest output MSE</td></tr>
+      </tbody>
+    </table>
+
+    <p>Empirically, the Hedgehog parameterization combined with the window+linear hybrid gives the lowest layer-wise MSE and the highest downstream MMLU. The intuition: $\phi$ needs to express both attractive and repulsive interactions in the feature space, and concatenating a $-\bm{q}\tilde{\bm{W}}$ branch gives it room to do so without explicitly negative features.</p>
+  </section>
+
+  <!-- ============ SECTION 5 ============ -->
+  <section id="blockwise">
+    <h2 data-num="05">The scaling trick: block-wise attention transfer</h2>
+
+    <p>Jointly training all $M$ layers of $\phi$ from a single forward pass works for 7B–8B models. At 70B and 405B it breaks down. The paper reports that on Llama 3.1 405B (126 attention layers), late-layer MSE can be <strong>200× larger</strong> than early-layer MSE under joint training — feature maps deep in the network simply do not converge to a good local solution when supervised under joint gradients.</p>
+
+    <p>The fix is a block-wise schedule. Partition the $M$ layers into blocks of $k$ consecutive layers. Within each block, optimize the MSE jointly; <em>across</em> blocks, treat each block's inputs as the cached softmax outputs of the previous block.</p>
+
+    <figure>
+      <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <text x="350" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#15110d">Block-wise attention transfer (k = 9 shown)</text>
+
+        <!-- Block 1 -->
+        <g transform="translate(40, 60)">
+          <rect x="0" y="0" width="190" height="160" fill="#d97d5222" stroke="#b8391f" stroke-width="1.5" rx="3"/>
+          <text x="95" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="#b8391f">BLOCK 1 (layers 1–k)</text>
+
+          <!-- Layers as small bars -->
+          <g transform="translate(20, 30)">
+            <rect x="0" y="0" width="150" height="10" fill="#b8391f" opacity="0.5"/>
+            <rect x="0" y="14" width="150" height="10" fill="#b8391f" opacity="0.55"/>
+            <rect x="0" y="28" width="150" height="10" fill="#b8391f" opacity="0.6"/>
+            <text x="160" y="9" font-size="8" fill="#15110d">layer 1</text>
+            <text x="160" y="23" font-size="8" fill="#15110d">layer 2</text>
+            <text x="160" y="37" font-size="8" fill="#15110d">…</text>
+            <rect x="0" y="56" width="150" height="10" fill="#b8391f" opacity="0.85"/>
+            <text x="160" y="65" font-size="8" fill="#15110d">layer k</text>
+          </g>
+
+          <text x="95" y="115" text-anchor="middle" font-size="9" fill="#15110d" font-style="italic">joint MSE within block</text>
+          <text x="95" y="128" text-anchor="middle" font-size="9" fill="#15110d" font-style="italic">backprop through k layers</text>
+          <text x="95" y="148" text-anchor="middle" font-size="9" fill="#b8391f" font-weight="600">output: cached y^(k)</text>
+        </g>
+
+        <!-- Arrow -->
+        <line x1="235" y1="140" x2="265" y2="140" stroke="#15110d" stroke-width="2"/>
+        <polygon points="260,135 270,140 260,145" fill="#15110d"/>
+
+        <!-- Block 2 -->
+        <g transform="translate(275, 60)">
+          <rect x="0" y="0" width="190" height="160" fill="#d97d5222" stroke="#b8391f" stroke-width="1.5" rx="3"/>
+          <text x="95" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="#b8391f">BLOCK 2 (layers k+1–2k)</text>
+
+          <g transform="translate(20, 30)">
+            <rect x="0" y="0" width="150" height="10" fill="#b8391f" opacity="0.5"/>
+            <rect x="0" y="14" width="150" height="10" fill="#b8391f" opacity="0.55"/>
+            <rect x="0" y="28" width="150" height="10" fill="#b8391f" opacity="0.6"/>
+            <rect x="0" y="56" width="150" height="10" fill="#b8391f" opacity="0.85"/>
+          </g>
+
+          <text x="95" y="115" text-anchor="middle" font-size="9" fill="#15110d" font-style="italic">inputs = cached y^(k)</text>
+          <text x="95" y="128" text-anchor="middle" font-size="9" fill="#15110d" font-style="italic">independent optimization</text>
+          <text x="95" y="148" text-anchor="middle" font-size="9" fill="#b8391f" font-weight="600">trains in parallel ↔</text>
+        </g>
+
+        <!-- Arrow -->
+        <line x1="470" y1="140" x2="500" y2="140" stroke="#15110d" stroke-width="2"/>
+        <polygon points="495,135 505,140 495,145" fill="#15110d"/>
+
+        <!-- Block N -->
+        <g transform="translate(510, 60)">
+          <rect x="0" y="0" width="150" height="160" fill="#d97d5222" stroke="#b8391f" stroke-width="1.5" rx="3"/>
+          <text x="75" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="#b8391f">… BLOCK M/k</text>
+
+          <g transform="translate(20, 30)">
+            <rect x="0" y="0" width="110" height="10" fill="#b8391f" opacity="0.5"/>
+            <rect x="0" y="14" width="110" height="10" fill="#b8391f" opacity="0.55"/>
+            <rect x="0" y="28" width="110" height="10" fill="#b8391f" opacity="0.6"/>
+            <rect x="0" y="56" width="110" height="10" fill="#b8391f" opacity="0.85"/>
+          </g>
+
+          <text x="75" y="148" text-anchor="middle" font-size="9" fill="#b8391f" font-weight="600">final block</text>
+        </g>
+
+        <!-- Tradeoff note -->
+        <text x="350" y="252" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">k controls a memory ↔ parallelism tradeoff:</text>
+        <text x="350" y="266" text-anchor="middle" font-size="10" fill="#15110d" font-style="italic">large k → fewer cached activations, less parallel; small k → more memory for inter-block caches, more parallelism</text>
+      </svg>
+      <figcaption><span class="fig-num">Figure 4</span> Block-wise training. Each block of $k$ contiguous layers is optimized independently against its cached softmax-teacher inputs. The choice of $k$ trades off the memory of storing inter-block activations against the wall-clock benefit of training blocks in parallel.</figcaption>
+    </figure>
+
+    <p>The cost model the authors use to pick $k$ balances two terms:</p>
+
+    <div class="math-block notag">
+      $$ \text{Cost}(k) \;\propto\; \underbrace{\frac{M}{k} \cdot T_{\text{block}}(k)}_{\text{sequential training}} \;+\; \underbrace{\frac{M}{k} \cdot S_{\text{cache}}}_{\text{cached activations}} $$
+    </div>
+
+    <p>where $T_{\text{block}}(k)$ is the wall-clock cost of training one $k$-layer block and $S_{\text{cache}}$ is the memory cost of storing one block's input activations. For Llama 3.1 405B the chosen $k$ enabled <em>attention transfer in 5 hours on 14 H100s</em> — a regime that joint training simply cannot reach without absorbing prohibitive memory.</p>
+  </section>
+
+  <!-- ============ SECTION 6 ============ -->
+  <section id="results">
+    <h2 data-num="06">Empirical results</h2>
+
+    <p>The headline measurements, in order of how surprising they are:</p>
+
+    <div class="numbers">
+      <div class="stat">
+        <div class="stat-num">+17.2</div>
+        <div class="stat-label">5-shot MMLU gain over prior linearization on Llama 3 8B</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">73.1</div>
+        <div class="stat-label">Zero-shot LM-Eval avg (linearized Llama 3 8B) vs 74.2 for original</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">77.8%</div>
+        <div class="stat-label">MMLU gap closed for Llama 3.1 70B vs. its softmax teacher</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">78.1%</div>
+        <div class="stat-label">MMLU gap closed for Llama 3.1 405B</div>
+      </div>
+    </div>
+
+    <h3>Throughput</h3>
+
+    <p>On a single 80 GB H100 generating 4096-token samples, linearized Llama 3 8B achieves <strong>3× the throughput</strong> and supports <strong>64× larger batch sizes</strong> than the FlashAttention-2 softmax baseline — exactly the asymptotic prediction from Figure 1 made concrete.</p>
+
+    <h3>Compute footprint</h3>
+
+    <ul style="list-style: none; padding: 0; margin: 18px 0;">
+      <li style="padding: 10px 16px; background: var(--paper-card); border-left: 3px solid var(--accent); margin-bottom: 8px;"><strong>Llama 3 8B / Mistral 7B:</strong> single 40 GB GPU, single-digit hours.</li>
+      <li style="padding: 10px 16px; background: var(--paper-card); border-left: 3px solid var(--accent); margin-bottom: 8px;"><strong>Llama 3.1 70B:</strong> 18 hours on one 8×H100 node.</li>
+      <li style="padding: 10px 16px; background: var(--paper-card); border-left: 3px solid var(--accent); margin-bottom: 8px;"><strong>Llama 3.1 405B:</strong> 5 h on 14 H100s (Stage 1) + 16 h on three 8×H100 nodes (Stage 2).</li>
+    </ul>
+
+    <p>For context: prior work (Mamba-in-Llama) used <strong>5 days on 8×A100s</strong> for an 8B model. LoLCATs handles a 50× larger model in half the GPU-hours.</p>
+
+    <div class="pull-quote">The paper's deepest contribution is not the architecture but the framing: linearization as a <em>local</em> approximation problem, with global behavior recovered by a small residual correction.</div>
+
+    <h3>Where it sits in the literature</h3>
+
+    <p>LoLCATs is the cleanest current instantiation of a broader pattern in post-training architecture surgery: <em>swap a layer family, then patch the manifold</em>. Compare with:</p>
+
+    <ul style="margin: 16px 0 16px 24px; line-height: 1.7;">
+      <li><strong>SUPRA</strong> — full-model finetuning after RetNet swap; no attention matching.</li>
+      <li><strong>Mamba-in-Llama / Mohawk</strong> — distill into Mamba2 layers via weight initialization and multi-stage training; full-model updates.</li>
+      <li><strong>Hedgehog</strong> — learnable $\phi$ via attention-weight KL; $\mathcal{O}(L^2)$ supervision limits scale.</li>
+    </ul>
+
+    <p>LoLCATs is the first to demonstrate that the linearization gap can be closed with <em>only</em> low-rank updates after a parameter-frugal attention-matching phase, and the first to actually run the procedure at frontier model scale.</p>
+
+    <h3>Limitations worth flagging</h3>
+
+    <p>The paper does not claim parity with softmax on the hardest reasoning benchmarks — gaps remain on tasks heavy in long-range retrieval, where the constant-size KV state of pure linear attention is genuinely lossy. The sliding-window hybrid mitigates but does not eliminate this. The appendix discusses hybrid layer schedules (interleaving softmax and linear layers) as a route to further closing this gap, at proportional inference cost.</p>
+  </section>
+
+  <footer>
+    Paper: <a href="https://arxiv.org/abs/2410.10254">arxiv.org/abs/2410.10254</a> · Code: <a href="https://github.com/HazyResearch/lolcats">github.com/HazyResearch/lolcats</a>
+  </footer>
+
+</div>
+</body>
+</html>

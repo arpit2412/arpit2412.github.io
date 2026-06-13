@@ -1,0 +1,29 @@
+export const profile = {
+  name: "Arpit Garg",
+  title: "Senior ML / Research Engineer",
+  pronoun: "PhD",
+  subtitle: "LLMs · Multimodal AI · Computer Vision · Efficient Training",
+  location: "Adelaide, Australia",
+  email: "arpitg.phd@gmail.com",
+  emailAcademic: "arpit.garg@adelaide.edu.au",
+  phone: "+61 0480 145 230",
+  links: {
+    github: "https://github.com/arpit2412",
+    linkedin: "https://linkedin.com/in/arpit2412",
+    scholar:
+      "https://scholar.google.com.au/citations?user=KOEnJ14AAAAJ&hl=en",
+  },
+  bio: [
+    "Senior ML engineer and published researcher specialising in large language models, multimodal AI, computer vision, machine unlearning, and efficient training systems.",
+    "Recognised for shipping research-grade systems into production at scale — from TikTok's Trust & Safety MLLMs to VFX pipelines on Mad Max: Furiosa, Deadpool, Mickey 17, Sonic 3 and Sinners.",
+    "Inventor on a US provisional patent (attention mechanism) and a granted UK design patent (AI-Assisted Rural & Indigenous Healthcare Robot). Investigator on a A$2.1M grant powering frontier-scale training on 256× NVIDIA H200 GPUs.",
+  ],
+  stats: [
+    { value: "140K+", label: "GitHub repo visits" },
+    { value: "256×", label: "H200 GPUs deployed" },
+    { value: "A$2.1M", label: "Grant investigator" },
+    { value: "6", label: "VFX films shipped" },
+    { value: "10+", label: "Peer-reviewed papers" },
+    { value: "2", label: "Patents (US + UK)" },
+  ],
+};

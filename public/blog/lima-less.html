@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIMA & LESS — The Statistics of Selecting Training Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #14110d;
+    --ink-soft: #14110daa;
+    --paper: #f1ead9;
+    --paper-deep: #e4d8be;
+    --paper-card: #f8f2e4;
+    --accent: #8c2d1f;
+    --accent-soft: #c97a4f;
+    --teal: #2a5a58;
+    --rule: #14110d22;
+    --serif: 'Fraunces', 'Times New Roman', serif;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 8% 8%, #c97a4f22 0%, transparent 45%),
+      radial-gradient(circle at 92% 75%, #2a5a5818 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    pointer-events: none; z-index: 100; opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .container { max-width: 920px; margin: 0 auto; padding: 60px 40px 120px; }
+
+  .masthead {
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 14px 0;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em;
+  }
+  .masthead .dot {
+    display: inline-block; width: 8px; height: 8px;
+    background: var(--accent); border-radius: 50%;
+    margin-right: 8px; vertical-align: middle;
+  }
+
+  .title-block { padding: 70px 0 36px; border-bottom: 1px solid var(--rule); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.2em;
+    color: var(--accent); margin-bottom: 22px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 800;
+    font-size: clamp(42px, 6.5vw, 76px);
+    line-height: 1.0; letter-spacing: -0.03em;
+    margin-bottom: 28px;
+    font-variation-settings: "opsz" 144;
+  }
+  h1 .italic { font-style: italic; font-weight: 400; color: var(--accent); }
+  .deck { font-size: 21px; line-height: 1.45; font-style: italic; max-width: 680px; opacity: 0.82; }
+  .byline {
+    margin-top: 30px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    opacity: 0.6;
+  }
+
+  .toc {
+    margin: 32px 0 0; padding: 20px 0;
+    border-top: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px 24px;
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .toc a {
+    color: var(--ink); text-decoration: none;
+    display: block; padding: 4px 0;
+    border-left: 2px solid var(--accent);
+    padding-left: 10px;
+    transition: padding 0.2s;
+  }
+  .toc a:hover { padding-left: 14px; color: var(--accent); }
+  .toc a span { color: var(--accent); margin-right: 8px; font-weight: 600; }
+
+  section { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+
+  h2 {
+    font-family: var(--serif); font-weight: 800;
+    font-size: 34px; line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 26px;
+    position: relative; padding-left: 38px;
+  }
+  h2::before {
+    content: attr(data-num);
+    position: absolute; left: 0; top: 14px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--accent); font-weight: 500;
+  }
+  h3 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: 21px; margin: 34px 0 12px;
+    font-style: italic;
+  }
+  h4 {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    color: var(--accent); margin: 24px 0 10px;
+  }
+
+  p { margin-bottom: 16px; }
+
+  em.term {
+    font-style: normal; font-weight: 600;
+    background: linear-gradient(to top, var(--accent-soft) 30%, transparent 30%);
+    padding: 0 2px;
+  }
+  code {
+    font-family: var(--mono); font-size: 0.86em;
+    background: var(--paper-deep);
+    padding: 2px 6px; border-radius: 2px;
+  }
+
+  .math-block {
+    background: var(--paper-card);
+    border-left: 3px solid var(--accent);
+    padding: 18px 24px;
+    margin: 22px 0;
+    border-radius: 0 4px 4px 0;
+    overflow-x: auto; position: relative;
+  }
+  .math-block .eq-tag {
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono); font-size: 10px;
+    color: var(--accent); opacity: 0.6;
+    letter-spacing: 0.1em;
+  }
+  .math-block.notag .eq-tag { display: none; }
+
+  /* HTML-native math styling — no MathJax dependency */
+  .m {
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.02em;
+  }
+  .m sub, .m sup {
+    font-style: normal;
+    font-size: 0.7em;
+  }
+  .m .op {
+    font-style: normal;
+    font-family: 'Fraunces', serif;
+  }
+  .m .vec {
+    font-weight: 600;
+    font-style: normal;
+  }
+  .m .num {
+    font-style: normal;
+  }
+  .display-math {
+    font-family: 'Fraunces', 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.1em;
+    text-align: center;
+    margin: 14px 0 8px;
+    line-height: 2;
+  }
+  .display-math .op,
+  .display-math .num,
+  .display-math .vec {
+    font-style: normal;
+  }
+  .display-math .vec { font-weight: 600; }
+  .frac {
+    display: inline-flex;
+    flex-direction: column;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 0.85em;
+    margin: 0 4px;
+  }
+  .frac .top {
+    border-bottom: 1px solid currentColor;
+    padding: 0 4px 2px;
+  }
+  .frac .bot {
+    padding: 2px 4px 0;
+  }
+
+  figure {
+    margin: 36px 0;
+    background: var(--paper-card);
+    padding: 30px 26px 20px;
+    border-radius: 4px;
+    border: 1px solid var(--rule);
+  }
+  figure svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  figcaption {
+    margin-top: 16px; font-size: 14px; line-height: 1.55;
+    color: var(--ink-soft); font-style: italic;
+    padding-top: 14px; border-top: 1px solid var(--rule);
+  }
+  figcaption .fig-num {
+    font-family: var(--mono); font-style: normal;
+    font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.15em; color: var(--accent);
+    margin-right: 10px; font-weight: 600;
+  }
+
+  .callout {
+    background: var(--ink); color: var(--paper);
+    padding: 26px 30px; margin: 26px 0;
+    border-radius: 4px;
+    font-size: 16px; line-height: 1.6;
+  }
+  .callout h4 { color: var(--accent-soft); margin: 0 0 8px; }
+  .callout strong { color: var(--paper); }
+
+  .pull-quote {
+    font-family: var(--serif); font-style: italic;
+    font-size: 25px; line-height: 1.35;
+    padding: 28px 0 28px 28px;
+    margin: 32px 0;
+    border-left: 3px solid var(--accent);
+    letter-spacing: -0.01em;
+  }
+
+  .numbers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+    margin: 32px 0;
+  }
+  .stat { padding: 22px 18px; border-right: 1px solid var(--rule); }
+  .stat:last-child { border-right: none; }
+  .stat-num {
+    font-family: var(--serif); font-weight: 800;
+    font-size: 42px; line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--accent); margin-bottom: 6px;
+  }
+  .stat-label {
+    font-family: var(--mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    line-height: 1.4; opacity: 0.75;
+  }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 22px 0; font-size: 14px;
+    background: var(--paper-card);
+    border-radius: 4px; overflow: hidden;
+  }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--rule); }
+  th {
+    font-family: var(--mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    background: var(--paper-deep); font-weight: 600;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 600; font-family: var(--serif); font-style: italic; }
+
+  .algo {
+    background: var(--paper-card);
+    border: 1px solid var(--rule);
+    padding: 22px 26px;
+    margin: 26px 0;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .algo .algo-title {
+    font-family: var(--serif); font-style: italic;
+    font-size: 16px; color: var(--accent);
+    margin-bottom: 10px; font-weight: 600;
+  }
+  .algo .step {
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .algo .step:last-child { border-bottom: none; }
+  .algo .num {
+    display: inline-block; width: 20px;
+    color: var(--accent); font-weight: 600;
+  }
+
+  footer {
+    padding: 48px 0 0;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.15em;
+    opacity: 0.6; text-align: center;
+  }
+  footer a {
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+  }
+
+  @media (max-width: 700px) {
+    .container { padding: 40px 22px 80px; }
+    h1 { font-size: 38px; }
+    h2 { font-size: 24px; padding-left: 32px; }
+    .deck { font-size: 17px; }
+    .pull-quote { font-size: 18px; padding-left: 18px; }
+    figure { padding: 18px 12px 14px; }
+    .math-block { padding: 14px 16px; font-size: 14px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px 10px; }
+    .algo { font-size: 11px; padding: 16px 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="masthead">
+    <span><span class="dot"></span>Data Selection for LLM Fine-Tuning</span>
+    <span>LIMA · LESS</span>
+  </div>
+
+  <header class="title-block">
+    <div class="eyebrow">Two-paper synthesis · The hypothesis & the algorithm</div>
+    <h1>Less, but<br><span class="italic">which</span> less?</h1>
+    <p class="deck">LIMA argued that a thousand carefully chosen examples can rival a million sloppy ones. LESS gave us the math to find those examples without curating by hand. Taken together, they give us a complete recipe for data-efficient fine-tuning.</p>
+    <div class="byline">Zhou et al. 2023 · Xia, Malladi, Gururangan, Arora & Chen 2024</div>
+
+    <nav class="toc">
+      <a href="#hypothesis"><span>01</span>The hypothesis</a>
+      <a href="#lima"><span>02</span>LIMA's recipe</a>
+      <a href="#statistics"><span>03</span>What "good" means</a>
+      <a href="#less"><span>04</span>LESS, formally</a>
+      <a href="#toolkit"><span>05</span>A practical toolkit</a>
+      <a href="#playbook"><span>06</span>Your playbook</a>
+      <a href="#less-summary"><span>07</span>LESS, summarised</a>
+    </nav>
+  </header>
+
+  <!-- ============ SECTION 1 ============ -->
+  <section id="hypothesis">
+    <h2 data-num="01">The Superficial Alignment Hypothesis</h2>
+
+    <p>The starting point of LIMA is a precise empirical claim, which Zhou et al. call the <em class="term">Superficial Alignment Hypothesis</em>:</p>
+
+    <div class="pull-quote">A model's knowledge and capabilities are learned almost entirely during pretraining, while alignment teaches it which subdistribution of formats should be used when interacting with users.</div>
+
+    <p>If this is right, then instruction tuning is not <em>imparting</em> knowledge — it is <em>selecting a style</em> over knowledge the base model already has. Style is a much lower-dimensional object than knowledge. We should therefore need orders of magnitude less data to learn it, provided the data we use is consistent and diverse in the right ways.</p>
+
+    <p>LIMA tests the hypothesis with the strongest possible counterfactual: fine-tune a 65B LLaMa on <strong>1,000 examples</strong>, no RLHF, no preference modeling, pure supervised loss. The result on a controlled human study:</p>
+
+    <div class="numbers">
+      <div class="stat">
+        <div class="stat-num">1,000</div>
+        <div class="stat-label">Total training examples (≈750k tokens)</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">43%</div>
+        <div class="stat-label">Of LIMA responses match or beat GPT-4</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">58%</div>
+        <div class="stat-label">Match or beat Bard</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">65%</div>
+        <div class="stat-label">Match or beat DaVinci-003 (RLHF-trained)</div>
+      </div>
+    </div>
+
+    <p>The model has no exposure to reinforcement learning, preference modeling, or any feedback loop. The only signal it receives is what 1,000 well-chosen demonstrations look like. The question this raises — and the one we are really interested in — is: <em>what makes those 1,000 examples good?</em></p>
+  </section>
+
+  <!-- ============ SECTION 2 ============ -->
+  <section id="lima">
+    <h2 data-num="02">LIMA's curation, decoded</h2>
+
+    <p>LIMA's actual selection procedure is more disciplined than "carefully curated" suggests. Reading the paper closely, the criteria fall into three buckets — and these buckets recur in every subsequent paper on data selection.</p>
+
+    <figure>
+      <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#14110d">The three pillars of LIMA's curation</text>
+
+        <!-- Three columns -->
+        <g transform="translate(40, 50)">
+          <rect x="0" y="0" width="200" height="240" fill="#8c2d1f15" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="100" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f">QUALITY</text>
+          <line x1="20" y1="32" x2="180" y2="32" stroke="#8c2d1f" stroke-width="0.8"/>
+
+          <text x="100" y="56" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Stack Exchange:</text>
+          <text x="100" y="70" text-anchor="middle" font-size="9.5">score ≥ 10</text>
+          <text x="100" y="84" text-anchor="middle" font-size="9.5">top-voted answer only</text>
+
+          <text x="100" y="108" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">wikiHow:</text>
+          <text x="100" y="122" text-anchor="middle" font-size="9.5">curated articles</text>
+          <text x="100" y="136" text-anchor="middle" font-size="9.5">consistent style</text>
+
+          <text x="100" y="160" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Reddit:</text>
+          <text x="100" y="174" text-anchor="middle" font-size="9.5">manually filtered</text>
+          <text x="100" y="188" text-anchor="middle" font-size="9.5">(top-upvoted from</text>
+          <text x="100" y="202" text-anchor="middle" font-size="9.5">r/AskReddit + r/WP)</text>
+
+          <text x="100" y="226" text-anchor="middle" font-size="9" fill="#8c2d1f" font-weight="600">≈ proxy: high engagement</text>
+        </g>
+
+        <g transform="translate(260, 50)">
+          <rect x="0" y="0" width="200" height="240" fill="#2a5a5815" stroke="#2a5a58" stroke-width="1.5" rx="3"/>
+          <text x="100" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#2a5a58">DIVERSITY</text>
+          <line x1="20" y1="32" x2="180" y2="32" stroke="#2a5a58" stroke-width="0.8"/>
+
+          <text x="100" y="56" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Stack Exchange:</text>
+          <text x="100" y="70" text-anchor="middle" font-size="9.5">75 STEM + 99 other</text>
+          <text x="100" y="84" text-anchor="middle" font-size="9.5">exchanges → 200 each</text>
+
+          <text x="100" y="108" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">wikiHow:</text>
+          <text x="100" y="122" text-anchor="middle" font-size="9.5">19 categories</text>
+          <text x="100" y="136" text-anchor="middle" font-size="9.5">stratified sample</text>
+
+          <text x="100" y="160" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Manual (250 ex):</text>
+          <text x="100" y="174" text-anchor="middle" font-size="9.5">authors deliberately</text>
+          <text x="100" y="188" text-anchor="middle" font-size="9.5">cover task types not</text>
+          <text x="100" y="202" text-anchor="middle" font-size="9.5">in the forum data</text>
+
+          <text x="100" y="226" text-anchor="middle" font-size="9" fill="#2a5a58" font-weight="600">≈ stratified sampling</text>
+        </g>
+
+        <g transform="translate(480, 50)">
+          <rect x="0" y="0" width="200" height="240" fill="#c97a4f22" stroke="#c97a4f" stroke-width="1.5" rx="3"/>
+          <text x="100" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f">STYLE UNIFORMITY</text>
+          <line x1="20" y1="32" x2="180" y2="32" stroke="#c97a4f" stroke-width="0.8"/>
+
+          <text x="100" y="56" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Filter responses:</text>
+          <text x="100" y="70" text-anchor="middle" font-size="9.5">remove HTML, code</text>
+          <text x="100" y="84" text-anchor="middle" font-size="9.5">errors, links, images</text>
+
+          <text x="100" y="108" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Length window:</text>
+          <text x="100" y="122" text-anchor="middle" font-size="9.5">1200–4096 chars</text>
+          <text x="100" y="136" text-anchor="middle" font-size="9.5">(typical AI-assistant</text>
+          <text x="100" y="150" text-anchor="middle" font-size="9.5">response length)</text>
+
+          <text x="100" y="174" text-anchor="middle" font-size="10" font-family="Fraunces, serif" font-style="italic">Tone:</text>
+          <text x="100" y="188" text-anchor="middle" font-size="9.5">first-person, helpful,</text>
+          <text x="100" y="202" text-anchor="middle" font-size="9.5">no "I don't know"</text>
+
+          <text x="100" y="226" text-anchor="middle" font-size="9" fill="#8c2d1f" font-weight="600">≈ enforce target distribution</text>
+        </g>
+      </svg>
+      <figcaption><span class="fig-num">Figure 1</span> LIMA's three implicit criteria. Each one approximates a measurable property: <em>quality</em> ≈ a community-upvote proxy, <em>diversity</em> ≈ stratified sampling across topic categories, <em>style uniformity</em> ≈ filtering to a target response distribution.</figcaption>
+    </figure>
+
+    <h3>The diversity ablation is the punchline</h3>
+
+    <p>The paper's most actionable result is a small table comparing fine-tunes on different mixes. The version trained on Stack Exchange with category-stratified sampling beats the version trained on the same number of unstratified Stack Exchange examples by a wide margin — even though both come from the same source. Conversely, <em>doubling</em> the data within a single source gives almost no gain.</p>
+
+    <div class="callout">
+      <h4>The two LIMA findings that matter for our problem</h4>
+      <p><strong>(1) Diversity dominates raw count.</strong> Going from 2,000 stratified to 4,000 stratified Stack Exchange examples does not meaningfully improve LIMA. Adding 250 manually-written examples from <em>different task types</em> does.</p>
+      <p style="margin-top:10px;"><strong>(2) Style consistency is non-negotiable.</strong> Mixing high-quality but stylistically heterogeneous sources (e.g. raw Reddit) hurts. The model learns to imitate whatever target it sees most coherently, so the target must be coherent.</p>
+    </div>
+
+    <p>This is the empirical foundation. But LIMA does not give us a <em>statistic</em> we can compute on an arbitrary dataset — the curation was substantially manual. The work that followed asks: can we replace each of these three buckets with a number?</p>
+  </section>
+
+  <!-- ============ SECTION 3 ============ -->
+  <section id="statistics">
+    <h2 data-num="03">What does "good" mean, quantitatively?</h2>
+
+    <p>Post-LIMA, a small zoo of statistics emerged for scoring instruction examples. Each one tries to capture one of LIMA's three pillars with something we can compute in a forward pass. Before getting to LESS — the most principled of these — it is worth laying out the landscape, because the right metric depends on the goal.</p>
+
+    <table>
+      <thead>
+        <tr><th>Statistic</th><th>What it measures</th><th>Cost</th><th>Captures</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Perplexity (PPL)</td><td><span class="m">&minus;log p<sub>θ</sub>(y | x)</span></td><td>1 forward pass</td><td>Fluency / in-distribution-ness</td></tr>
+        <tr><td>IFD (Cherry)</td><td>Conditional vs. unconditional ratio</td><td>2 forward passes</td><td>How much the instruction <em>helps</em> predict the answer</td></tr>
+        <tr><td>SuperFiltering</td><td>IFD scored by a small proxy (GPT-2)</td><td>2 forward passes, small model</td><td>Same as IFD, ~10× cheaper</td></tr>
+        <tr><td>Alpagasus</td><td>GPT-4-as-judge rating 1–5</td><td>1 API call per ex.</td><td>Quality (human-aligned)</td></tr>
+        <tr><td>DEITA</td><td>complexity × quality, then diversity filter</td><td>2 model calls + embeddings</td><td>All three LIMA pillars</td></tr>
+        <tr><td>LESS</td><td>Gradient cosine similarity to a target task</td><td>LoRA warmup + datastore</td><td>Influence on a <em>specific</em> downstream task</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Instruction-Following Difficulty (IFD)</h3>
+
+    <p>IFD is the cleanest and cheapest statistic with a coherent theory. For an instruction–response pair (<span class="m">x, y</span>), we define two perplexities of the response — one when the model sees the instruction, one when it does not.</p>
+
+    <div class="math-block notag">
+      <div class="display-math">
+        PPL(y | x) = exp<span style="font-size:1.3em;">(</span> &minus;<span class="frac"><span class="top">1</span><span class="bot">|y|</span></span> <span style="font-size:1.3em;">∑</span><sub style="font-size:0.7em; vertical-align:-0.4em;">t=1</sub><sup style="font-size:0.7em;">|y|</sup> log p<sub>θ</sub>(y<sub>t</sub> | y<sub>&lt;t</sub>, x) <span style="font-size:1.3em;">)</span>
+      </div>
+      <div class="display-math">
+        PPL(y) &nbsp;= exp<span style="font-size:1.3em;">(</span> &minus;<span class="frac"><span class="top">1</span><span class="bot">|y|</span></span> <span style="font-size:1.3em;">∑</span><sub style="font-size:0.7em; vertical-align:-0.4em;">t=1</sub><sup style="font-size:0.7em;">|y|</sup> log p<sub>θ</sub>(y<sub>t</sub> | y<sub>&lt;t</sub>) <span style="font-size:1.3em;">)</span>
+      </div>
+    </div>
+
+    <p>The first quantity, <span class="m">PPL(y | x)</span>, is how surprised the model is by the response when conditioned on the instruction. The second, <span class="m">PPL(y)</span>, is how surprised it is when the response is dropped in cold. The IFD score is the ratio:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">IFD</span>
+      <div class="display-math">
+        IFD(x, y) &nbsp;=&nbsp; <span class="frac" style="font-size:1em;"><span class="top">PPL(y | x)</span><span class="bot">PPL(y)</span></span>
+      </div>
+    </div>
+
+    <p>The ratio compresses three different failure modes into one number. The three regimes deserve to be unpacked separately, because the selection rule depends on understanding why each tail is bad.</p>
+
+    <h4>Regime 1 — IFD ≈ 1: the instruction adds no information</h4>
+
+    <p>When the ratio approaches 1, the conditional perplexity equals the unconditional perplexity: knowing <span class="m">x</span> does not help the model predict <span class="m">y</span>. There are two ways this happens in practice. <strong>Either the response is generic</strong> — "yes", "thanks for asking", "I'll get back to you", boilerplate that any model can produce regardless of context. <strong>Or the instruction is malformed, off-topic, or noisy</strong> — the response is unrelated to the prompt, so conditioning on the prompt is irrelevant. In both cases the pair teaches the model nothing useful: there is no instruction → response mapping to learn, because the mapping isn't a function of the instruction at all. These examples should be dropped.</p>
+
+    <h4>Regime 2 — IFD ≪ 1: the instruction is informative but the pair is already easy</h4>
+
+    <p>A very low ratio means <span class="m">PPL(y | x)</span> is much smaller than <span class="m">PPL(y)</span> — the instruction massively reduces the model's uncertainty about the response. That sounds desirable, and in a vacuum it is. The problem is that the model is <em>already</em> assigning high probability to the right answer. It does not need this example to learn the mapping; it has already learned it during pretraining. Training on these examples burns gradient steps reinforcing a behavior the model already exhibits. They are not harmful, but they are wasted slots in the training budget.</p>
+
+    <h4>Regime 3 — IFD in the middle: the instruction helps but the answer is non-trivial</h4>
+
+    <p>This is where learning happens. The unconditional perplexity is high (the response would be surprising in isolation), but conditioning on the instruction makes it noticeably more predictable. The ratio is below 1 — enough that the instruction is doing real work — but not so far below that the model already nails it. These are the examples where a gradient step actually shifts the model's behavior in a useful direction. The selection rule is therefore not "highest IFD" or "lowest IFD" but "<em>highest IFD among examples below a threshold</em>" — discard the top tail (IFD ≈ 1) entirely, then take top-k of the rest.</p>
+
+    <p>The remarkable empirical finding from SuperFiltering: IFD rankings are <em class="term">consistent across model scales</em>. The Spearman rank correlation between GPT-2's IFD scores and LLaMA-2-7B's IFD scores on the Alpaca dataset is <strong>0.846</strong>. This means we can use a tiny model — even GPT-2 — to score a million examples in an hour, and the ranking will hold up for selecting data to train a 70B model. The difficulty signal lives in the data, not in the scorer.</p>
+
+    <figure>
+      <svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <text x="350" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#14110d">IFD distribution: which examples to keep</text>
+
+        <!-- Axes -->
+        <line x1="80" y1="220" x2="640" y2="220" stroke="#14110d" stroke-width="1.5"/>
+        <line x1="80" y1="220" x2="80" y2="60" stroke="#14110d" stroke-width="1.5"/>
+
+        <!-- Bell curve approximation as path -->
+        <path d="M 80,220 Q 130,220 180,200 Q 230,170 280,120 Q 330,80 380,85 Q 430,100 480,140 Q 530,180 580,210 Q 610,220 640,220" fill="none" stroke="#14110d" stroke-width="2"/>
+        <path d="M 80,220 Q 130,220 180,200 Q 230,170 280,120 Q 330,80 380,85 Q 430,100 480,140 Q 530,180 580,210 Q 610,220 640,220 L 640,220 L 80,220 Z" fill="#c97a4f22"/>
+
+        <!-- Region: discard low IFD (trivial / generic) -->
+        <rect x="80" y="60" width="120" height="160" fill="#14110d22"/>
+        <text x="140" y="100" text-anchor="middle" font-size="10" fill="#14110d" font-weight="600">DISCARD</text>
+        <text x="140" y="114" text-anchor="middle" font-size="9" fill="#14110d">IFD ≪ 1</text>
+        <text x="140" y="128" text-anchor="middle" font-size="9" fill="#14110d">"too easy"</text>
+        <text x="140" y="146" text-anchor="middle" font-size="8" fill="#14110d" font-style="italic">model already</text>
+        <text x="140" y="158" text-anchor="middle" font-size="8" fill="#14110d" font-style="italic">solves these</text>
+
+        <!-- Region: keep middle -->
+        <rect x="200" y="60" width="280" height="160" fill="#8c2d1f33"/>
+        <text x="340" y="100" text-anchor="middle" font-size="10" fill="#8c2d1f" font-weight="600">KEEP — TOP-k by IFD</text>
+        <text x="340" y="120" text-anchor="middle" font-size="9" fill="#8c2d1f">informative instructions,</text>
+        <text x="340" y="134" text-anchor="middle" font-size="9" fill="#8c2d1f">non-trivial mappings</text>
+        <text x="340" y="160" text-anchor="middle" font-size="8" fill="#8c2d1f" font-style="italic">these are what the model</text>
+        <text x="340" y="172" text-anchor="middle" font-size="8" fill="#8c2d1f" font-style="italic">actually learns from</text>
+
+        <!-- Region: discard high IFD -->
+        <rect x="480" y="60" width="160" height="160" fill="#14110d22"/>
+        <text x="560" y="100" text-anchor="middle" font-size="10" fill="#14110d" font-weight="600">DISCARD</text>
+        <text x="560" y="114" text-anchor="middle" font-size="9" fill="#14110d">IFD ≈ 1 or noise</text>
+        <text x="560" y="128" text-anchor="middle" font-size="9" fill="#14110d">"unlearnable"</text>
+        <text x="560" y="146" text-anchor="middle" font-size="8" fill="#14110d" font-style="italic">instruction provides</text>
+        <text x="560" y="158" text-anchor="middle" font-size="8" fill="#14110d" font-style="italic">no useful signal</text>
+
+        <!-- Axis labels -->
+        <text x="360" y="248" text-anchor="middle" font-size="11" fill="#14110d">IFD score (low → high)</text>
+        <text x="60" y="140" text-anchor="middle" font-size="11" fill="#14110d" transform="rotate(-90 60 140)">count of examples</text>
+
+        <!-- Numbers on axis -->
+        <text x="140" y="236" text-anchor="middle" font-size="9" fill="#14110d">0.3</text>
+        <text x="340" y="236" text-anchor="middle" font-size="9" fill="#14110d">0.7</text>
+        <text x="560" y="236" text-anchor="middle" font-size="9" fill="#14110d">1.0+</text>
+      </svg>
+      <figcaption><span class="fig-num">Figure 2</span> A typical IFD histogram on an instruction corpus, mapped to the three regimes above. The left tail (Regime 2, IFD ≪ 1) wastes training budget on examples the model already solves. The right tail (Regime 1, IFD ≈ 1) is dominated by generic or noisy pairs the model cannot learn from. The middle (Regime 3) is where useful learning lives.</figcaption>
+    </figure>
+
+    <h3>DEITA: combining all three pillars</h3>
+
+    <p>DEITA (Liu et al., ICLR 2024) was the first method to operationalize LIMA's three pillars as separable scores we can compute on every example:</p>
+
+    <div class="math-block notag">
+      <div class="display-math">
+        s(x, y) &nbsp;=&nbsp; <span style="border-bottom: 1px dotted currentColor;">c(x, y)</span><sub style="font-style:italic; font-size:0.7em;">&nbsp;complexity</sub>
+        &nbsp;×&nbsp;
+        <span style="border-bottom: 1px dotted currentColor;">q(x, y)</span><sub style="font-style:italic; font-size:0.7em;">&nbsp;quality</sub>
+        ,&nbsp;&nbsp; then apply REPR FILTER for diversity
+      </div>
+    </div>
+
+    <p>Where <span class="m">c</span> and <span class="m">q</span> come from small LLaMA-based scorer models trained on GPT-4 ratings (open-sourced). The REPR FILTER is iterative: sort the pool by <span class="m">s</span> descending; greedily add the next example only if its embedding's cosine distance to the nearest already-selected example exceeds a threshold <span class="m">τ</span>. With <span class="m">τ = 0.9</span> DEITA matches Vicuna-style baselines on MT-bench using <strong>6K examples</strong> from a pool of 300K.</p>
+
+    <p>The three scores map exactly onto LIMA's three pillars: <span class="m">q</span> ≈ quality, <span class="m">c</span> ≈ style/format complexity, REPR FILTER ≈ diversity. The contribution is that these are now <em>numbers</em>, not editorial judgments.</p>
+  </section>
+
+  <!-- ============ SECTION 4 ============ -->
+  <section id="less">
+    <h2 data-num="04">LESS: data selection as influence estimation</h2>
+
+    <p>IFD and DEITA are <em>generic</em> quality signals — they tell us which examples are good in the abstract. But the question we usually face is sharper: <em>we want to improve our model on task X; which subset of our data should we train on?</em> That is the question LESS (Xia et al., ICML 2024) solves directly.</p>
+
+    <p>The core idea is borrowed from classical influence functions (Koh & Liang 2017), adapted for LLM fine-tuning. For a training example <span class="m">z = (x, y)</span> and a validation example <span class="m">z* = (x*, y*)</span>, the influence of training on <span class="m">z</span> on the loss at <span class="m">z*</span> is, to first order:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Influence (SGD)</span>
+      <div class="display-math">
+        Inf<sub>SGD</sub>(z, z*) &nbsp;≈&nbsp; &minus;η &nbsp;·&nbsp; ∇ℓ(z*; θ)<sup>⊤</sup> ∇ℓ(z; θ)
+      </div>
+    </div>
+
+    <p>In words: if the gradient of the loss on <span class="m">z</span> points in the same direction as the gradient of the loss on <span class="m">z*</span>, training on <span class="m">z</span> will reduce <span class="m">z*</span>'s loss. The sign and magnitude are given by the inner product of gradients at the current parameters <span class="m">θ</span>.</p>
+
+    <p>This formula is theoretically clean but practically broken for modern LLM fine-tuning. LESS identifies three specific problems and fixes each one.</p>
+
+    <h3>Problem 1: Adam, not SGD</h3>
+
+    <p>Fine-tuning uses Adam, which adaptively rescales each coordinate by an estimate of its squared gradient. The effective update direction is not <span class="m">∇ℓ</span> but <span class="m">Γ(·; θ) := m / (√v + ε)</span>, the Adam update. LESS substitutes this directly:</p>
+
+    <div class="math-block">
+      <span class="eq-tag">Influence (Adam)</span>
+      <div class="display-math">
+        Inf<sub>Adam</sub>(z, z*) &nbsp;≈&nbsp;
+        <span style="font-size:1.4em;">∑</span><sub style="font-size:0.65em; vertical-align:-0.4em;">i=1</sub><sup style="font-size:0.65em;">N</sup>
+        &nbsp;η̄<sub>i</sub> &nbsp;·&nbsp; cos<span style="font-size:1.2em;">(</span> ∇ℓ(z*; θ<sub>i</sub>), &nbsp;Γ(z; θ<sub>i</sub>) <span style="font-size:1.2em;">)</span>
+      </div>
+    </div>
+
+    <p>Three modifications relative to the SGD formula, each motivated by a specific failure mode:</p>
+
+    <ul style="margin: 14px 0 14px 24px; line-height: 1.7;">
+      <li><span class="m">Γ(z; θ<sub>i</sub>)</span> replaces <span class="m">∇ℓ(z; θ<sub>i</sub>)</span> — the actual update direction Adam would apply.</li>
+      <li>Cosine similarity replaces the raw dot product — normalizes away the variable-length-instruction confound (longer sequences have larger gradient norms simply because they sum over more tokens).</li>
+      <li>Sum over checkpoints <span class="m">θ<sub>1</sub>, …, θ<sub>N</sub></span> — averages over the optimization trajectory rather than a single point.</li>
+    </ul>
+
+    <h3>Problem 2: gradient vectors are billion-dimensional</h3>
+
+    <p>For a 7B model, <span class="m">∇ℓ</span> has 7B entries. Storing one per example is impossible. LESS does two things:</p>
+
+    <p><strong>(a) LoRA the model.</strong> Train with rank-<span class="m">r</span> LoRA adapters, so the trainable parameter count drops from ~7B to ~100M. All gradients are computed in this smaller space.</p>
+
+    <p><strong>(b) Random projection.</strong> Apply the Johnson–Lindenstrauss lemma: project the 100M-dim gradient down to a <span class="m">d</span>-dim feature (<span class="m">d = 8192</span> in the paper) via a fixed random Gaussian matrix <span class="m vec">P</span> ∈ ℝ<sup><span class="m">d × 10<sup>8</sup></span></sup>. JL guarantees that for any two vectors <span class="m vec">u</span>, <span class="m vec">v</span>:</p>
+
+    <div class="math-block notag">
+      <div class="display-math">
+        ℙ<span style="font-size:1.3em;">[</span> <span style="font-size:1.2em;">|</span> ⟨<span class="vec">Pu</span>, <span class="vec">Pv</span>⟩ &minus; ⟨<span class="vec">u</span>, <span class="vec">v</span>⟩ <span style="font-size:1.2em;">|</span> &gt; ε ‖<span class="vec">u</span>‖ ‖<span class="vec">v</span>‖ <span style="font-size:1.3em;">]</span>
+        &nbsp;&lt;&nbsp; 2 e<sup><span class="m">&minus;c d ε<sup>2</sup></span></sup>
+      </div>
+    </div>
+
+    <p>So inner products — exactly what the influence formula needs — are preserved up to small relative error. Now every training example has a manageable 8192-dim "gradient fingerprint" we can store and search.</p>
+
+    <h3>Problem 3: we don't have θ<sub>i</sub> from the full training run</h3>
+
+    <p>The influence formula requires gradients at the actual training checkpoints, but those are what we are trying to avoid computing. LESS approximates this with a <em class="term">warmup</em>: train on a small random subset (a few % of data) for <span class="m">N</span> epochs with LoRA, checkpoint after each epoch, and compute gradients at those checkpoints. Empirically this captures most of the optimization trajectory's direction without needing the full run.</p>
+
+    <figure>
+      <svg viewBox="0 0 720 360" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#14110d">The four stages of LESS</text>
+
+        <!-- Stage 1 -->
+        <g transform="translate(30, 50)">
+          <rect x="0" y="0" width="155" height="180" fill="#8c2d1f15" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="77" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f">1 · WARMUP</text>
+          <line x1="15" y1="32" x2="140" y2="32" stroke="#8c2d1f" stroke-width="0.8"/>
+
+          <text x="77" y="58" text-anchor="middle" font-size="9.5" font-style="italic" font-family="Fraunces, serif">Train LoRA on random</text>
+          <text x="77" y="72" text-anchor="middle" font-size="9.5" font-style="italic" font-family="Fraunces, serif">5% of pool D for N epochs</text>
+
+          <text x="77" y="100" text-anchor="middle" font-size="9.5">Save checkpoints</text>
+          <text x="77" y="114" text-anchor="middle" font-size="9.5">θ₁, θ₂, …, θ_N</text>
+
+          <text x="77" y="142" text-anchor="middle" font-size="9.5">Save optimizer states</text>
+          <text x="77" y="156" text-anchor="middle" font-size="9.5">Γ at each θᵢ</text>
+
+          <text x="77" y="174" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">(offline, one-time)</text>
+        </g>
+
+        <!-- Arrow -->
+        <line x1="190" y1="140" x2="220" y2="140" stroke="#14110d" stroke-width="2"/>
+        <polygon points="215,135 225,140 215,145" fill="#14110d"/>
+
+        <!-- Stage 2 -->
+        <g transform="translate(225, 50)">
+          <rect x="0" y="0" width="155" height="180" fill="#8c2d1f15" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="77" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f">2 · DATASTORE</text>
+          <line x1="15" y1="32" x2="140" y2="32" stroke="#8c2d1f" stroke-width="0.8"/>
+
+          <text x="77" y="58" text-anchor="middle" font-size="9.5" font-style="italic" font-family="Fraunces, serif">For every z ∈ D:</text>
+
+          <text x="77" y="86" text-anchor="middle" font-size="9.5">Compute Γ(z; θᵢ)</text>
+          <text x="77" y="100" text-anchor="middle" font-size="9.5">at each checkpoint</text>
+
+          <text x="77" y="128" text-anchor="middle" font-size="9.5">Project to ℝ^8192</text>
+          <text x="77" y="142" text-anchor="middle" font-size="9.5">via JL random matrix</text>
+
+          <text x="77" y="170" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">store: |D| × 8192 floats</text>
+        </g>
+
+        <!-- Arrow -->
+        <line x1="385" y1="140" x2="415" y2="140" stroke="#14110d" stroke-width="2"/>
+        <polygon points="410,135 420,140 410,145" fill="#14110d"/>
+
+        <!-- Stage 3 -->
+        <g transform="translate(420, 50)">
+          <rect x="0" y="0" width="155" height="180" fill="#2a5a5818" stroke="#2a5a58" stroke-width="1.5" rx="3"/>
+          <text x="77" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#2a5a58">3 · SCORE</text>
+          <line x1="15" y1="32" x2="140" y2="32" stroke="#2a5a58" stroke-width="0.8"/>
+
+          <text x="77" y="58" text-anchor="middle" font-size="9.5" font-style="italic" font-family="Fraunces, serif">Few-shot examples D_val</text>
+          <text x="77" y="72" text-anchor="middle" font-size="9.5" font-style="italic" font-family="Fraunces, serif">of target task</text>
+
+          <text x="77" y="100" text-anchor="middle" font-size="9.5">Compute g* = mean</text>
+          <text x="77" y="114" text-anchor="middle" font-size="9.5">∇ℓ(z*; θᵢ) over D_val</text>
+
+          <text x="77" y="142" text-anchor="middle" font-size="9.5">Score every z by</text>
+          <text x="77" y="156" text-anchor="middle" font-size="9.5">cos( g*, Γ(z) )</text>
+        </g>
+
+        <!-- Arrow -->
+        <line x1="580" y1="140" x2="610" y2="140" stroke="#14110d" stroke-width="2"/>
+        <polygon points="605,135 615,140 605,145" fill="#14110d"/>
+
+        <!-- Stage 4 -->
+        <g transform="translate(615, 50)">
+          <rect x="0" y="0" width="75" height="180" fill="#14110d" rx="3"/>
+          <text x="37" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#c97a4f">4 · TRAIN</text>
+          <line x1="10" y1="32" x2="65" y2="32" stroke="#c97a4f" stroke-width="0.8"/>
+
+          <text x="37" y="68" text-anchor="middle" font-size="9.5" fill="#f1ead9">Pick top-5%</text>
+          <text x="37" y="82" text-anchor="middle" font-size="9.5" fill="#f1ead9">by score</text>
+
+          <text x="37" y="116" text-anchor="middle" font-size="9.5" fill="#f1ead9">Train M_T</text>
+          <text x="37" y="130" text-anchor="middle" font-size="9.5" fill="#f1ead9">on subset</text>
+
+          <text x="37" y="160" text-anchor="middle" font-size="8.5" fill="#c97a4f" font-style="italic">done</text>
+        </g>
+
+        <!-- Bottom annotations -->
+        <text x="360" y="270" text-anchor="middle" font-size="11" fill="#14110d" font-style="italic" font-family="Fraunces, serif">Steps 1–2 are <tspan font-weight="600">offline</tspan> and amortize across many target tasks.</text>
+        <text x="360" y="288" text-anchor="middle" font-size="11" fill="#14110d" font-style="italic" font-family="Fraunces, serif">Step 3 takes seconds for a new target task; the datastore is the durable asset.</text>
+
+        <text x="360" y="320" text-anchor="middle" font-size="11" fill="#8c2d1f" font-weight="600" font-family="Fraunces, serif" font-style="italic">Result: training on 5% of data ≥ training on 100%, on the targeted skill.</text>
+      </svg>
+      <figcaption><span class="fig-num">Figure 3</span> LESS pipeline. The expensive parts (warmup + datastore construction) happen once. For any new downstream task, we provide a handful of validation examples, score the datastore by cosine similarity to their mean gradient, and take the top-5%.</figcaption>
+    </figure>
+
+    <h3>The transferability result</h3>
+
+    <p>The paper's most useful empirical finding: gradient features built with a <em>small</em> model transfer to selecting data for a <em>large</em> model. Specifically, a gradient datastore built with LLaMA-2-7B selects data that, when used to fine-tune LLaMA-2-13B or Mistral-7B, gives the same downstream performance as a datastore built natively at the larger scale. This means the per-example gradient cost only ever has to be paid once at small scale.</p>
+
+    <p>On MMLU, TyDiQA, and BBH, training on the LESS-selected 5% beats training on the full dataset. Random 5% subsets are substantially worse. So the selection signal is real, not just a regularization effect from having less data.</p>
+  </section>
+
+  <!-- ============ SECTION 5 ============ -->
+  <section id="toolkit">
+    <h2 data-num="05">Choosing between methods: a decision tree</h2>
+
+    <p>The methods above are not interchangeable. Each one optimizes for a different setting. Here is how we pick.</p>
+
+    <figure>
+      <svg viewBox="0 0 720 460" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <text x="360" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#14110d">Which selection method should we use?</text>
+
+        <!-- Root -->
+        <rect x="280" y="40" width="160" height="46" fill="#14110d" rx="3"/>
+        <text x="360" y="60" text-anchor="middle" font-size="10" fill="#f1ead9" font-weight="600">Do we have a specific</text>
+        <text x="360" y="74" text-anchor="middle" font-size="10" fill="#f1ead9" font-weight="600">downstream target task?</text>
+
+        <!-- Lines to children -->
+        <line x1="320" y1="86" x2="180" y2="125" stroke="#14110d" stroke-width="1.5"/>
+        <line x1="400" y1="86" x2="540" y2="125" stroke="#14110d" stroke-width="1.5"/>
+
+        <text x="240" y="105" font-size="10" fill="#8c2d1f" font-weight="600">NO — general chatbot</text>
+        <text x="475" y="105" font-size="10" fill="#8c2d1f" font-weight="600">YES — specific skill</text>
+
+        <!-- Left subtree: general -->
+        <rect x="60" y="125" width="240" height="46" fill="#8c2d1f15" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+        <text x="180" y="143" text-anchor="middle" font-size="10" font-weight="600">Do we have compute for</text>
+        <text x="180" y="157" text-anchor="middle" font-size="10" font-weight="600">a scorer model + embeddings?</text>
+
+        <line x1="120" y1="171" x2="80" y2="210" stroke="#14110d" stroke-width="1.2"/>
+        <line x1="240" y1="171" x2="280" y2="210" stroke="#14110d" stroke-width="1.2"/>
+
+        <text x="95" y="190" font-size="9" fill="#8c2d1f" font-weight="600">No</text>
+        <text x="265" y="190" font-size="9" fill="#8c2d1f" font-weight="600">Yes</text>
+
+        <rect x="20" y="210" width="125" height="62" fill="#f8f2e4" stroke="#8c2d1f" rx="3"/>
+        <text x="82" y="228" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f" font-family="Fraunces, serif" font-style="italic">SuperFiltering</text>
+        <text x="82" y="244" text-anchor="middle" font-size="9">GPT-2 IFD scoring</text>
+        <text x="82" y="256" text-anchor="middle" font-size="9">Keep top-k</text>
+        <text x="82" y="268" text-anchor="middle" font-size="8.5" font-style="italic" fill="#14110d99">~1 hour, ~CPU</text>
+
+        <rect x="215" y="210" width="125" height="62" fill="#f8f2e4" stroke="#8c2d1f" rx="3"/>
+        <text x="277" y="228" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f" font-family="Fraunces, serif" font-style="italic">DEITA</text>
+        <text x="277" y="244" text-anchor="middle" font-size="9">c × q + REPR filter</text>
+        <text x="277" y="256" text-anchor="middle" font-size="9">All three pillars</text>
+        <text x="277" y="268" text-anchor="middle" font-size="8.5" font-style="italic" fill="#14110d99">SOTA for general</text>
+
+        <!-- Right subtree: targeted -->
+        <rect x="420" y="125" width="240" height="46" fill="#2a5a5818" stroke="#2a5a58" stroke-width="1.5" rx="3"/>
+        <text x="540" y="143" text-anchor="middle" font-size="10" font-weight="600">Do we have a few labeled</text>
+        <text x="540" y="157" text-anchor="middle" font-size="10" font-weight="600">examples of the target task?</text>
+
+        <line x1="480" y1="171" x2="440" y2="210" stroke="#14110d" stroke-width="1.2"/>
+        <line x1="600" y1="171" x2="640" y2="210" stroke="#14110d" stroke-width="1.2"/>
+
+        <text x="455" y="190" font-size="9" fill="#2a5a58" font-weight="600">No</text>
+        <text x="625" y="190" font-size="9" fill="#2a5a58" font-weight="600">Yes</text>
+
+        <rect x="380" y="210" width="125" height="62" fill="#f8f2e4" stroke="#2a5a58" rx="3"/>
+        <text x="442" y="228" text-anchor="middle" font-size="11" font-weight="600" fill="#2a5a58" font-family="Fraunces, serif" font-style="italic">DEITA</text>
+        <text x="442" y="244" text-anchor="middle" font-size="9">general quality</text>
+        <text x="442" y="256" text-anchor="middle" font-size="9">filter, with topic</text>
+        <text x="442" y="268" text-anchor="middle" font-size="9">tag oversampling</text>
+
+        <rect x="575" y="210" width="125" height="62" fill="#f8f2e4" stroke="#2a5a58" rx="3"/>
+        <text x="637" y="228" text-anchor="middle" font-size="11" font-weight="600" fill="#2a5a58" font-family="Fraunces, serif" font-style="italic">LESS</text>
+        <text x="637" y="244" text-anchor="middle" font-size="9">gradient-similarity</text>
+        <text x="637" y="256" text-anchor="middle" font-size="9">to validation set</text>
+        <text x="637" y="268" text-anchor="middle" font-size="8.5" font-style="italic" fill="#14110d99">5% beats 100%</text>
+
+        <!-- Bottom: combined approach -->
+        <line x1="360" y1="300" x2="360" y2="330" stroke="#14110d" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+        <rect x="120" y="330" width="480" height="100" fill="#14110d" rx="3"/>
+        <text x="360" y="352" text-anchor="middle" font-size="11" fill="#c97a4f" font-weight="600">The hybrid recipe most teams actually use</text>
+
+        <text x="360" y="378" text-anchor="middle" font-size="10" fill="#f1ead9">1. SuperFiltering (cheap) to drop bottom-30% noisy data</text>
+        <text x="360" y="394" text-anchor="middle" font-size="10" fill="#f1ead9">2. DEITA quality × complexity scores to rank the rest</text>
+        <text x="360" y="410" text-anchor="middle" font-size="10" fill="#f1ead9">3. Diversity filter (embedding cosine threshold) on top-ranked</text>
+        <text x="360" y="424" text-anchor="middle" font-size="10" fill="#c97a4f" font-style="italic">→ Final set: typically 5–10K examples from millions</text>
+      </svg>
+      <figcaption><span class="fig-num">Figure 4</span> A decision tree for picking a method. The split that matters most is whether we have a <em>target task</em> in mind (use LESS) or are training a general assistant (use SuperFiltering or DEITA). The hybrid pipeline at the bottom is what most production teams converge on.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ SECTION 6 ============ -->
+  <section id="playbook">
+    <h2 data-num="06">A concrete playbook for our dataset</h2>
+
+    <p>Suppose we have a pool of, say, 500K instruction–response pairs and want to fine-tune a 7B–13B model. Here is the end-to-end procedure synthesized from the three papers above.</p>
+
+    <div class="algo">
+      <div class="algo-title">Algorithm · End-to-end data selection</div>
+
+      <div class="step"><span class="num">1</span><strong>Coarse filter (cheap, mandatory).</strong> Drop examples where: response length &lt; 50 tokens or &gt; 4096; response is duplicated (exact or near-dup via MinHash); response contains code-tag mismatches, HTML errors, or non-target languages. This usually removes 20–40% of a public dataset.</div>
+
+      <div class="step"><span class="num">2</span><strong>Compute IFD with a small model.</strong> We use GPT-2-XL or LLaMA-3.2-1B. For each (<span class="m">x, y</span>) we compute <span class="m">IFD(x, y) = PPL(y | x) / PPL(y)</span>. ~1 hour on a single GPU for 500K examples.</div>
+
+      <div class="step"><span class="num">3</span><strong>Keep the informative band.</strong> Discard the bottom decile (IFD too low → trivial) and the top decile (IFD ≈ 1 → uninformative or noisy). Keep the middle 80%.</div>
+
+      <div class="step"><span class="num">4</span><strong>Score quality with DEITA's open scorers.</strong> Run `hkust-nlp/deita-quality-scorer-llama` to get <span class="m">q</span> ∈ [1, 6] per example. Drop the bottom-25%.</div>
+
+      <div class="step"><span class="num">5</span><strong>Tag for topics.</strong> Cluster sentence embeddings (e.g. `all-MiniLM-L6-v2` + k-means with k=50–200) or use InsTag. This gives us the stratification axis from LIMA.</div>
+
+      <div class="step"><span class="num">6</span><strong>If we have a target task → run LESS.</strong> Warmup-train LoRA on 5% random, build the gradient datastore, score by cosine similarity to a set of 10–50 few-shot validation examples. Take the top-5%.</div>
+
+      <div class="step"><span class="num">7</span><strong>If general assistant → stratified sampling.</strong> Within each topic cluster, sort by IFD × <span class="m">q</span> and take the top-N per cluster. This recovers LIMA's per-category cap.</div>
+
+      <div class="step"><span class="num">8</span><strong>Diversity sweep.</strong> Iterate over the sorted candidate list; only add an example if its embedding's cosine distance to the nearest already-selected example exceeds <span class="m">τ = 0.9</span> (DEITA's REPR FILTER).</div>
+
+      <div class="step"><span class="num">9</span><strong>Style audit (LIMA's lesson).</strong> Spot-check 100 examples by hand for response-style consistency. If sources differ in "voice" (formal vs. casual), the model will learn the mode it sees most. Standardize via a rewriter LLM or filter for one voice.</div>
+
+      <div class="step"><span class="num">10</span><strong>Train and ablate.</strong> Compare against random subsets of the same size. If the selected set does not beat random by ≥2 points on the eval, something in the pipeline is broken.</div>
+    </div>
+
+    <h3>Sanity checks worth running</h3>
+
+    <p><strong>The random-subset baseline.</strong> We always train on a random subset of the same size and report both numbers. A selection method that does not beat random is not selecting — it is just shrinking the dataset.</p>
+
+    <p><strong>The diversity check.</strong> After selection, we plot the topic-cluster distribution of the selected set. If 80% of examples come from 5 clusters, the model will overfit to those topics. Re-balance.</p>
+
+    <p><strong>The length check.</strong> Zhao et al. (ICML 2024) found that "select the longest response" is a surprisingly strong baseline — sometimes within 1–2 points of more sophisticated methods. If a selection method does not strongly correlate with this trivial baseline, that is interesting; if it does, the sophistication may not be earning its keep.</p>
+
+    <div class="pull-quote">The deepest finding in this line of work is that the marginal example contributes far less than the average example. Selection is not about finding gold; it is about discarding the dross that drowns it.</div>
+
+    <h3>What none of these methods do yet</h3>
+
+    <p>A few honest limitations to set expectations:</p>
+
+    <ul style="margin: 12px 0 12px 24px; line-height: 1.7;">
+      <li><strong>None handle multi-task interference.</strong> Selecting separately for math, code, and dialogue does not guarantee the union trains well. The interactions are still empirical.</li>
+      <li><strong>None give us a stopping criterion.</strong> Is 1K enough? 5K? 50K? Currently the answer is "scan and see." Diminishing returns are real but task-dependent.</li>
+      <li><strong>LESS requires labeled validation examples.</strong> Without ground-truth examples of the target task, we fall back to a generic quality signal (DEITA, IFD).</li>
+      <li><strong>All assume the pool contains good examples to begin with.</strong> No selection method can rescue a fundamentally bad dataset. LIMA's quiet point is that the upstream source matters most.</li>
+    </ul>
+
+    <p>The arc from LIMA to LESS is, in retrospect, a story about replacing taste with statistics. LIMA proved that taste suffices; LESS proved that with the right inner product, taste is computable.</p>
+  </section>
+
+  <!-- ============ SECTION 7 ============ -->
+  <section id="less-summary">
+    <h2 data-num="07">LESS in plain language</h2>
+
+    <p>Pulling the previous sections together into a clean, narrative summary — useful when presenting to an audience that hasn't read the paper.</p>
+
+    <h3>The LESS algorithm — how it works in practice</h3>
+
+    <p>Calculating and comparing gradients for billions of parameters across millions of documents is incredibly computationally heavy. Here is how the LESS algorithm makes it efficient.</p>
+
+    <figure>
+      <svg viewBox="0 0 740 620" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="#14110d"/>
+          </marker>
+          <marker id="arrowAcc" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="#8c2d1f"/>
+          </marker>
+          <pattern id="dotgrid" width="8" height="8" patternUnits="userSpaceOnUse">
+            <circle cx="4" cy="4" r="0.8" fill="#14110d33"/>
+          </pattern>
+        </defs>
+
+        <!-- Title -->
+        <text x="370" y="22" text-anchor="middle" font-size="13" font-weight="600" font-family="Fraunces, serif" font-style="italic" fill="#14110d">The four stages of LESS — start to finish</text>
+
+        <!-- ============ STAGE 1: WARMUP ============ -->
+        <g transform="translate(0, 50)">
+          <text x="20" y="14" font-size="11" font-weight="600" fill="#8c2d1f">STAGE 1 · WARMUP</text>
+          <text x="20" y="28" font-size="9" fill="#14110d" font-style="italic" font-family="Fraunces, serif">Train briefly on a tiny random slice — gives us checkpoints</text>
+
+          <!-- Data pool -->
+          <rect x="20" y="42" width="100" height="60" fill="url(#dotgrid)" stroke="#14110d" stroke-width="1.5" rx="3"/>
+          <text x="70" y="60" text-anchor="middle" font-size="10" font-weight="600">Pool D</text>
+          <text x="70" y="74" text-anchor="middle" font-size="9">~200K examples</text>
+          <text x="70" y="92" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">take 5% random</text>
+
+          <!-- Arrow to LoRA training -->
+          <line x1="125" y1="72" x2="155" y2="72" stroke="#14110d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- LoRA training box -->
+          <rect x="160" y="42" width="160" height="60" fill="#8c2d1f15" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="240" y="60" text-anchor="middle" font-size="10" font-weight="600">LoRA fine-tune</text>
+          <text x="240" y="75" text-anchor="middle" font-size="9">~100M trainable params</text>
+          <text x="240" y="92" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">N epochs, save each</text>
+
+          <!-- Arrow to checkpoints -->
+          <line x1="325" y1="72" x2="355" y2="72" stroke="#14110d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Checkpoint stack -->
+          <g transform="translate(360, 42)">
+            <rect x="0" y="0" width="80" height="14" fill="#14110d" rx="2"/>
+            <text x="40" y="10" text-anchor="middle" font-size="9" fill="#f1ead9">checkpoint θ₁</text>
+            <rect x="0" y="17" width="80" height="14" fill="#14110d" rx="2"/>
+            <text x="40" y="27" text-anchor="middle" font-size="9" fill="#f1ead9">checkpoint θ₂</text>
+            <rect x="0" y="34" width="80" height="14" fill="#14110d" rx="2"/>
+            <text x="40" y="44" text-anchor="middle" font-size="9" fill="#f1ead9">checkpoint θ₃</text>
+            <rect x="0" y="51" width="80" height="14" fill="#14110d" rx="2"/>
+            <text x="40" y="61" text-anchor="middle" font-size="9" fill="#f1ead9">checkpoint θ₄</text>
+          </g>
+
+          <!-- Annotation right side -->
+          <text x="465" y="62" font-size="10" fill="#14110d" font-style="italic" font-family="Fraunces, serif">These θᵢ approximate the</text>
+          <text x="465" y="76" font-size="10" fill="#14110d" font-style="italic" font-family="Fraunces, serif">optimization trajectory</text>
+          <text x="465" y="92" font-size="9.5" fill="#8c2d1f" font-weight="600">→ gradients live somewhere</text>
+          <text x="465" y="105" font-size="9.5" fill="#8c2d1f" font-weight="600">    along this path</text>
+        </g>
+
+        <!-- Divider -->
+        <line x1="20" y1="170" x2="720" y2="170" stroke="#14110d" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.4"/>
+
+        <!-- ============ STAGE 2: GRADIENT DATASTORE ============ -->
+        <g transform="translate(0, 185)">
+          <text x="20" y="14" font-size="11" font-weight="600" fill="#8c2d1f">STAGE 2 · GRADIENT DATASTORE</text>
+          <text x="20" y="28" font-size="9" fill="#14110d" font-style="italic" font-family="Fraunces, serif">Compute the "direction" of every training example — compress to fit on disk</text>
+
+          <!-- All data pool -->
+          <rect x="20" y="42" width="90" height="100" fill="url(#dotgrid)" stroke="#14110d" stroke-width="1.5" rx="3"/>
+          <text x="65" y="62" text-anchor="middle" font-size="10" font-weight="600">All of D</text>
+          <text x="65" y="78" text-anchor="middle" font-size="9">z₁, z₂, …</text>
+          <text x="65" y="92" text-anchor="middle" font-size="9">z₂₀₀ₖ</text>
+          <text x="65" y="120" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">for each z:</text>
+          <text x="65" y="132" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">at each θᵢ</text>
+
+          <!-- Arrow -->
+          <line x1="115" y1="92" x2="145" y2="92" stroke="#14110d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Compute gradient -->
+          <rect x="150" y="55" width="135" height="74" fill="#8c2d1f15" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="217" y="72" text-anchor="middle" font-size="10" font-weight="600">Compute Γ(z; θᵢ)</text>
+          <text x="217" y="89" text-anchor="middle" font-size="9">Adam update direction</text>
+          <text x="217" y="103" text-anchor="middle" font-size="9">∈ ℝ^(100M)</text>
+          <text x="217" y="121" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic">huge — can't store</text>
+
+          <!-- Arrow -->
+          <line x1="290" y1="92" x2="320" y2="92" stroke="#14110d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Random projection -->
+          <rect x="325" y="55" width="160" height="74" fill="#c97a4f33" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="405" y="72" text-anchor="middle" font-size="10" font-weight="600">Random projection P</text>
+          <text x="405" y="88" text-anchor="middle" font-size="9">P · Γ(z) → 8192-dim</text>
+          <text x="405" y="105" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic" font-family="Fraunces, serif">Johnson–Lindenstrauss:</text>
+          <text x="405" y="118" text-anchor="middle" font-size="8.5" fill="#8c2d1f" font-style="italic" font-family="Fraunces, serif">dot products preserved</text>
+
+          <!-- Arrow -->
+          <line x1="490" y1="92" x2="520" y2="92" stroke="#14110d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Datastore -->
+          <rect x="525" y="48" width="180" height="88" fill="#14110d" rx="3"/>
+          <text x="615" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#c97a4f">GRADIENT DATASTORE</text>
+          <text x="615" y="86" text-anchor="middle" font-size="9" fill="#f1ead9">200,000 fingerprints</text>
+          <text x="615" y="100" text-anchor="middle" font-size="9" fill="#f1ead9">8192 floats each</text>
+          <text x="615" y="118" text-anchor="middle" font-size="8.5" fill="#c97a4f" font-style="italic" font-family="Fraunces, serif">→ ~6 GB on disk,</text>
+          <text x="615" y="130" text-anchor="middle" font-size="8.5" fill="#c97a4f" font-style="italic" font-family="Fraunces, serif">amortized across all tasks</text>
+        </g>
+
+        <!-- Divider -->
+        <line x1="20" y1="335" x2="720" y2="335" stroke="#14110d" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.4"/>
+
+        <!-- ============ STAGE 3: SIMILARITY SEARCH ============ -->
+        <g transform="translate(0, 350)">
+          <text x="20" y="14" font-size="11" font-weight="600" fill="#8c2d1f">STAGE 3 · SIMILARITY SEARCH</text>
+          <text x="20" y="28" font-size="9" fill="#14110d" font-style="italic" font-family="Fraunces, serif">Encode the target task the same way — then ask: which training examples point the same direction?</text>
+
+          <!-- Target validation set -->
+          <rect x="20" y="42" width="105" height="74" fill="#2a5a5818" stroke="#2a5a58" stroke-width="1.5" rx="3"/>
+          <text x="72" y="60" text-anchor="middle" font-size="10" font-weight="600">Target task</text>
+          <text x="72" y="74" text-anchor="middle" font-size="9">~50 examples z*</text>
+          <text x="72" y="92" text-anchor="middle" font-size="8.5" fill="#2a5a58" font-style="italic">(e.g. math QA)</text>
+          <text x="72" y="106" text-anchor="middle" font-size="8.5" fill="#2a5a58" font-style="italic">your validation set</text>
+
+          <!-- Arrow -->
+          <line x1="130" y1="79" x2="155" y2="79" stroke="#2a5a58" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+          <!-- Encode target -->
+          <rect x="160" y="42" width="140" height="74" fill="#2a5a5818" stroke="#2a5a58" stroke-width="1.5" rx="3"/>
+          <text x="230" y="60" text-anchor="middle" font-size="10" font-weight="600">Encode target</text>
+          <text x="230" y="74" text-anchor="middle" font-size="9">P · ∇ℓ(z*; θᵢ)</text>
+          <text x="230" y="88" text-anchor="middle" font-size="9">average over D_val</text>
+          <text x="230" y="106" text-anchor="middle" font-size="8.5" fill="#2a5a58" font-style="italic">→ one 8192-dim vector ĝ*</text>
+
+          <!-- Arrow down-right -->
+          <path d="M 305 79 Q 340 79 340 145" stroke="#2a5a58" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
+
+          <!-- Compare box (central) -->
+          <rect x="180" y="145" width="380" height="80" fill="#8c2d1f33" stroke="#8c2d1f" stroke-width="2" rx="3"/>
+          <text x="370" y="166" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2d1f">COMPARE — cosine similarity</text>
+
+          <!-- The formula in math style -->
+          <text x="370" y="188" text-anchor="middle" font-size="11" font-style="italic" font-family="Fraunces, serif" fill="#14110d">
+            score(z) = Σᵢ cos<tspan font-style="normal">(</tspan> ĝ*ᵢ , <tspan font-style="normal">P·</tspan>Γ(z; θᵢ) <tspan font-style="normal">)</tspan>
+          </text>
+          <text x="370" y="206" text-anchor="middle" font-size="9" fill="#14110d" font-style="italic" font-family="Fraunces, serif">
+            high score → training on z reduces loss on the target
+          </text>
+          <text x="370" y="218" text-anchor="middle" font-size="8.5" fill="#8c2d1f">
+            (first-order Taylor: Δℓ(z*) ≈ −η · ⟨∇ℓ(z*), ∇ℓ(z)⟩)
+          </text>
+
+          <!-- Connection from datastore (left arrow into compare) -->
+          <path d="M 615 250 Q 615 250 615 195 Q 615 185 560 185" stroke="#8c2d1f" stroke-width="1.5" stroke-dasharray="4,3" fill="none" marker-end="url(#arrowAcc)"/>
+          <text x="640" y="220" font-size="8.5" fill="#8c2d1f" font-style="italic" font-family="Fraunces, serif">from datastore</text>
+          <text x="640" y="232" font-size="8.5" fill="#8c2d1f" font-style="italic" font-family="Fraunces, serif">(stage 2)</text>
+
+          <!-- Output: ranked list -->
+          <text x="370" y="252" text-anchor="middle" font-size="10" fill="#14110d">↓ rank all 200,000 examples ↓</text>
+        </g>
+
+        <!-- ============ STAGE 4: TARGETED TRAINING ============ -->
+        <g transform="translate(0, 510)">
+          <text x="20" y="14" font-size="11" font-weight="600" fill="#8c2d1f">STAGE 4 · TARGETED TRAINING</text>
+          <text x="20" y="28" font-size="9" fill="#14110d" font-style="italic" font-family="Fraunces, serif">Keep the top-ranked 5% — fine-tune the real model from scratch on just those</text>
+
+          <!-- Top 5% selection -->
+          <rect x="60" y="42" width="140" height="58" fill="#8c2d1f" stroke="#8c2d1f" stroke-width="1.5" rx="3"/>
+          <text x="130" y="60" text-anchor="middle" font-size="10" font-weight="600" fill="#f1ead9">TOP 5%</text>
+          <text x="130" y="76" text-anchor="middle" font-size="9" fill="#c97a4f">~10,000 examples</text>
+          <text x="130" y="92" text-anchor="middle" font-size="8.5" fill="#c97a4f" font-style="italic">highest cosine score</text>
+
+          <!-- Arrow -->
+          <line x1="205" y1="71" x2="240" y2="71" stroke="#14110d" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- Final training -->
+          <rect x="245" y="42" width="200" height="58" fill="#14110d" rx="3"/>
+          <text x="345" y="60" text-anchor="middle" font-size="10" font-weight="600" fill="#c97a4f">Fine-tune target model</text>
+          <text x="345" y="76" text-anchor="middle" font-size="9" fill="#f1ead9">e.g. 7B / 13B / 70B</text>
+          <text x="345" y="92" text-anchor="middle" font-size="8.5" fill="#c97a4f" font-style="italic">on top-5% subset only</text>
+
+          <!-- Arrow -->
+          <line x1="450" y1="71" x2="485" y2="71" stroke="#14110d" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- Result -->
+          <rect x="490" y="42" width="220" height="58" fill="#c97a4f44" stroke="#8c2d1f" stroke-width="2" rx="3"/>
+          <text x="600" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#8c2d1f" font-family="Fraunces, serif" font-style="italic">Result</text>
+          <text x="600" y="76" text-anchor="middle" font-size="9" fill="#14110d">5% beats 100% on target eval</text>
+          <text x="600" y="92" text-anchor="middle" font-size="9" fill="#14110d">+ datastore reusable for next task</text>
+        </g>
+      </svg>
+      <figcaption><span class="fig-num">Figure 5</span> End-to-end LESS pipeline. <strong>Stage 1</strong> produces checkpoints we can take gradients at. <strong>Stage 2</strong> turns every training example into a small "fingerprint" of how it would update the model — compressed via JL projection so the entire datastore fits comfortably on disk. <strong>Stage 3</strong> encodes the target task the same way and ranks training examples by cosine similarity; the first-order Taylor expansion guarantees that high cosine = loss-reducing. <strong>Stage 4</strong> fine-tunes on just the top-5%. The datastore is the durable asset: build it once with a 7B model, reuse it for many target tasks and many downstream model sizes.</figcaption>
+    </figure>
+
+    <div class="algo">
+      <div class="algo-title">The four practical stages</div>
+
+      <div class="step"><span class="num">1</span><strong>Warmup training.</strong> The method starts by briefly training the model on a small, random subset of data using LoRA (Low-Rank Adaptation). This gives the model a basic understanding of how to format answers and follow instructions, and produces a handful of checkpoints <span class="m">θ<sub>1</sub>, …, θ<sub>N</sub></span> that approximate what the optimization trajectory looks like.
+      <br><span style="display:inline-block; margin-top:6px; font-style:italic; color:var(--accent);">Why this is needed:</span> the influence formula requires gradients at training checkpoints — without warmup we have none.</div>
+
+      <div class="step"><span class="num">2</span><strong>Build a gradient datastore.</strong> The researchers pass all the available training data through the model and calculate their gradients. To save computer memory, they use a random projection technique to compress these massive gradient vectors into much smaller, low-dimensional representations.
+      <br><span style="display:inline-block; margin-top:6px; font-style:italic; color:var(--accent);">The math:</span> Johnson–Lindenstrauss says that for a random Gaussian matrix <span class="m vec">P</span> ∈ ℝ<sup>8192 × 10<sup>8</sup></sup>, dot products between vectors <span class="m vec">u</span>, <span class="m vec">v</span> are preserved up to small error: ⟨<span class="vec">Pu</span>, <span class="vec">Pv</span>⟩ ≈ ⟨<span class="vec">u</span>, <span class="vec">v</span>⟩ with high probability. Storage drops by ~12000× and all the comparisons we need still work.</div>
+
+      <div class="step"><span class="num">3</span><strong>Similarity search.</strong> The researchers take a few examples of the target task (e.g., a few math problems) and calculate their gradients. They then search the compressed datastore for training examples that have the highest dot product (cosine similarity) with the target task.
+      <br><span style="display:inline-block; margin-top:6px; font-style:italic; color:var(--accent);">The math:</span> for training example <span class="m">z</span> and target validation example <span class="m">z*</span>, a one-step Taylor expansion gives the change in loss on <span class="m">z*</span> from training on <span class="m">z</span> as approximately &minus;η · ∇ℓ(<span class="m">z*</span>)<sup>⊤</sup> ∇ℓ(<span class="m">z</span>). Aligned gradients → loss on target drops → example is helpful. The score becomes Σ<sub>i</sub> cos(∇ℓ(<span class="m">z*</span>; θ<sub>i</sub>), Γ(<span class="m">z</span>; θ<sub>i</sub>)) summed across checkpoints, with Γ being the Adam-adjusted update direction rather than the raw gradient.</div>
+
+      <div class="step"><span class="num">4</span><strong>Targeted training.</strong> Finally, they train the model entirely from scratch using only the top-ranked data points (typically the top 5%).
+      <br><span style="display:inline-block; margin-top:6px; font-style:italic; color:var(--accent);">No math here</span> — just a standard fine-tuning run, but on the filtered subset rather than the full pool.</div>
+    </div>
+
+    <h3>Why LESS is a breakthrough</h3>
+
+    <div class="callout">
+      <h4>Two findings worth highlighting</h4>
+      <p><strong>Less is more.</strong> The paper shows that training a model on just the top 5% of data selected by LESS often results in a smarter model than if we had trained it on 100% of the data. Trimming the fat improves focus — the discarded 95% wasn't neutral, it was actively pulling the model in directions irrelevant to the target task.</p>
+      <p style="margin-top:12px;"><strong>Transferability.</strong> A supercomputer is not required to run LESS. We can use a smaller, cheaper model (like a 7-billion parameter model) to calculate the gradients and select the top 5% of data. We can then use that carefully curated 5% to train a massive, state-of-the-art model (like a 70-billion parameter model) from a completely different family, and the selected data remains highly effective. The selection signal lives in the data, not in the scorer model.</p>
+    </div>
+
+    <div class="pull-quote">LESS picks training examples whose gradient points in the same direction as the gradient of the target task — because that is mathematically the same as picking examples whose training step will reduce loss on the target.</div>
+  </section>
+
+  <footer>
+    Papers: <a href="https://arxiv.org/abs/2305.11206">LIMA (arXiv:2305.11206)</a> · <a href="https://arxiv.org/abs/2402.04333">LESS (arXiv:2402.04333)</a><br>
+    Related: <a href="https://arxiv.org/abs/2312.15685">DEITA</a> · <a href="https://arxiv.org/abs/2402.00530">SuperFiltering</a> · <a href="https://arxiv.org/abs/2308.12032">Cherry LLM (IFD)</a>
+  </footer>
+
+</div>
+</body>
+</html>
