@@ -17,7 +17,7 @@ export default function About() {
         >
           <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-ink-800">
             <img
-              src="/arpit.png?v=2"
+              src="/arpit.png?v=3"
               alt="Arpit Garg"
               className="absolute inset-0 h-full w-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700"
             />
