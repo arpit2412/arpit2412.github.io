@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { films, type Film } from "@/data/films";
+import { profile } from "@/data/profile";
 
 /* ------------------------------------------------------------
    Marquee banner — auto-scrolls horizontally. Animation kicks in
@@ -58,109 +59,59 @@ function MarqueeRow({ items, reverse = false }: { items: Film[]; reverse?: boole
 }
 
 /* ------------------------------------------------------------
-   Poster card — large, with dramatic on-enter reveal:
-   (1) image: scaleY mask grows from 0 → 1 (curtain raise)
-   (2) title: word-by-word slide-up (matches hero name animation)
-   (3) meta: simple fade in
+   Poster card — RSP-inspired filmography grid.
+   Clean poster by default; on hover the image lifts/zooms, a dim
+   overlay fades in, and year / studio / role / IMDb cue reveal.
    ------------------------------------------------------------ */
 
 function PosterCard({ film, i }: { film: Film; i: number }) {
-  const baseDelay = i * 0.12;
-
   return (
-    <motion.article
-      className="group relative aspect-[2/3] overflow-hidden bg-ink-900 border border-ink-800"
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-80px" }}
-      variants={{
-        hidden: {},
-        visible: {},
+    <motion.a
+      href={profile.links.imdb}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`${film.title} — view credit on IMDb`}
+      className="group relative block aspect-[2/3] overflow-hidden rounded-sm bg-ink-900 border border-ink-800 hover:border-gold/40 transition-colors duration-500"
+      initial={{ opacity: 0, y: 26 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{
+        duration: 0.7,
+        ease: [0.2, 0.8, 0.2, 1],
+        delay: (i % 3) * 0.08,
       }}
     >
-      {/* Image with curtain reveal (clip-path) */}
-      <motion.div
-        className="absolute inset-0"
-        variants={{
-          hidden: { clipPath: "inset(0 0 100% 0)" },
-          visible: { clipPath: "inset(0 0 0% 0)" },
-        }}
-        transition={{
-          duration: 1.1,
-          ease: [0.7, 0, 0.3, 1],
-          delay: baseDelay,
-        }}
-      >
-        <img
-          src={film.poster}
-          alt={film.themeNote}
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[1400ms] ease-out group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink-950 via-ink-950/30 to-transparent" />
-      </motion.div>
-
-      {/* Frame edge — appears after image */}
-      <motion.div
-        className="absolute inset-0 ring-1 ring-inset ring-ink-100/5 pointer-events-none"
-        variants={{
-          hidden: { opacity: 0 },
-          visible: { opacity: 1 },
-        }}
-        transition={{ duration: 0.6, delay: baseDelay + 0.4 }}
+      <img
+        src={film.poster}
+        alt={film.title}
+        loading="lazy"
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.06]"
       />
 
-      {/* Year / studio badge */}
-      <motion.div
-        className="absolute top-4 left-4 right-4 flex items-center justify-between text-2xs uppercase tracking-eyebrow font-mono"
-        variants={{
-          hidden: { opacity: 0, y: -8 },
-          visible: { opacity: 1, y: 0 },
-        }}
-        transition={{ duration: 0.6, delay: baseDelay + 0.6 }}
-      >
-        <span className="text-gold nums">{film.year}</span>
-        <span className="text-ink-300">{film.studio}</span>
-      </motion.div>
+      {/* base gradient (always) + hover dim */}
+      <div className="absolute inset-0 bg-gradient-to-t from-ink-950/95 via-ink-950/15 to-transparent" />
+      <div className="absolute inset-0 bg-ink-950/55 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-      {/* Title — word-by-word reveal */}
-      <div className="absolute inset-x-0 bottom-0 p-5">
-        <h3 className="font-display text-3xl text-ink-100 leading-[1.0] tracking-tight">
-          {film.title.split(" ").map((word, j) => (
-            <span
-              key={j}
-              className="inline-block overflow-hidden mr-[0.18em] align-baseline"
-            >
-              <motion.span
-                className="inline-block"
-                variants={{
-                  hidden: { y: "110%", opacity: 0 },
-                  visible: { y: "0%", opacity: 1 },
-                }}
-                transition={{
-                  duration: 0.7,
-                  ease: [0.2, 0.8, 0.2, 1],
-                  delay: baseDelay + 0.7 + j * 0.06,
-                }}
-              >
-                {word}
-              </motion.span>
-            </span>
-          ))}
-        </h3>
-        <motion.div
-          className="mt-3 flex items-center gap-2 text-2xs uppercase tracking-eyebrow text-ink-300"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: { opacity: 1 },
-          }}
-          transition={{ duration: 0.6, delay: baseDelay + 1.1 }}
-        >
-          <span className="h-px w-6 bg-gold" />
-          {film.role}
-        </motion.div>
+      {/* top meta — reveals on hover */}
+      <div className="absolute top-0 inset-x-0 p-4 flex items-center justify-between text-2xs uppercase tracking-eyebrow font-mono opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+        <span className="text-gold nums">{film.year}</span>
+        <span className="text-ink-200">{film.studio}</span>
       </div>
-    </motion.article>
+
+      {/* bottom — title always; role + IMDb cue on hover */}
+      <div className="absolute inset-x-0 bottom-0 p-5">
+        <h3 className="font-display text-2xl leading-tight text-ink-100 transition-transform duration-500 group-hover:-translate-y-1">
+          {film.title}
+        </h3>
+        <div className="mt-2 flex items-center gap-2 text-2xs uppercase tracking-eyebrow text-ink-300 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500">
+          <span className="h-px w-5 bg-gold" />
+          {film.role}
+        </div>
+        <div className="mt-3 inline-flex items-center gap-1.5 text-2xs uppercase tracking-eyebrow text-gold opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+          View on IMDb <span aria-hidden>↗</span>
+        </div>
+      </div>
+    </motion.a>
   );
 }
 
@@ -232,18 +183,28 @@ export default function FilmsMarquee() {
         <MarqueeRow items={[...films].reverse()} reverse />
       </div>
 
-      {/* Poster grid with dramatic reveal */}
+      {/* Filmography grid — RSP-inspired */}
       <div className="mx-auto max-w-7xl px-6 lg:px-10 mt-28">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
-          className="eyebrow mb-10 inline-flex items-center gap-3"
+          className="flex items-end justify-between mb-10"
         >
-          <span className="h-px w-8 bg-gold" /> Title cards
+          <div className="eyebrow inline-flex items-center gap-3">
+            <span className="h-px w-8 bg-gold" /> Title cards
+          </div>
+          <a
+            href={profile.links.imdb}
+            target="_blank"
+            rel="noreferrer"
+            className="text-2xs uppercase tracking-eyebrow text-ink-400 hover:text-gold transition-colors inline-flex items-center gap-1.5"
+          >
+            Full credits on IMDb <span aria-hidden>↗</span>
+          </a>
         </motion.div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-8">
           {films.map((f, i) => (
             <PosterCard key={f.title} film={f} i={i} />
           ))}
