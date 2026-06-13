@@ -23,7 +23,7 @@ export default function About() {
             />
             <div className="absolute inset-0 ring-1 ring-inset ring-ink-100/5" />
             <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-[10px] uppercase tracking-[0.3em] text-ink-200 font-mono">
-              <span>Adelaide · 2026</span>
+              <span>Australia · 2026</span>
               <span className="text-gold">◆</span>
             </div>
           </div>

@@ -3,7 +3,7 @@ export const profile = {
   title: "Senior ML / Research Engineer",
   pronoun: "PhD",
   subtitle: "LLMs · Multimodal AI · Computer Vision · Efficient Training",
-  location: "Adelaide, Australia",
+  location: "Australia",
   email: "arpitg.phd@gmail.com",
   emailAcademic: "arpit.garg@adelaide.edu.au",
   phone: "+61 0480 145 230",
@@ -12,6 +12,10 @@ export const profile = {
     linkedin: "https://linkedin.com/in/arpit2412",
     scholar:
       "https://scholar.google.com.au/citations?user=KOEnJ14AAAAJ&hl=en",
+    youtube: "https://www.youtube.com/@AIParameters",
+    tiktok: "https://www.tiktok.com/@AIParameters",
+    instagram: "https://www.instagram.com/AIParameters",
+    facebook: "https://www.facebook.com/AIParameters",
   },
   bio: [
     "Senior ML engineer and published researcher specialising in large language models, multimodal AI, computer vision, machine unlearning, and efficient training systems.",
