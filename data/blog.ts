@@ -11,6 +11,18 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "moe",
+    file: "/blog/moe.html",
+    title: "Mixture of Experts — A Hands-On Workbook",
+    blurb:
+      "Mixture of Experts explained from scratch. Why the smartest AI models don't use their whole brain, what an 'expert' actually is, and how a tiny router decides who answers — an interactive workbook you can play with and break. No ML background needed.",
+    readTime: "~ 12 min",
+    topic: "Explainer",
+    date: "June 2026",
+    cover:
+      "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
     slug: "context-window",
     file: "/blog/context-window.html",
     title: "The Window — Why Your Chatbot Slows Down",

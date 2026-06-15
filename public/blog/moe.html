@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mixture of Experts Interactive Workbook | AIParameters</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAFA;
+  --bg2: #F1F5F9;
+  --bg3: #E2E8F0;
+  --border: rgba(0,0,0,0.08);
+  --text: #0F172A;
+  --muted: #64748B;
+  --purple: #7C3AED;
+  --purple-light: #6D28D9;
+  --coral: #DB2777;
+  --mint: #059669;
+  --blue: #2563EB;
+  --amber: #B45309;
+  --orange: #C2410C;
+  --pink: #BE185D;
+  --expert1: #2563EB;
+  --expert2: #059669;
+  --expert3: #7C3AED;
+  --expert4: #B45309;
+  --expert5: #C2410C;
+  --expert6: #BE185D;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:#F1F5F9}
+::-webkit-scrollbar-thumb{background:var(--purple);border-radius:2px}
+
+/* PROGRESS BAR */
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--purple),var(--coral));width:0%;z-index:1000;transition:width 0.1s}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:999;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;background:rgba(250,250,250,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:var(--text);letter-spacing:0.02em}
+.nav-logo span{color:var(--purple)}
+.nav-chapters{display:flex;gap:24px}
+.nav-chapters a{font-size:12px;color:var(--muted);text-decoration:none;transition:color 0.2s;font-weight:500}
+.nav-chapters a:hover,.nav-chapters a.active{color:var(--text)}
+.nav-badge{font-size:10px;background:rgba(124,58,237,0.08);color:var(--purple);padding:4px 10px;border-radius:20px;border:1px solid rgba(124,58,237,0.2)}
+
+/* SECTIONS */
+section{min-height:100vh;padding:120px 40px 80px;max-width:1100px;margin:0 auto;display:flex;flex-direction:column;justify-content:center;background:var(--bg)}
+.chapter-label{font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:var(--purple);margin-bottom:16px;font-family:'JetBrains Mono',monospace}
+
+/* HERO */
+#hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden;max-width:100%;padding:120px 40px 80px}
+.hero-inner{max-width:1100px;margin:0 auto;width:100%;position:relative;z-index:2}
+#hero-canvas{position:absolute;inset:0;z-index:1;opacity:0.15}
+.hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--purple);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.hero-eyebrow::before{content:'';width:30px;height:1px;background:var(--purple);display:block}
+h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,6vw,72px);font-weight:700;line-height:1.1;letter-spacing:-0.02em;margin-bottom:24px}
+h1 .accent{background:linear-gradient(135deg,var(--purple),var(--coral));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:18px;color:var(--muted);max-width:560px;line-height:1.7;margin-bottom:40px;font-weight:400}
+.hero-stats{display:flex;gap:32px;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:4px}
+.stat-num{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;color:var(--text)}
+.stat-label{font-size:12px;color:var(--muted)}
+.scroll-hint{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--muted);font-size:12px;z-index:2}
+.scroll-arrow{width:24px;height:24px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);transform:rotate(45deg);animation:bounce 1.5s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(6px)}}
+
+/* SECTION HEADINGS */
+h2{font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,4vw,44px);font-weight:700;line-height:1.2;letter-spacing:-0.02em;margin-bottom:16px}
+h3{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:600;margin-bottom:8px}
+.section-desc{font-size:16px;color:var(--muted);max-width:600px;margin-bottom:48px;line-height:1.75}
+
+/* CARDS */
+.card{background:#FFFFFF;border:.5px solid var(--border);border-radius:16px;padding:28px;transition:border-color 0.3s,transform 0.3s}
+.card:hover{border-color:rgba(139,92,246,0.3);transform:translateY(-2px)}
+
+/* PROBLEM SECTION */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+.compare-card{background:#FFFFFF;border:.5px solid var(--border);border-radius:16px;padding:28px;position:relative;overflow:hidden}
+.compare-card.bad{border-color:rgba(239,68,68,0.3)}
+.compare-card.good{border-color:rgba(16,185,129,0.3)}
+.compare-title{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.tag-bad{background:rgba(239,68,68,0.15);color:#F87171;font-size:10px;padding:2px 8px;border-radius:4px;border:.5px solid rgba(239,68,68,0.3)}
+.tag-good{background:rgba(16,185,129,0.15);color:#34D399;font-size:10px;padding:2px 8px;border-radius:4px;border:.5px solid rgba(16,185,129,0.3)}
+.neuron-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.neuron{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;transition:all 0.4s}
+.neuron.active{background:rgba(220,38,38,0.9);box-shadow:0 0 12px rgba(220,38,38,0.4)}
+.neuron.inactive{background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.1);color:var(--muted)}
+.neuron.moe-active{background:rgba(5,150,105,0.9);box-shadow:0 0 12px rgba(5,150,105,0.4)}
+.compute-bar{height:8px;border-radius:4px;margin-top:12px;position:relative;background:rgba(0,0,0,0.08)}
+.compute-fill{height:100%;border-radius:4px;transition:width 1s ease}
+.compute-label{font-size:11px;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between}
+
+/* EXPERTS SECTION */
+.experts-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+.expert-card{background:#FFFFFF;border:.5px solid var(--border);border-radius:16px;padding:24px;cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden}
+.expert-card::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity 0.3s;border-radius:16px}
+.expert-card:hover::before,.expert-card.selected::before{opacity:1}
+.expert-card[data-e="1"]::before{background:radial-gradient(circle at 50% 0%,rgba(79,172,254,0.12),transparent 70%)}
+.expert-card[data-e="2"]::before{background:radial-gradient(circle at 50% 0%,rgba(0,242,96,0.12),transparent 70%)}
+.expert-card[data-e="3"]::before{background:radial-gradient(circle at 50% 0%,rgba(167,139,250,0.12),transparent 70%)}
+.expert-card[data-e="4"]::before{background:radial-gradient(circle at 50% 0%,rgba(252,211,77,0.12),transparent 70%)}
+.expert-card[data-e="5"]::before{background:radial-gradient(circle at 50% 0%,rgba(251,146,60,0.12),transparent 70%)}
+.expert-card[data-e="6"]::before{background:radial-gradient(circle at 50% 0%,rgba(244,114,182,0.12),transparent 70%)}
+.expert-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:14px}
+.expert-name{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;margin-bottom:6px}
+.expert-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.expert-active-badge{position:absolute;top:12px;right:12px;font-size:10px;padding:3px 8px;border-radius:10px;opacity:0;transition:opacity 0.3s;font-weight:500}
+.expert-card.selected .expert-active-badge{opacity:1}
+
+/* ROUTER DEMO */
+.router-demo{background:#FFFFFF;border:.5px solid var(--border);border-radius:20px;padding:36px;margin-bottom:24px}
+.questions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px}
+.q-btn{background:rgba(0,0,0,0.04);border:.5px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;font-size:13px;color:var(--text);transition:all 0.2s;text-align:left;font-family:'Inter',sans-serif}
+.q-btn:hover{background:rgba(139,92,246,0.1);border-color:rgba(139,92,246,0.3);color:var(--purple-light)}
+.q-btn.active{background:rgba(139,92,246,0.15);border-color:var(--purple);color:var(--purple-light)}
+.routing-viz{position:relative;height:200px;margin-bottom:24px}
+#routing-svg{width:100%;height:100%}
+.routing-result{background:rgba(0,0,0,0.03);border-radius:12px;padding:20px;min-height:80px;border:.5px solid var(--border);transition:all 0.3s}
+.routing-result-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;font-family:'JetBrains Mono',monospace}
+.routing-result-text{font-size:14px;color:var(--text);line-height:1.6}
+.experts-activated{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.activated-pill{font-size:11px;padding:4px 12px;border-radius:20px;font-weight:500;opacity:0;transform:translateY(6px);transition:all 0.3s}
+
+/* SLIDER SECTION */
+.slider-demo{background:#FFFFFF;border:.5px solid var(--border);border-radius:20px;padding:36px;margin-bottom:24px}
+.slider-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;flex-wrap:wrap;gap:16px}
+.slider-controls{display:flex;flex-direction:column;gap:20px;margin-bottom:28px}
+.slider-row{display:flex;align-items:center;gap:16px}
+.slider-label{font-size:13px;color:var(--muted);min-width:140px}
+.slider-val{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);min-width:40px;text-align:right}
+input[type=range]{-webkit-appearance:none;flex:1;height:4px;border-radius:2px;background:rgba(0,0,0,0.1);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--purple);cursor:pointer;box-shadow:0 0 0 4px rgba(124,58,237,0.15)}
+.efficiency-display{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.eff-card{background:rgba(0,0,0,0.03);border-radius:12px;padding:20px;border:.5px solid var(--border)}
+.eff-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;font-family:'JetBrains Mono',monospace}
+.eff-num{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700;margin-bottom:6px}
+.eff-sub{font-size:12px;color:var(--muted)}
+.token-flow{display:flex;gap:6px;flex-wrap:wrap;margin-top:20px}
+.token-chip{font-family:'JetBrains Mono',monospace;font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.04);border:.5px solid var(--border);transition:all 0.3s;cursor:default}
+.token-chip.routing{animation:pulse-chip 0.6s ease forwards}
+@keyframes pulse-chip{0%{background:rgba(255,255,255,0.05)}50%{background:rgba(139,92,246,0.3);border-color:var(--purple);box-shadow:0 0 12px rgba(139,92,246,0.4)}100%{background:rgba(16,185,129,0.15);border-color:var(--mint);color:var(--mint)}}
+
+/* REAL WORLD */
+.models-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:32px}
+.model-card{background:#FFFFFF;border:.5px solid var(--border);border-radius:16px;padding:24px;transition:all 0.3s}
+.model-card:hover{border-color:rgba(139,92,246,0.3)}
+.model-name{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px}
+.model-org{font-size:12px;color:var(--muted);margin-bottom:16px}
+.model-stat{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:.5px solid var(--border);font-size:13px}
+.model-stat:last-child{border-bottom:none}
+.model-stat-label{color:var(--muted)}
+.model-stat-val{font-family:'JetBrains Mono',monospace;font-weight:500}
+
+/* QUIZ */
+.quiz-card{background:#FFFFFF;border:.5px solid var(--border);border-radius:20px;padding:36px;margin-bottom:20px}
+.quiz-q{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;margin-bottom:20px;line-height:1.4}
+.quiz-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.quiz-opt{background:rgba(0,0,0,0.04);border:.5px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;font-size:13px;color:var(--text);transition:all 0.2s;text-align:left;font-family:'Inter',sans-serif;line-height:1.5}
+.quiz-opt:hover:not(:disabled){background:rgba(139,92,246,0.1);border-color:rgba(139,92,246,0.3)}
+.quiz-opt.correct{background:rgba(16,185,129,0.15);border-color:var(--mint);color:#34D399}
+.quiz-opt.wrong{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:#F87171}
+.quiz-opt:disabled{cursor:default}
+.quiz-feedback{font-size:14px;line-height:1.6;padding:14px 16px;border-radius:10px;margin-top:4px;display:none}
+.quiz-feedback.correct{background:rgba(16,185,129,0.1);border:.5px solid rgba(16,185,129,0.2);color:#34D399;display:block}
+.quiz-feedback.wrong{background:rgba(239,68,68,0.08);border:.5px solid rgba(239,68,68,0.2);color:#FCA5A5;display:block}
+.quiz-progress{display:flex;gap:8px;margin-bottom:28px}
+.qp-dot{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,0.1);transition:background 0.3s}
+.qp-dot.done{background:var(--mint)}
+.qp-dot.active{background:var(--purple)}
+.quiz-score{text-align:center;padding:40px;display:none}
+.score-num{font-family:'Space Grotesk',sans-serif;font-size:64px;font-weight:700;color:var(--purple-light);line-height:1}
+.score-label{font-size:16px;color:var(--muted);margin-top:8px;margin-bottom:24px}
+.score-msg{font-size:14px;color:var(--text);line-height:1.7;max-width:400px;margin:0 auto}
+
+/* FOOTER */
+footer{text-align:center;padding:60px 40px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+footer span{color:var(--purple)}
+
+/* ANIMATIONS */
+.fade-in{opacity:0;transform:translateY(24px)}
+.stagger > *{opacity:0;transform:translateY(20px)}
+
+/* ANALOGY CARD */
+.analogy{background:linear-gradient(135deg,rgba(124,58,237,0.06),rgba(219,39,119,0.04));border:.5px solid rgba(139,92,246,0.2);border-radius:16px;padding:28px;margin-bottom:32px}
+.analogy-title{font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.12em;color:var(--purple-light);margin-bottom:12px;font-family:'JetBrains Mono',monospace}
+.analogy-text{font-size:15px;color:var(--text);line-height:1.75}
+.analogy-text strong{color:var(--purple-light)}
+
+/* KEY INSIGHT */
+.insight{display:flex;gap:16px;align-items:flex-start;background:rgba(5,150,105,0.06);border:.5px solid rgba(16,185,129,0.2);border-radius:12px;padding:20px;margin-bottom:24px}
+.insight-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+.insight-text{font-size:14px;color:var(--text);line-height:1.7}
+.insight-text strong{color:var(--mint)}
+
+/* BUTTON */
+.btn{background:rgba(139,92,246,0.15);border:.5px solid rgba(139,92,246,0.4);color:var(--purple-light);padding:10px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;font-weight:500;transition:all 0.2s;letter-spacing:0.02em}
+.btn:hover{background:rgba(139,92,246,0.25);border-color:var(--purple);transform:translateY(-1px)}
+.btn-primary{background:var(--purple);border-color:var(--purple);color:white}
+.btn-primary:hover{background:#7C3AED}
+
+/* NEXT QUIZ BTN */
+#next-q-btn{margin-top:16px;display:none}
+
+@media(max-width:768px){
+  nav{padding:12px 20px}
+  .nav-chapters{display:none}
+  section{padding:100px 20px 60px}
+  .compare-grid,.experts-grid,.models-grid,.quiz-options,.questions-grid,.efficiency-display{grid-template-columns:1fr}
+  h1{font-size:36px}
+  .hero-stats{gap:20px}
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<nav>
+  <div class="nav-logo">AI<span>Parameters</span></div>
+  <div class="nav-chapters">
+    <a href="#problem">The Problem</a>
+    <a href="#experts">Experts</a>
+    <a href="#router">Router</a>
+    <a href="#efficiency">Efficiency</a>
+    <a href="#realworld">Real World</a>
+    <a href="#quiz">Quiz</a>
+  </div>
+  <div class="nav-badge">MoE Workbook</div>
+</nav>
+
+<!-- HERO -->
+<section id="hero" style="max-width:100%;padding:0">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-inner" style="padding:120px 40px 80px">
+    <div class="hero-eyebrow">Interactive Workbook</div>
+    <h1>What if your AI had<br><span class="accent">specialist doctors</span><br>instead of one GP?</h1>
+    <p class="hero-sub">Mixture of Experts explained from scratch. Play with it, break it, understand it. No ML background needed.</p>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="stat-num" id="s1">0</span>
+        <span class="stat-label">Total parameters in a MoE</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="s2">0%</span>
+        <span class="stat-label">Parameters active at once</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num" id="s3">0x</span>
+        <span class="stat-label">Compute efficiency gain</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-hint">scroll to explore <div class="scroll-arrow"></div></div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="chapter-label">Chapter 01 The Problem</div>
+  <h2 class="fade-in">Regular AI uses<br>100% of its brain<br>for <em>every</em> single word</h2>
+  <p class="section-desc fade-in">Imagine hiring 100 specialists but forcing all 100 of them to attend every single meeting even if only one of them is actually useful. That's how traditional AI models work.</p>
+
+  <div class="analogy fade-in">
+    <div class="analogy-title">🏥 The Hospital Analogy</div>
+    <div class="analogy-text">You walk into a hospital with a broken finger. In a <strong>regular AI model</strong>, every single doctor: the cardiologist, the neurologist, the oncologist, the psychiatrist: all examine your finger at the same time, every time. Expensive, slow, and mostly pointless. <strong>Mixture of Experts</strong> sends you straight to the hand specialist. Done.</div>
+  </div>
+
+  <div class="compare-grid stagger">
+    <div class="compare-card bad">
+      <div class="compare-title">Traditional Dense Model <span class="tag-bad">Wasteful</span></div>
+      <div class="neuron-grid" id="dense-neurons"></div>
+      <div class="compute-bar"><div class="compute-fill" id="dense-fill" style="width:100%;background:linear-gradient(90deg,#F87171,#EF4444)"></div></div>
+      <div class="compute-label"><span>Compute used</span><span id="dense-pct" style="color:#F87171">100%</span></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6">Every neuron activates for every single token. Processing "the" uses the same compute as processing a complex equation.</p>
+    </div>
+    <div class="compare-card good">
+      <div class="compare-title">Mixture of Experts <span class="tag-good">Efficient</span></div>
+      <div class="neuron-grid" id="moe-neurons"></div>
+      <div class="compute-bar"><div class="compute-fill" id="moe-fill" style="width:20%;background:linear-gradient(90deg,#34D399,#10B981)"></div></div>
+      <div class="compute-label"><span>Compute used</span><span id="moe-pct" style="color:#34D399">20%</span></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6">Only the relevant experts activate. The right 2 out of 8 fire, and only those 2 do any work.</p>
+    </div>
+  </div>
+
+  <button class="btn" id="animate-neurons-btn">▶ Animate the difference</button>
+</section>
+
+<!-- EXPERTS -->
+<section id="experts">
+  <div class="chapter-label">Chapter 02 Meet the Experts</div>
+  <h2 class="fade-in">Each expert specialises<br>in something different</h2>
+  <p class="section-desc fade-in">Inside a MoE model, there are multiple "expert" neural networks. Each one develops its own specialty during training. Click each expert to see what it's good at.</p>
+
+  <div class="experts-grid stagger">
+    <div class="expert-card" data-e="1" onclick="selectExpert(1)">
+      <div class="expert-icon" style="background:rgba(79,172,254,0.12);border:.5px solid rgba(79,172,254,0.25)">🔢</div>
+      <div class="expert-name" style="color:var(--expert1)">Math Expert</div>
+      <div class="expert-desc">Handles equations, calculations, numerical reasoning, and logical proofs. Activates for anything quantitative.</div>
+      <div class="expert-active-badge" style="background:rgba(79,172,254,0.15);color:var(--expert1);border:.5px solid rgba(79,172,254,0.3)">Active</div>
+    </div>
+    <div class="expert-card" data-e="2" onclick="selectExpert(2)">
+      <div class="expert-icon" style="background:rgba(0,242,96,0.12);border:.5px solid rgba(0,242,96,0.25)">💻</div>
+      <div class="expert-name" style="color:var(--expert2)">Code Expert</div>
+      <div class="expert-desc">Specialises in programming logic, syntax, debugging, and software architecture across languages.</div>
+      <div class="expert-active-badge" style="background:rgba(0,242,96,0.15);color:var(--expert2);border:.5px solid rgba(0,242,96,0.3)">Active</div>
+    </div>
+    <div class="expert-card" data-e="3" onclick="selectExpert(3)">
+      <div class="expert-icon" style="background:rgba(167,139,250,0.12);border:.5px solid rgba(167,139,250,0.25)">🗣️</div>
+      <div class="expert-name" style="color:var(--expert3)">Language Expert</div>
+      <div class="expert-desc">Masters grammar, tone, translation, literary devices, and nuances across human languages.</div>
+      <div class="expert-active-badge" style="background:rgba(167,139,250,0.15);color:var(--expert3);border:.5px solid rgba(167,139,250,0.3)">Active</div>
+    </div>
+    <div class="expert-card" data-e="4" onclick="selectExpert(4)">
+      <div class="expert-icon" style="background:rgba(252,211,77,0.12);border:.5px solid rgba(252,211,77,0.25)">🔬</div>
+      <div class="expert-name" style="color:var(--expert4)">Science Expert</div>
+      <div class="expert-desc">Covers physics, chemistry, biology, and scientific reasoning, from atoms to ecosystems.</div>
+      <div class="expert-active-badge" style="background:rgba(252,211,77,0.15);color:var(--expert4);border:.5px solid rgba(252,211,77,0.3)">Active</div>
+    </div>
+    <div class="expert-card" data-e="5" onclick="selectExpert(5)">
+      <div class="expert-icon" style="background:rgba(251,146,60,0.12);border:.5px solid rgba(251,146,60,0.25)">📜</div>
+      <div class="expert-name" style="color:var(--expert5)">History Expert</div>
+      <div class="expert-desc">Knows dates, events, civilisations, cause-and-effect in human history, and cultural context.</div>
+      <div class="expert-active-badge" style="background:rgba(251,146,60,0.15);color:var(--expert5);border:.5px solid rgba(251,146,60,0.3)">Active</div>
+    </div>
+    <div class="expert-card" data-e="6" onclick="selectExpert(6)">
+      <div class="expert-icon" style="background:rgba(244,114,182,0.12);border:.5px solid rgba(244,114,182,0.25)">🎨</div>
+      <div class="expert-name" style="color:var(--expert6)">Creative Expert</div>
+      <div class="expert-desc">Generates stories, poems, metaphors, and imaginative content. Thinks in narratives and emotion.</div>
+      <div class="expert-active-badge" style="background:rgba(244,114,182,0.15);color:var(--expert6);border:.5px solid rgba(244,114,182,0.3)">Active</div>
+    </div>
+  </div>
+
+  <div class="card fade-in" id="expert-detail" style="display:none">
+    <div id="expert-detail-inner"></div>
+  </div>
+
+  <div class="insight fade-in">
+    <div class="insight-icon">💡</div>
+    <div class="insight-text">These specialties aren't programmed in. They <strong>emerge naturally during training</strong>. The model discovers on its own that it's more efficient to have some neurons focus on math while others focus on language. No human labels these experts.</div>
+  </div>
+</section>
+
+<!-- ROUTER -->
+<section id="router">
+  <div class="chapter-label">Chapter 03 The Router</div>
+  <h2 class="fade-in">The gatekeeper that decides<br>who handles what</h2>
+  <p class="section-desc fade-in">The Router is a small neural network that sits at the entrance of every MoE layer. Its only job: look at the incoming token and decide which 1-3 experts should handle it. Click a question below to watch the routing happen live.</p>
+
+  <div class="router-demo fade-in">
+    <div class="questions-grid" id="questions-grid"></div>
+    <div class="routing-viz">
+      <svg id="routing-svg" viewBox="0 0 800 180" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="routing-result">
+      <div class="routing-result-label">Router Decision</div>
+      <div class="routing-result-text" id="routing-text">Select a question above to see how the router decides which experts to activate.</div>
+      <div class="experts-activated" id="activated-pills"></div>
+    </div>
+  </div>
+
+  <div class="analogy fade-in">
+    <div class="analogy-title">🎯 How the router actually works</div>
+    <div class="analogy-text">The router multiplies the incoming token by a learned weight matrix and applies a <strong>softmax function</strong>, producing a probability score for each expert. It picks the top-K experts (usually 2) with the highest scores. Think of it as the router asking: <strong>"Which experts are most confident they can handle this?"</strong> and picking the two most confident ones.</div>
+  </div>
+</section>
+
+<!-- EFFICIENCY -->
+<section id="efficiency">
+  <div class="chapter-label">Chapter 04 Sparse Activation</div>
+  <h2 class="fade-in">The magic number:<br>only 2 out of N fire</h2>
+  <p class="section-desc fade-in">In most MoE models, only 2 experts activate per token, regardless of how many experts exist in total. Drag the sliders and watch what happens to compute cost and model capacity.</p>
+
+  <div class="slider-demo fade-in">
+    <div class="slider-controls">
+      <div class="slider-row">
+        <span class="slider-label">Total experts</span>
+        <input type="range" id="total-experts" min="4" max="64" value="8" step="4">
+        <span class="slider-val" id="total-experts-val">8</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Active per token</span>
+        <input type="range" id="active-experts" min="1" max="8" value="2" step="1">
+        <span class="slider-val" id="active-experts-val">2</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Params per expert (B)</span>
+        <input type="range" id="params-per" min="1" max="14" value="7" step="1">
+        <span class="slider-val" id="params-per-val">7B</span>
+      </div>
+    </div>
+
+    <div class="efficiency-display">
+      <div class="eff-card">
+        <div class="eff-label">Total Parameters</div>
+        <div class="eff-num" id="total-params" style="color:var(--purple-light)">56B</div>
+        <div class="eff-sub">Model's full knowledge base</div>
+      </div>
+      <div class="eff-card">
+        <div class="eff-label">Active per Token</div>
+        <div class="eff-num" id="active-params" style="color:var(--mint)">14B</div>
+        <div class="eff-sub">Actual compute used</div>
+      </div>
+      <div class="eff-card">
+        <div class="eff-label">Efficiency Ratio</div>
+        <div class="eff-num" id="efficiency-ratio" style="color:var(--amber)">4x</div>
+        <div class="eff-sub">More knowledge, same compute</div>
+      </div>
+      <div class="eff-card">
+        <div class="eff-label">Activation Rate</div>
+        <div class="eff-num" id="activation-rate" style="color:var(--coral)">25%</div>
+        <div class="eff-sub">Of parameters used per token</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace">TOKEN STREAM: watch the routing happen</div>
+      <div class="token-flow" id="token-flow"></div>
+      <button class="btn" id="stream-btn" style="margin-top:14px">▶ Stream tokens</button>
+    </div>
+  </div>
+
+  <div class="insight fade-in">
+    <div class="insight-icon">⚡</div>
+    <div class="insight-text">This is why MoE is revolutionary: you get the <strong>knowledge of a 560B parameter model</strong> at the <strong>compute cost of a 70B model</strong>. The experts that don't activate don't cost anything   they are just waiting. You scale knowledge without scaling compute.</div>
+  </div>
+</section>
+
+<!-- REAL WORLD -->
+<section id="realworld">
+  <div class="chapter-label">Chapter 05 Real World</div>
+  <h2 class="fade-in">Models you've heard of<br>that use MoE right now</h2>
+  <p class="section-desc fade-in">MoE isn't theoretical   it is powering some of the most capable AI systems running today. Here's how they stack up.</p>
+
+  <div class="models-grid stagger">
+    <div class="model-card">
+      <div class="model-name">Mixtral 8×7B</div>
+      <div class="model-org">Mistral AI · Open Source</div>
+      <div class="model-stat"><span class="model-stat-label">Total experts</span><span class="model-stat-val" style="color:var(--purple-light)">8</span></div>
+      <div class="model-stat"><span class="model-stat-label">Active per token</span><span class="model-stat-val" style="color:var(--mint)">2</span></div>
+      <div class="model-stat"><span class="model-stat-label">Total parameters</span><span class="model-stat-val">46.7B</span></div>
+      <div class="model-stat"><span class="model-stat-label">Active parameters</span><span class="model-stat-val" style="color:var(--mint)">12.9B</span></div>
+      <div class="model-stat"><span class="model-stat-label">Beats</span><span class="model-stat-val" style="color:var(--amber)">Llama 2 70B</span></div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">GPT-4</div>
+      <div class="model-org">OpenAI · Strongly rumoured MoE</div>
+      <div class="model-stat"><span class="model-stat-label">Total experts (rumoured)</span><span class="model-stat-val" style="color:var(--purple-light)">16</span></div>
+      <div class="model-stat"><span class="model-stat-label">Active per token</span><span class="model-stat-val" style="color:var(--mint)">2</span></div>
+      <div class="model-stat"><span class="model-stat-label">Total parameters</span><span class="model-stat-val">~1.8T</span></div>
+      <div class="model-stat"><span class="model-stat-label">Active parameters</span><span class="model-stat-val" style="color:var(--mint)">~220B</span></div>
+      <div class="model-stat"><span class="model-stat-label">Architecture</span><span class="model-stat-val" style="color:var(--amber)">Unconfirmed</span></div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Gemini 1.5</div>
+      <div class="model-org">Google DeepMind</div>
+      <div class="model-stat"><span class="model-stat-label">Architecture</span><span class="model-stat-val" style="color:var(--purple-light)">MoE confirmed</span></div>
+      <div class="model-stat"><span class="model-stat-label">Context window</span><span class="model-stat-val" style="color:var(--mint)">1M tokens</span></div>
+      <div class="model-stat"><span class="model-stat-label">Parameters</span><span class="model-stat-val">Undisclosed</span></div>
+      <div class="model-stat"><span class="model-stat-label">Key feature</span><span class="model-stat-val" style="color:var(--amber)">Long context MoE</span></div>
+      <div class="model-stat"><span class="model-stat-label">Released</span><span class="model-stat-val">2024</span></div>
+    </div>
+    <div class="model-card">
+      <div class="model-name">Mixtral 8×22B</div>
+      <div class="model-org">Mistral AI · Open Source</div>
+      <div class="model-stat"><span class="model-stat-label">Total experts</span><span class="model-stat-val" style="color:var(--purple-light)">8</span></div>
+      <div class="model-stat"><span class="model-stat-label">Active per token</span><span class="model-stat-val" style="color:var(--mint)">2</span></div>
+      <div class="model-stat"><span class="model-stat-label">Total parameters</span><span class="model-stat-val">141B</span></div>
+      <div class="model-stat"><span class="model-stat-label">Active parameters</span><span class="model-stat-val" style="color:var(--mint)">39B</span></div>
+      <div class="model-stat"><span class="model-stat-label">Best at</span><span class="model-stat-val" style="color:var(--amber)">Code + Math</span></div>
+    </div>
+  </div>
+
+  <div class="insight fade-in">
+    <div class="insight-icon">🚀</div>
+    <div class="insight-text">The trend is clear: <strong>every frontier lab is moving to MoE</strong>. It's not a niche trick   it's becoming the default architecture. The reason is simple: you can build a smarter model without needing proportionally more compute to run it.</div>
+  </div>
+</section>
+
+<!-- QUIZ -->
+<section id="quiz">
+  <div class="chapter-label">Chapter 06 Test Yourself</div>
+  <h2 class="fade-in">Did it actually land?</h2>
+  <p class="section-desc fade-in">Three questions. No tricks. Just checking if the concepts stuck.</p>
+
+  <div class="quiz-progress" id="quiz-progress">
+    <div class="qp-dot active"></div>
+    <div class="qp-dot"></div>
+    <div class="qp-dot"></div>
+  </div>
+
+  <div class="quiz-card fade-in" id="quiz-container"></div>
+  <button class="btn btn-primary" id="next-q-btn">Next Question →</button>
+  <div id="quiz-score-display" class="quiz-score" style="display:none"></div>
+</section>
+
+<footer>
+  Made with <span>AIParameters</span> · Mixture of Experts Interactive Workbook · Built for YouTube
+</footer>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+// PROGRESS BAR
+window.addEventListener('scroll', () => {
+  const doc = document.documentElement;
+  const pct = (window.scrollY / (doc.scrollHeight - doc.clientHeight)) * 100;
+  document.getElementById('progress').style.width = pct + '%';
+});
+
+// NAV ACTIVE
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-chapters a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 200) current = s.id; });
+  navLinks.forEach(l => { l.classList.remove('active'); if (l.getAttribute('href') === '#' + current) l.classList.add('active'); });
+});
+
+// HERO CANVAS
+const canvas = document.getElementById('hero-canvas');
+const ctx = canvas.getContext('2d');
+let nodes = [], W, H;
+function resizeCanvas() {
+  W = canvas.width = canvas.offsetWidth;
+  H = canvas.height = canvas.offsetHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+const colors = ['#7C3AED','#DB2777','#2563EB','#059669','#B45309'];
+for (let i = 0; i < 60; i++) {
+  nodes.push({x:Math.random()*W, y:Math.random()*H, vx:(Math.random()-0.5)*0.4, vy:(Math.random()-0.5)*0.4, r:Math.random()*2+1, c:colors[Math.floor(Math.random()*colors.length)], a:Math.random()});
+}
+function drawCanvas() {
+  ctx.clearRect(0,0,W,H);
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy;
+    if (n.x < 0 || n.x > W) n.vx *= -1;
+    if (n.y < 0 || n.y > H) n.vy *= -1;
+    ctx.beginPath(); ctx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    ctx.fillStyle = n.c; ctx.globalAlpha = n.a * 0.6; ctx.fill();
+  });
+  nodes.forEach((a,i) => {
+    nodes.forEach((b,j) => {
+      if (i >= j) return;
+      const d = Math.hypot(a.x-b.x,a.y-b.y);
+      if (d < 120) {
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle = '#7C3AED'; ctx.globalAlpha = (1-d/120)*0.12; ctx.lineWidth = 0.5; ctx.stroke();
+      }
+    });
+  });
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(drawCanvas);
+}
+drawCanvas();
+
+// HERO STAT COUNTERS
+function countUp(id, target, suffix, dur) {
+  const el = document.getElementById(id);
+  let start = 0; const step = target / (dur / 16);
+  const t = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = (Math.round(start)) + suffix;
+    if (start >= target) clearInterval(t);
+  }, 16);
+}
+setTimeout(() => {
+  countUp('s1','141','B',1200);
+  countUp('s2','25','%',1000);
+  countUp('s3','4','x',800);
+}, 400);
+
+// SCROLL ANIMATIONS
+document.querySelectorAll('.fade-in').forEach(el => {
+  gsap.fromTo(el, {opacity:0,y:24}, {opacity:1,y:0,duration:0.7,ease:'power2.out',scrollTrigger:{trigger:el,start:'top 88%'}});
+});
+document.querySelectorAll('.stagger').forEach(el => {
+  gsap.fromTo(el.children, {opacity:0,y:20}, {opacity:1,y:0,duration:0.5,stagger:0.1,ease:'power2.out',scrollTrigger:{trigger:el,start:'top 85%'}});
+});
+
+// BUILD NEURONS
+function buildNeurons() {
+  const dense = document.getElementById('dense-neurons');
+  const moe = document.getElementById('moe-neurons');
+  for (let i = 0; i < 20; i++) {
+    const d = document.createElement('div');
+    d.className = 'neuron active'; d.id = 'dn'+i; d.textContent = i+1;
+    dense.appendChild(d);
+    const m = document.createElement('div');
+    m.className = 'neuron inactive'; m.id = 'mn'+i; m.textContent = i+1;
+    moe.appendChild(m);
+  }
+}
+buildNeurons();
+
+document.getElementById('animate-neurons-btn').addEventListener('click', function() {
+  const active = [2,7,14,19];
+  for (let i = 0; i < 20; i++) {
+    const mn = document.getElementById('mn'+i);
+    mn.className = 'neuron inactive';
+    mn.style.background = '';
+    mn.style.boxShadow = '';
+  }
+  this.disabled = true;
+  const colors20 = ['#4FACFE','#00F260','#A78BFA','#FCD34D'];
+  active.forEach((idx, ci) => {
+    setTimeout(() => {
+      const mn = document.getElementById('mn'+idx);
+      mn.className = 'neuron moe-active';
+      mn.style.background = `rgba(${hexToRgb(colors20[ci])},0.8)`;
+      mn.style.boxShadow = `0 0 12px rgba(${hexToRgb(colors20[ci])},0.5)`;
+      gsap.fromTo(mn,{scale:0.5},{scale:1,duration:0.4,ease:'back.out(2)'});
+    }, ci * 200);
+  });
+  setTimeout(() => {
+    document.getElementById('moe-pct').textContent = '20%';
+    this.disabled = false;
+  }, 1000);
+});
+
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : '255,255,255';
+}
+
+// EXPERT DETAIL
+const expertData = {
+  1:{name:'Math Expert',color:'var(--expert1)',icon:'🔢',good:['Algebra & calculus','Statistics & probability','Numerical reasoning','Logical proofs','Word problems'],bad:['Creative writing','Historical context','Emotional nuance'],sample:'What is the derivative of x³? → Activates Math Expert → "3x²"'},
+  2:{name:'Code Expert',color:'var(--expert2)',icon:'💻',good:['Python, JS, C++','Debugging logic','Algorithm design','API documentation','System architecture'],bad:['Poetry','Historical dates','Emotional support'],sample:'How do I reverse a list in Python? → Activates Code Expert → "list[::-1]"'},
+  3:{name:'Language Expert',color:'var(--expert3)',icon:'🗣️',good:['Grammar & syntax','Translation','Literary analysis','Tone & register','Multilingual text'],bad:['Complex math','Low-level code','Scientific formulas'],sample:'Translate "hello" to French? → Activates Language Expert → "Bonjour"'},
+  4:{name:'Science Expert',color:'var(--expert4)',icon:'🔬',good:['Physics concepts','Biology & genetics','Chemical reactions','Scientific method','Astronomy'],bad:['Creative metaphors','Historical politics','Code syntax'],sample:'Why is the sky blue? → Activates Science Expert → "Rayleigh scattering..."'},
+  5:{name:'History Expert',color:'var(--expert5)',icon:'📜',good:['Historical dates & events','Civilisations & empires','Cause and effect','Political history','Cultural context'],bad:['Future predictions','Code debugging','Mathematical proofs'],sample:'When did WW2 end? → Activates History Expert → "2 September 1945"'},
+  6:{name:'Creative Expert',color:'var(--expert6)',icon:'🎨',good:['Story generation','Poetry & metaphor','Emotional resonance','World building','Character development'],bad:['Precise calculations','Code syntax','Scientific accuracy'],sample:'Write me a haiku about rain → Activates Creative Expert → "Silver threads fall soft..."'}
+};
+function selectExpert(n) {
+  document.querySelectorAll('.expert-card').forEach(c => c.classList.remove('selected'));
+  document.querySelector(`.expert-card[data-e="${n}"]`).classList.add('selected');
+  const d = expertData[n];
+  const el = document.getElementById('expert-detail');
+  el.style.display = 'block';
+  document.getElementById('expert-detail-inner').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <span style="font-size:28px">${d.icon}</span>
+      <span style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:600;color:${d.color}">${d.name}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'JetBrains Mono',monospace;margin-bottom:8px">Good at</div>
+        ${d.good.map(g=>`<div style="font-size:13px;color:var(--text);padding:4px 0;display:flex;align-items:center;gap:8px"><span style="color:${d.color}">✓</span>${g}</div>`).join('')}
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'JetBrains Mono',monospace;margin-bottom:8px">Weaker at</div>
+        ${d.bad.map(b=>`<div style="font-size:13px;color:var(--muted);padding:4px 0;display:flex;align-items:center;gap:8px"><span style="color:rgba(239,68,68,0.6)">×</span>${b}</div>`).join('')}
+      </div>
+    </div>
+    <div style="background:rgba(0,0,0,0.03);border-radius:8px;padding:14px;border:.5px solid var(--border)">
+      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px">EXAMPLE ROUTING</div>
+      <div style="font-size:13px;color:${d.color};font-family:'JetBrains Mono',monospace">${d.sample}</div>
+    </div>`;
+  gsap.fromTo(el,{opacity:0,y:12},{opacity:1,y:0,duration:0.4,ease:'power2.out'});
+}
+
+// ROUTER DEMO
+const questions = [
+  {q:'What is 15% of 340?', experts:[1], labels:['Math Expert'], colors:['var(--expert1)'], result:'Routing to Math Expert → calculating 15% of 340 = 51. Pure numerical reasoning, no creativity needed.'},
+  {q:'Write me a short poem about rain', experts:[3,6], labels:['Language Expert','Creative Expert'], colors:['var(--expert3)','var(--expert6)'], result:'Routing to Language + Creative experts → this needs poetic language AND creative imagination. Two experts collaborate.'},
+  {q:'Debug this Python loop', experts:[2], labels:['Code Expert'], colors:['var(--expert2)'], result:'Routing to Code Expert → syntax and logic analysis. Clean activation, single specialist handles it.'},
+  {q:'Why do stars twinkle?', experts:[4], labels:['Science Expert'], colors:['var(--expert4)'], result:'Routing to Science Expert → atmospheric optics and light refraction. Physics domain, single expert.'},
+  {q:'Translate "dream" to Spanish', experts:[3], labels:['Language Expert'], colors:['var(--expert3)'], result:'Routing to Language Expert → "sueño". Cross-linguistic mapping, pure language domain.'},
+  {q:'When was the Eiffel Tower built?', experts:[5], labels:['History Expert'], colors:['var(--expert5)'], result:'Routing to History Expert → 1887–1889, built by Gustave Eiffel for the 1889 World\'s Fair.'},
+  {q:'Explain quantum entanglement simply', experts:[4,3], labels:['Science Expert','Language Expert'], colors:['var(--expert4)','var(--expert3)'], result:'Routing to Science + Language experts → needs accurate physics AND accessible language. Smart dual activation.'},
+  {q:'Write a hero origin story', experts:[6,3], labels:['Creative Expert','Language Expert'], colors:['var(--expert6)','var(--expert3)'], result:'Routing to Creative + Language experts → narrative imagination AND linguistic craft. Two experts combine.'},
+  {q:'What caused WW1?', experts:[5], labels:['History Expert'], colors:['var(--expert5)'], result:'Routing to History Expert → Assassination of Franz Ferdinand, alliance systems, imperial tensions. Pure history.'},
+];
+const qGrid = document.getElementById('questions-grid');
+questions.forEach((q,i) => {
+  const btn = document.createElement('button');
+  btn.className = 'q-btn'; btn.textContent = q.q;
+  btn.onclick = () => routeQuestion(i);
+  qGrid.appendChild(btn);
+});
+
+function routeQuestion(idx) {
+  document.querySelectorAll('.q-btn').forEach((b,i) => { b.classList.toggle('active', i===idx); });
+  const q = questions[idx];
+  drawRoutingViz(q);
+  setTimeout(() => {
+    document.getElementById('routing-text').textContent = q.result;
+    const pills = document.getElementById('activated-pills');
+    pills.innerHTML = '';
+    q.labels.forEach((l,i) => {
+      const p = document.createElement('div');
+      p.className = 'activated-pill';
+      p.style.background = `rgba(${hexToRgb(q.colors[i].replace('var(--expert','').replace(')',''))},0.15)`;
+      p.style.color = q.colors[i]; p.style.border = `.5px solid ${q.colors[i].replace(')',',0.4)')}`;
+      p.textContent = '⚡ ' + l; pills.appendChild(p);
+      setTimeout(() => { p.style.opacity='1'; p.style.transform='translateY(0)'; }, i*150);
+    });
+  }, 800);
+}
+
+const expertColors2 = {1:'var(--expert1)',2:'var(--expert2)',3:'var(--expert3)',4:'var(--expert4)',5:'var(--expert5)',6:'var(--expert6)'};
+const expertNames = {1:'Math',2:'Code',3:'Language',4:'Science',5:'History',6:'Creative'};
+function drawRoutingViz(q) {
+  const svg = document.getElementById('routing-svg');
+  svg.innerHTML = '';
+  const W=800, H=180;
+  // Router box
+  const rg = createSVGEl('g');
+  const rrect = createSVGEl('rect',{x:300,y:70,width:200,height:40,rx:10,fill:'rgba(124,58,237,0.08)',stroke:'#8B5CF6','stroke-width':1});
+  const rtxt = createSVGEl('text',{x:400,y:95,'text-anchor':'middle','dominant-baseline':'middle',fill:'#6D28D9','font-size':13,'font-family':'Space Grotesk, sans-serif','font-weight':600});
+  rtxt.textContent = '⚡ Router';
+  rg.appendChild(rrect); rg.appendChild(rtxt); svg.appendChild(rg);
+  // Input arrow
+  const inp = createSVGEl('line',{x1:50,y1:90,x2:295,y2:90,stroke:'rgba(255,255,255,0.2)','stroke-width':1.5,'stroke-dasharray':'4,3'});
+  svg.appendChild(inp);
+  const inTxt = createSVGEl('text',{x:30,y:95,'text-anchor':'middle',fill:'rgba(255,255,255,0.4)','font-size':11});
+  inTxt.textContent = 'token';
+  svg.appendChild(inTxt);
+  // Expert outputs
+  const allExperts = [1,2,3,4,5,6];
+  allExperts.forEach((e,i) => {
+    const isActive = q.experts.includes(e);
+    const x2 = 720, y2 = 20 + i * 27;
+    const line = createSVGEl('line',{x1:500,y1:90,x2:x2-60,y2:y2,stroke:isActive?expertColors2[e]:'rgba(255,255,255,0.08)','stroke-width':isActive?2:0.8});
+    svg.appendChild(line);
+    const dot = createSVGEl('circle',{cx:x2-50,cy:y2,r:6,fill:isActive?expertColors2[e]:'rgba(255,255,255,0.08)'});
+    svg.appendChild(dot);
+    const label = createSVGEl('text',{x:x2-38,y:y2+4,'text-anchor':'start',fill:isActive?expertColors2[e]:'rgba(255,255,255,0.25)','font-size':11,'font-family':'Inter, sans-serif'});
+    label.textContent = expertNames[e];
+    svg.appendChild(label);
+    if (isActive) {
+      // animate particle
+      const particle = createSVGEl('circle',{r:4,fill:expertColors2[e]});
+      svg.appendChild(particle);
+      animateParticle(particle, 500, 90, x2-50, y2, 600);
+    }
+  });
+}
+function createSVGEl(tag, attrs={}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg',tag);
+  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+  return el;
+}
+function animateParticle(el, x1, y1, x2, y2, dur) {
+  const start = performance.now();
+  function frame(t) {
+    const p = Math.min((t-start)/dur,1);
+    const ease = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
+    el.setAttribute('cx', x1 + (x2-x1)*ease);
+    el.setAttribute('cy', y1 + (y2-y1)*ease);
+    el.setAttribute('opacity', p < 0.9 ? 1 : 1-(p-0.9)/0.1);
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// Draw initial routing viz
+routeQuestion(0);
+
+// SLIDER SECTION
+const totalE = document.getElementById('total-experts');
+const activeE = document.getElementById('active-experts');
+const paramsP = document.getElementById('params-per');
+function updateSliders() {
+  const te = parseInt(totalE.value), ae = Math.min(parseInt(activeE.value),te), pp = parseInt(paramsP.value);
+  document.getElementById('total-experts-val').textContent = te;
+  document.getElementById('active-experts-val').textContent = ae;
+  document.getElementById('params-per-val').textContent = pp+'B';
+  if (ae > te) { activeE.max = te; activeE.value = te; }
+  const total = te * pp, active = ae * pp, ratio = (total/active).toFixed(1), rate = Math.round((ae/te)*100);
+  document.getElementById('total-params').textContent = total + 'B';
+  document.getElementById('active-params').textContent = active + 'B';
+  document.getElementById('efficiency-ratio').textContent = ratio + 'x';
+  document.getElementById('activation-rate').textContent = rate + '%';
+}
+[totalE, activeE, paramsP].forEach(s => s.addEventListener('input', updateSliders));
+
+// TOKEN STREAM
+const tokenWords = ['The','quick','brown','fox','jumps','over','the','lazy','dog','and','runs','through','the','forest','at','dawn'];
+const tokenFlow = document.getElementById('token-flow');
+let streaming = false;
+document.getElementById('stream-btn').addEventListener('click', function() {
+  if (streaming) return;
+  streaming = true; this.textContent = '⏳ Streaming...'; this.disabled = true;
+  tokenFlow.innerHTML = '';
+  tokenWords.forEach((w,i) => {
+    const chip = document.createElement('div');
+    chip.className = 'token-chip'; chip.textContent = w; chip.style.opacity = 0;
+    tokenFlow.appendChild(chip);
+    setTimeout(() => {
+      chip.style.opacity = 1;
+      setTimeout(() => { chip.classList.add('routing'); }, 200);
+    }, i * 280);
+  });
+  setTimeout(() => {
+    this.textContent = '▶ Stream tokens'; this.disabled = false; streaming = false;
+  }, tokenWords.length * 280 + 800);
+});
+
+// QUIZ DATA
+const quizzes = [
+  {
+    q: 'In a Mixture of Experts model with 8 total experts, how many typically activate for each token?',
+    options: ['All 8: every expert processes everything','Just 1: only the most confident expert','Usually 2: the top-scoring experts','It depends on token length'],
+    correct: 1,
+    feedback: {
+      correct: 'Exactly right. Most MoE models (including Mixtral) activate top-2 experts per token. This is the "sparse" in sparse activation. The vast majority of experts stay idle for any given token.',
+      wrong: 'Not quite. The standard is top-2 experts per token. Sparse enough to save compute, but enough overlap to combine expertise when needed.'
+    }
+  },
+  {
+    q: 'What does the Router actually do in a Mixture of Experts model?',
+    options: ['Stores all the model\'s knowledge','Decides which experts handle each token','Trains the expert networks','Generates the final output text'],
+    correct: 1,
+    feedback: {
+      correct: 'Correct. The router is a lightweight neural network that scores each expert and picks the top-K. It\'s the traffic controller, not storing knowledge, just directing traffic.',
+      wrong: 'The router\'s only job is routing. It\'s a small network that looks at each incoming token and decides which expert(s) should handle it. Think of it as a very smart receptionist.'
+    }
+  },
+  {
+    q: 'What is the key advantage of MoE over a traditional dense model of the same active parameter count?',
+    options: ['MoE is always faster to train','MoE has more total knowledge for the same compute cost','MoE never makes mistakes','MoE uses less memory when idle'],
+    correct: 1,
+    feedback: {
+      correct: 'Nailed it. This is the core insight: you can pack far more total parameters (knowledge) into a MoE model while keeping the active compute per token the same as a smaller dense model. More knowledge, same cost.',
+      wrong: 'The real advantage is capacity vs compute decoupling. A MoE can have 4x-8x more total parameters than a dense model while using the same compute per token, meaning vastly more knowledge at no extra inference cost.'
+    }
+  }
+];
+let currentQ = 0, score = 0, answered = false;
+function renderQuiz() {
+  const q = quizzes[currentQ];
+  const dots = document.querySelectorAll('.qp-dot');
+  dots.forEach((d,i) => { d.className = 'qp-dot' + (i < currentQ ? ' done' : i === currentQ ? ' active' : ''); });
+  document.getElementById('quiz-container').innerHTML = `
+    <div class="quiz-q">Q${currentQ+1}. ${q.q}</div>
+    <div class="quiz-options">
+      ${q.options.map((o,i) => `<button class="quiz-opt" onclick="answerQ(${i})">${o}</button>`).join('')}
+    </div>
+    <div class="quiz-feedback" id="qfeedback"></div>`;
+  document.getElementById('next-q-btn').style.display = 'none';
+  answered = false;
+}
+function answerQ(idx) {
+  if (answered) return;
+  answered = true;
+  const q = quizzes[currentQ];
+  const opts = document.querySelectorAll('.quiz-opt');
+  opts.forEach((o,i) => {
+    o.disabled = true;
+    if (i === q.correct) o.classList.add('correct');
+    else if (i === idx && idx !== q.correct) o.classList.add('wrong');
+  });
+  const fb = document.getElementById('qfeedback');
+  const isCorrect = idx === q.correct;
+  if (isCorrect) score++;
+  fb.className = 'quiz-feedback ' + (isCorrect ? 'correct' : 'wrong');
+  fb.textContent = isCorrect ? '✓ ' + q.feedback.correct : '✗ ' + q.feedback.wrong;
+  gsap.fromTo(fb,{opacity:0,y:8},{opacity:1,y:0,duration:0.3});
+  const nbtn = document.getElementById('next-q-btn');
+  nbtn.style.display = 'block';
+  nbtn.textContent = currentQ < quizzes.length-1 ? 'Next Question →' : 'See Results →';
+  gsap.fromTo(nbtn,{opacity:0},{opacity:1,duration:0.3,delay:0.2});
+}
+document.getElementById('next-q-btn').addEventListener('click', () => {
+  currentQ++;
+  if (currentQ >= quizzes.length) showScore();
+  else renderQuiz();
+});
+function showScore() {
+  document.getElementById('quiz-container').style.display = 'none';
+  document.getElementById('next-q-btn').style.display = 'none';
+  document.querySelectorAll('.qp-dot').forEach(d => d.className = 'qp-dot done');
+  const msgs = [
+    'Not bad for a start. Re-read chapters 3 and 4 and come back. You\'ll get it.',
+    'Good. You understand the basics. The efficiency concept in chapter 4 is worth another read.',
+    'Sharp. You\'ve genuinely understood MoE. You could explain this to someone else right now.'
+  ];
+  const pct = Math.round((score/quizzes.length)*100);
+  const scoreDiv = document.getElementById('quiz-score-display');
+  scoreDiv.innerHTML = `
+    <div class="score-num">${score}/${quizzes.length}</div>
+    <div class="score-label">${pct}% correct</div>
+    <div class="score-msg">${msgs[score-1] || msgs[0]}</div>
+    <button class="btn" onclick="restartQuiz()" style="margin-top:24px">↺ Try again</button>`;
+  scoreDiv.style.display = 'block';
+  gsap.fromTo(scoreDiv,{opacity:0,scale:0.95},{opacity:1,scale:1,duration:0.5,ease:'back.out(1.5)'});
+}
+function restartQuiz() {
+  currentQ = 0; score = 0;
+  document.getElementById('quiz-container').style.display = 'block';
+  document.getElementById('quiz-score-display').style.display = 'none';
+  renderQuiz();
+}
+renderQuiz();
+</script>
+</body>
+</html>
