@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Wire Any Model Into Claude Code — Self-Hosted Routing Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg:        #0c1014;
+    --bg-2:      #11171d;
+    --panel:     #161d25;
+    --panel-2:   #1c252f;
+    --line:      #28333f;
+    --line-soft: #1f2a34;
+    --ink:       #e8eef4;
+    --ink-dim:   #9aa9b8;
+    --ink-faint: #5d6e7e;
+    --signal:    #f5a623;
+    --signal-2:  #ffce6b;
+    --glm:       #c792ea;
+    --local:     #8ab4ff;
+    --danger:    #ff7a6b;
+    --radius:    14px;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background:
+      radial-gradient(900px 600px at 78% -8%, rgba(245,166,35,0.10), transparent 60%),
+      radial-gradient(700px 500px at 5% 18%, rgba(199,146,234,0.06), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: rgba(245,166,35,0.3); color: #fff; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
+
+  .statusbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(12,16,20,0.82);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line-soft);
+    font-family: var(--mono); font-size: 12px;
+  }
+  .statusbar .wrap { display: flex; align-items: center; gap: 18px; height: 46px; }
+  .sb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--signal);
+    box-shadow: 0 0 0 0 rgba(245,166,35,0.6); animation: pulse 2.4s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(245,166,35,0.55); }
+    70% { box-shadow: 0 0 0 7px rgba(245,166,35,0); }
+    100% { box-shadow: 0 0 0 0 rgba(245,166,35,0); }
+  }
+  .sb-brand { letter-spacing: 0.5px; color: var(--ink); font-weight: 700; }
+  .sb-path { color: var(--ink-faint); }
+  .sb-spacer { flex: 1; }
+  .sb-link { color: var(--ink-dim); text-decoration: none; transition: color .2s; }
+  .sb-link:hover { color: var(--signal); }
+  @media (max-width: 640px){ .sb-path, .sb-link { display:none; } }
+
+  header.hero { padding: 86px 0 54px; position: relative; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: 2.5px;
+    text-transform: uppercase; color: var(--signal);
+    display: inline-flex; align-items: center; gap: 10px; margin-bottom: 26px;
+  }
+  .eyebrow::before { content:''; width: 26px; height: 1px; background: var(--signal); display:inline-block; }
+
+  h1 {
+    font-family: var(--mono); font-weight: 800;
+    font-size: clamp(2.3rem, 6vw, 4.05rem);
+    line-height: 1.04; letter-spacing: -1.5px; margin-bottom: 26px;
+  }
+  h1 .alias { color: var(--signal); position: relative; }
+  h1 .caret { color: var(--signal); animation: blink 1.1s steps(1) infinite; font-weight: 400; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .lede { font-size: 1.18rem; color: var(--ink-dim); max-width: 640px; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  .hero-meta { margin-top: 38px; display: flex; flex-wrap: wrap; gap: 10px;
+    font-family: var(--mono); font-size: 12.5px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--panel);
+    padding: 7px 13px; border-radius: 999px; color: var(--ink-dim);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .chip i { width: 6px; height: 6px; border-radius: 50%; display:inline-block; }
+  .chip.glm i { background: var(--glm); }
+  .chip.loc i { background: var(--local); }
+  .chip.env i { background: var(--signal); }
+
+  .router {
+    margin: 14px 0 12px;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: linear-gradient(180deg, var(--panel), var(--bg-2));
+    padding: 30px 26px 26px; position: relative; overflow: hidden;
+  }
+  .router-head { display: flex; align-items: baseline; justify-content: space-between;
+    font-family: var(--mono); margin-bottom: 24px; flex-wrap: wrap; gap: 6px; }
+  .router-head .t { font-size: 14px; font-weight: 700; letter-spacing: .3px; }
+  .router-head .s { font-size: 11.5px; color: var(--ink-faint); }
+
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: stretch; }
+  @media (max-width: 760px){ .flow { grid-template-columns: 1fr; gap: 18px; } }
+
+  .node {
+    border: 1px solid var(--line); border-radius: 11px; background: var(--panel-2);
+    padding: 18px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .node .nlabel { font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--ink-faint); }
+  .node .nname { font-family: var(--mono); font-weight: 700; font-size: 15px; }
+  .node .ndesc { font-size: 12.5px; color: var(--ink-dim); }
+  .source .nname { color: var(--signal); }
+
+  .core { display: flex; flex-direction: column; justify-content: center;
+    padding: 0 22px; position: relative; min-width: 168px; }
+  @media (max-width: 760px){ .core { padding: 4px 0; min-width: 0; } }
+  .pipe { position: relative; height: 2px; background: var(--line); border-radius: 2px;
+    margin: 7px 0; overflow: visible; }
+  .pipe .packet { position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%;
+    transform: translateY(-50%); }
+  .pipe .lbl { position: absolute; top: -19px; left: 0; font-family: var(--mono);
+    font-size: 10.5px; color: var(--ink-faint); }
+  .pipe.glm .packet { background: var(--glm); box-shadow: 0 0 9px var(--glm); }
+  .pipe.loc .packet { background: var(--local); box-shadow: 0 0 9px var(--local); }
+  .pipe.glm .lbl { color: var(--glm); }
+  .pipe.loc .lbl { color: var(--local); }
+  @media (max-width: 760px){
+    .pipe { height: 26px; width: 2px; margin: 0 auto; background: var(--line); }
+    .pipe .lbl { top: 50%; left: 12px; transform: translateY(-50%); white-space: nowrap; }
+    .pipe .packet { left: 50%; top: 0; transform: translateX(-50%); }
+  }
+  .targets { display: flex; flex-direction: column; gap: 14px; }
+
+  section { padding: 60px 0; border-top: 1px solid var(--line-soft); }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+  .sec-num { font-family: var(--mono); font-size: 13px; color: var(--signal);
+    font-weight: 700; letter-spacing: 1px; padding-top: 4px; }
+  h2 { font-family: var(--mono); font-weight: 800; font-size: clamp(1.5rem, 3.2vw, 2.1rem);
+    letter-spacing: -0.6px; line-height: 1.15; }
+  .sec-sub { color: var(--ink-dim); max-width: 660px; margin: 14px 0 30px;
+    margin-left: 0; font-size: 1.03rem; }
+  @media (min-width: 720px){ .sec-sub { margin-left: 44px; } }
+
+  .code { border: 1px solid var(--line); border-radius: 12px; background: #0a0e12;
+    overflow: hidden; margin: 18px 0; position: relative; }
+  .code-bar { display: flex; align-items: center; gap: 8px; padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft); background: var(--panel);
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  .code-bar .fname { color: var(--ink-dim); }
+  .code-bar .grow { flex: 1; }
+  .copy-btn { font-family: var(--mono); font-size: 11px; color: var(--ink-dim);
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 4px 10px; cursor: pointer; transition: all .18s; letter-spacing: .5px; }
+  .copy-btn:hover { color: var(--signal); border-color: var(--signal); }
+  .copy-btn.done { color: var(--glm); border-color: var(--glm); }
+  pre { padding: 16px 18px; overflow-x: auto; font-family: var(--mono);
+    font-size: 13px; line-height: 1.72; }
+  pre code { white-space: pre; }
+  .c-cmt { color: #5d7488; }
+  .c-var { color: var(--signal-2); }
+  .c-str { color: var(--glm); }
+  .c-fn  { color: var(--local); }
+  .c-kw  { color: #f08fb0; }
+
+  .aliases { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+  @media (max-width: 720px){ .aliases { grid-template-columns: 1fr; } }
+  .acard { border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+    padding: 20px; position: relative; overflow: hidden; }
+  .acard::before { content:''; position:absolute; left:0; top:0; bottom:0; width: 3px; }
+  .acard.glm::before { background: var(--glm); }
+  .acard.loc::before { background: var(--local); }
+  .acard .tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--ink-faint); margin-bottom: 10px; }
+  .acard .cmd { font-family: var(--mono); font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+  .acard.glm .cmd { color: var(--glm); }
+  .acard.loc .cmd { color: var(--local); }
+  .acard .desc { font-size: 13px; color: var(--ink-dim); }
+  .acard .row { display:flex; justify-content: space-between; font-family: var(--mono);
+    font-size: 11.5px; color: var(--ink-faint); margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed var(--line); }
+  .acard .row b { color: var(--ink-dim); font-weight: 500; }
+
+  .note { display: flex; gap: 14px; border: 1px solid var(--line);
+    border-left: 3px solid var(--signal); border-radius: 10px;
+    background: linear-gradient(90deg, rgba(245,166,35,0.06), transparent);
+    padding: 16px 18px; margin: 22px 0; font-size: 14px; color: var(--ink-dim); }
+  .note.warn { border-left-color: var(--danger);
+    background: linear-gradient(90deg, rgba(255,122,107,0.07), transparent); }
+  .note .ic { font-family: var(--mono); font-weight: 800; color: var(--signal); flex-shrink: 0; }
+  .note.warn .ic { color: var(--danger); }
+  .note b { color: var(--ink); }
+  .note code { font-family: var(--mono); font-size: 12.5px; color: var(--signal-2);
+    background: var(--panel); padding: 1px 5px; border-radius: 4px; }
+
+  .specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 8px 0 4px; }
+  @media (max-width: 720px){ .specs { grid-template-columns: 1fr 1fr; } }
+  .spec { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 16px; }
+  .spec.g .v { color: var(--glm); }
+  .spec.l .v { color: var(--local); }
+  .spec .v { font-family: var(--mono); font-weight: 800; font-size: 1.45rem; }
+  .spec .k { font-size: 12px; color: var(--ink-faint); margin-top: 3px; }
+
+  .quant-table { width: 100%; border-collapse: collapse; margin: 18px 0 4px;
+    font-family: var(--mono); font-size: 12.5px; }
+  .quant-table th, .quant-table td { text-align: left; padding: 10px 12px;
+    border-bottom: 1px solid var(--line-soft); }
+  .quant-table th { color: var(--ink-faint); font-weight: 600; letter-spacing: .5px;
+    text-transform: uppercase; font-size: 10.5px; }
+  .quant-table td:first-child { color: var(--local); font-weight: 700; }
+  .quant-table tr.pick td { background: rgba(138,180,255,0.05); }
+  .quant-table .pick td:last-child { color: var(--signal-2); }
+
+  .trouble { display: flex; flex-direction: column; gap: 0; margin-top: 6px;
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .tq { border-bottom: 1px solid var(--line-soft); }
+  .tq:last-child { border-bottom: none; }
+  .tq summary { cursor: pointer; padding: 16px 18px; font-family: var(--mono);
+    font-size: 13.5px; font-weight: 600; color: var(--ink); list-style: none;
+    display: flex; align-items: center; gap: 12px; background: var(--panel); transition: background .15s; }
+  .tq summary:hover { background: var(--panel-2); }
+  .tq summary::-webkit-details-marker { display: none; }
+  .tq summary .plus { color: var(--signal); font-weight: 800; transition: transform .2s; }
+  .tq[open] summary .plus { transform: rotate(45deg); }
+  .tq .ans { padding: 4px 18px 18px 42px; font-size: 13.5px; color: var(--ink-dim); }
+  .tq .ans code { font-family: var(--mono); font-size: 12.5px; color: var(--signal-2);
+    background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+
+  footer { padding: 50px 0 70px; border-top: 1px solid var(--line-soft);
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink-faint); }
+  footer .row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+  footer a { color: var(--ink-dim); text-decoration: none; }
+  footer a:hover { color: var(--signal); }
+  footer .disc { margin-top: 22px; font-size: 11.5px; line-height: 1.7; max-width: 680px; }
+
+  .reveal { opacity: 0; transform: translateY(18px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="statusbar">
+  <div class="wrap">
+    <span class="sb-dot"></span>
+    <span class="sb-brand">claude-code · model-router</span>
+    <span class="sb-path">~/.claude/settings.json</span>
+    <span class="sb-spacer"></span>
+    <a class="sb-link" href="#glm">self-hosted</a>
+    <a class="sb-link" href="#local">on-device</a>
+    <a class="sb-link" href="#alias">aliases</a>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow reveal">Custom model routing · self-hosted</span>
+    <h1 class="reveal">
+      Run <span class="alias">claude&#8209;glm</span> and<br>
+      <span class="alias">claude&#8209;fable5</span> on<br>
+      hardware you own<span class="caret">▋</span>
+    </h1>
+    <p class="lede reveal">
+      Claude Code speaks the Anthropic Messages API. Point it at your own infrastructure
+      and it routes every request there — no forks, no cloud. This wires up <b>two models
+      you host yourself</b>: GLM 5.2 on a multi-GPU cluster for repo-scale work, and a 12B
+      GGUF on a single laptop — each under its own named alias in the <b>/model</b> picker.
+    </p>
+
+    <div class="hero-meta reveal">
+      <span class="chip glm"><i></i>GLM-5.2-FP8 · vLLM cluster</span>
+      <span class="chip loc"><i></i>gemma-4-12B-coder · on-device</span>
+      <span class="chip env"><i></i>3 env vars · 0 forks</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="router reveal">
+    <div class="router-head">
+      <span class="t">how the redirect works</span>
+      <span class="s">ANTHROPIC_BASE_URL rewrites the destination — nothing else changes</span>
+    </div>
+    <div class="flow">
+      <div class="node source">
+        <span class="nlabel">Origin</span>
+        <span class="nname">Claude Code</span>
+        <span class="ndesc">Emits requests in <span style="color:var(--signal-2)">/v1/messages</span> format, same as always.</span>
+      </div>
+
+      <div class="core">
+        <div class="pipe glm">
+          <span class="lbl">claude-glm →</span>
+          <span class="packet" id="pk-glm"></span>
+        </div>
+        <div class="pipe loc">
+          <span class="lbl">claude-fable5 →</span>
+          <span class="packet" id="pk-loc"></span>
+        </div>
+      </div>
+
+      <div class="targets">
+        <div class="node">
+          <span class="nlabel" style="color:var(--glm)">Endpoint · cluster</span>
+          <span class="nname" style="color:var(--glm)">glm-host:8000</span>
+          <span class="ndesc">vLLM serves the Anthropic Messages API natively.</span>
+        </div>
+        <div class="node">
+          <span class="nlabel" style="color:var(--local)">Endpoint · on-device</span>
+          <span class="nname" style="color:var(--local)">localhost:18080</span>
+          <span class="ndesc">llama-server, also Anthropic-compatible out of the box.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-num">01</span>
+      <h2>Three variables, no patching</h2>
+    </div>
+    <p class="sec-sub reveal">
+      Both models in this guide come down to the same three switches. The base URL moves the
+      destination; the auth token authenticates against it; the custom-model option adds your
+      alias to the picker. Set them per shell, or drop them in
+      <code style="font-family:var(--mono);color:var(--signal-2)">~/.claude/settings.json</code> to make them stick.
+    </p>
+
+    <div class="aliases reveal">
+      <div class="acard glm">
+        <div class="tag">env · destination</div>
+        <div class="cmd">ANTHROPIC_BASE_URL</div>
+        <div class="desc">Where requests go. Any server that answers <span style="font-family:var(--mono)">/v1/messages</span> — including your own.</div>
+        <div class="row"><b>self-hosted</b><span>vLLM · SGLang · llama.cpp</span></div>
+      </div>
+      <div class="acard loc">
+        <div class="tag">env · identity</div>
+        <div class="cmd">ANTHROPIC_AUTH_TOKEN</div>
+        <div class="desc">The bearer token for that endpoint. Use any placeholder for servers you own.</div>
+        <div class="row"><b>local</b><span>"dummy" — unvalidated</span></div>
+      </div>
+    </div>
+
+    <div class="note reveal">
+      <span class="ic">!</span>
+      <div>Set <b>ANTHROPIC_AUTH_TOKEN</b>, not <code>ANTHROPIC_API_KEY</code>, when pointing at your
+      own base URL — and leave <code>ANTHROPIC_API_KEY</code> empty so Claude Code doesn't silently
+      fall back to Anthropic auth. vLLM accepts a dummy value for both.</div>
+    </div>
+  </div>
+</section>
+
+<section id="glm">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-num">02</span>
+      <h2>The cluster route — claude-glm</h2>
+    </div>
+    <p class="sec-sub reveal">
+      GLM 5.2 is Z.ai's flagship coding model (released mid-June 2026): a 753B-parameter MoE
+      with a usable 1M-token context, MIT-licensed open weights, and two reasoning tiers. The
+      FP8 checkpoint is ~750&nbsp;GB — multi-GPU server territory — but once it's up,
+      <span style="font-family:var(--mono)">vLLM</span> exposes the Anthropic Messages API directly,
+      so Claude Code talks to it with zero translation layer.
+    </p>
+
+    <div class="specs reveal">
+      <div class="spec g"><div class="v">753B</div><div class="k">params · MoE · FP8</div></div>
+      <div class="spec g"><div class="v">1M</div><div class="k">context window</div></div>
+      <div class="spec g"><div class="v">~750GB</div><div class="k">VRAM · 8× H200 class</div></div>
+    </div>
+
+    <div class="code reveal">
+      <div class="code-bar">
+        <span class="fname">step 1 — download + serve (vLLM 0.23+)</span>
+        <span class="grow"></span>
+        <button class="copy-btn" data-copy="serve-glm">COPY</button>
+      </div>
+<pre id="src-serve-glm"><code><span class="c-cmt"># ~750 GB of FP8 safetensors — budget 30-60 min on 10 GbE</span>
+<span class="c-fn">huggingface-cli</span> download zai-org/GLM-5.2-FP8 \
+  --local-dir <span class="c-str">/models/glm-5.2-fp8</span> \
+  --local-dir-use-symlinks <span class="c-str">False</span>
+
+<span class="c-cmt"># shard the weights across 8 GPUs; serve the Anthropic API</span>
+<span class="c-fn">vllm</span> serve <span class="c-str">"zai-org/GLM-5.2-FP8"</span> \
+  --tensor-parallel-size <span class="c-str">8</span> \
+  --max-model-len <span class="c-str">262144</span> \
+  --kv-cache-dtype <span class="c-str">fp8</span> \
+  --enable-prefix-caching \
+  --served-model-name <span class="c-str">claude-glm</span> \
+  --host <span class="c-str">0.0.0.0</span> --port <span class="c-str">8000</span></code></pre>
+    </div>
+
+    <div class="code reveal">
+      <div class="code-bar">
+        <span class="fname">step 2 — use-glm.sh</span>
+        <span class="grow"></span>
+        <button class="copy-btn" data-copy="glm">COPY</button>
+      </div>
+<pre id="src-glm"><code><span class="c-cmt"># claude-glm → your vLLM cluster</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_BASE_URL</span>=<span class="c-str">http://glm-host:8000</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_AUTH_TOKEN</span>=<span class="c-str">dummy</span>      <span class="c-cmt"># vLLM doesn't validate it</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_API_KEY</span>=<span class="c-str">dummy</span>
+
+<span class="c-cmt"># the --served-model-name you set above must match these</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_MODEL</span>=<span class="c-str">claude-glm</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_DEFAULT_OPUS_MODEL</span>=<span class="c-str">claude-glm</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_DEFAULT_SONNET_MODEL</span>=<span class="c-str">claude-glm</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_DEFAULT_HAIKU_MODEL</span>=<span class="c-str">claude-glm</span>
+<span class="c-kw">export</span> <span class="c-var">CLAUDE_CODE_SUBAGENT_MODEL</span>=<span class="c-str">claude-glm</span>
+
+<span class="c-cmt"># let the agent use the full million-token window</span>
+<span class="c-kw">export</span> <span class="c-var">CLAUDE_CODE_AUTO_COMPACT_WINDOW</span>=<span class="c-str">1000000</span>
+
+<span class="c-fn">claude</span></code></pre>
+    </div>
+
+    <div class="note warn reveal">
+      <span class="ic">⚠</span>
+      <div>On vLLM <b>≤ 0.17.1</b>, Claude Code's per-request system-prompt hash defeats prefix
+      caching and throughput collapses. Either run <b>vLLM &gt; 0.17.1</b>, or add
+      <code>"CLAUDE_CODE_ATTRIBUTION_HEADER": "0"</code> to the <code>env</code> block of
+      <span style="font-family:var(--mono)">settings.json</span>. Inside a session, run
+      <code>/effort max</code> to engage GLM 5.2's deepest reasoning tier.</div>
+    </div>
+
+    <div class="note reveal">
+      <span class="ic">i</span>
+      <div>Prefer <b>SGLang</b>? Its RadixAttention reuses the long shared prompt across turns and
+      can roughly triple requests/sec at the same hardware:
+      <span style="font-family:var(--mono);color:var(--glm)">python -m sglang.launch_server --model-path zai-org/GLM-5.2-FP8 --tp 8 --context-length 262144</span>.
+      Same wiring afterward.</div>
+    </div>
+  </div>
+</section>
+
+<section id="local">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-num">03</span>
+      <h2>The on-device route — claude-fable5</h2>
+    </div>
+    <p class="sec-sub reveal">
+      Not everyone has eight H200s. <b>gemma-4-12B-coder</b> (the Fable 5 × Composer 2.5 distill)
+      is a 12B coding fine-tune that fits in ~4.5&nbsp;GB of VRAM at Q2 and runs on a single
+      laptop. Recent <span style="font-family:var(--mono)">llama-server</span> builds expose the
+      same Anthropic-compatible endpoint, so the wiring is identical — just a different host.
+    </p>
+
+    <div class="specs reveal">
+      <div class="spec l"><div class="v">12B</div><div class="k">params · gemma4 arch</div></div>
+      <div class="spec l"><div class="v">256K</div><div class="k">context window</div></div>
+      <div class="spec l"><div class="v">~4.5GB</div><div class="k">min VRAM @ Q2_K</div></div>
+    </div>
+
+    <table class="quant-table reveal">
+      <thead><tr><th>Quant</th><th>Size</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td>Q2_K</td><td>4.83 GB</td><td>tiniest — runs almost anywhere</td></tr>
+        <tr><td>Q3_K_M</td><td>6.09 GB</td><td>good for 8 GB VRAM</td></tr>
+        <tr class="pick"><td>Q4_K_M</td><td>7.38 GB</td><td>the sweet spot — recommended</td></tr>
+        <tr><td>Q6_K</td><td>9.79 GB</td><td>near-lossless</td></tr>
+        <tr><td>Q8_0</td><td>12.7 GB</td><td>basically full quality</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code reveal">
+      <div class="code-bar">
+        <span class="fname">step 1 — pull + serve</span>
+        <span class="grow"></span>
+        <button class="copy-btn" data-copy="serve-loc">COPY</button>
+      </div>
+<pre id="src-serve-loc"><code><span class="c-cmt"># grab a recent llama.cpp — this is the gemma4_unified arch,</span>
+<span class="c-cmt"># older builds won't load it</span>
+<span class="c-fn">brew</span> install llama.cpp
+
+<span class="c-cmt"># pull the recommended quant from the Hub and serve it.</span>
+<span class="c-cmt"># --alias is the name Claude Code will send in each request.</span>
+<span class="c-fn">llama-server</span> \
+  -hf <span class="c-str">yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF:Q4_K_M</span> \
+  --alias <span class="c-str">"claude-fable5"</span> \
+  --ctx-size <span class="c-str">16384</span> \
+  --n-gpu-layers <span class="c-str">99</span> \
+  --cache-type-k <span class="c-str">q8_0</span> --cache-type-v <span class="c-str">q8_0</span> \
+  -fa on --no-mmap \
+  --temp <span class="c-str">1.0</span> --top-p <span class="c-str">0.95</span> --top-k <span class="c-str">64</span> \
+  --host <span class="c-str">0.0.0.0</span> --port <span class="c-str">18080</span></code></pre>
+    </div>
+
+    <div class="code reveal">
+      <div class="code-bar">
+        <span class="fname">step 2 — use-fable5.sh</span>
+        <span class="grow"></span>
+        <button class="copy-btn" data-copy="fable">COPY</button>
+      </div>
+<pre id="src-fable"><code><span class="c-cmt"># claude-fable5 → your local llama-server</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_BASE_URL</span>=<span class="c-str">http://localhost:18080</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_AUTH_TOKEN</span>=<span class="c-str">"local"</span>     <span class="c-cmt"># unvalidated, any string</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_API_KEY</span>=<span class="c-str">""</span>
+
+<span class="c-cmt"># the --alias you served must match these exactly</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_MODEL</span>=<span class="c-str">claude-fable5</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_DEFAULT_SONNET_MODEL</span>=<span class="c-str">claude-fable5</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_DEFAULT_HAIKU_MODEL</span>=<span class="c-str">claude-fable5</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_DEFAULT_OPUS_MODEL</span>=<span class="c-str">claude-fable5</span>
+<span class="c-kw">export</span> <span class="c-var">CLAUDE_CODE_SUBAGENT_MODEL</span>=<span class="c-str">claude-fable5</span>
+
+<span class="c-fn">claude</span></code></pre>
+    </div>
+
+    <div class="note reveal">
+      <span class="ic">i</span>
+      <div>The <b>--alias</b> string and <b>ANTHROPIC_MODEL</b> must match character-for-character —
+      that single string is the whole handshake. This model is Python/algorithmic-focused and
+      <b>not safety-aligned</b>, so add your own guardrails for anything production.</div>
+    </div>
+  </div>
+</section>
+
+<section id="alias">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-num">04</span>
+      <h2>Naming them in the /model picker</h2>
+    </div>
+    <p class="sec-sub reveal">
+      The sourceable scripts above give you one launch command per model. To make the aliases
+      <em>visible and selectable</em> inside a running session, register them as custom model
+      options. Claude Code skips validation here, so the name can be any string your endpoint accepts.
+    </p>
+
+    <div class="code reveal">
+      <div class="code-bar">
+        <span class="fname">register a labeled option</span>
+        <span class="grow"></span>
+        <button class="copy-btn" data-copy="picker">COPY</button>
+      </div>
+<pre id="src-picker"><code><span class="c-cmt"># adds a tidy entry to the /model picker</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_CUSTOM_MODEL_OPTION</span>=<span class="c-str">claude-glm</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_CUSTOM_MODEL_OPTION_NAME</span>=<span class="c-str">"claude-glm"</span>
+<span class="c-kw">export</span> <span class="c-var">ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION</span>=<span class="c-str">"GLM 5.2 · self-hosted vLLM"</span></code></pre>
+    </div>
+
+    <div class="note reveal">
+      <span class="ic">i</span>
+      <div>The <code>_NAME</code> and <code>_DESCRIPTION</code> overrides take effect when
+      <b>ANTHROPIC_BASE_URL</b> points at a gateway or self-hosted server. They have <b>no effect</b>
+      when you're connected directly to <span style="font-family:var(--mono)">api.anthropic.com</span>.
+      Need several versions of one family mapped to distinct IDs? Use the
+      <code>modelOverrides</code> setting in <span style="font-family:var(--mono)">settings.json</span> instead.</div>
+    </div>
+
+    <p class="sec-sub reveal" style="margin-top:30px">
+      Keep one script per model — <span style="font-family:var(--mono);color:var(--glm)">use-glm.sh</span>,
+      <span style="font-family:var(--mono);color:var(--local)">use-fable5.sh</span> — and switch with a single
+      <span style="font-family:var(--mono)">source</span>. That's your model selector.
+    </p>
+
+    <div class="code reveal">
+      <div class="code-bar">
+        <span class="fname">switching, day to day</span>
+        <span class="grow"></span>
+        <button class="copy-btn" data-copy="switch">COPY</button>
+      </div>
+<pre id="src-switch"><code><span class="c-cmt"># repo-scale, 1M-context work on the cluster</span>
+<span class="c-fn">source</span> ./use-glm.sh
+
+<span class="c-cmt"># private, offline session on the laptop</span>
+<span class="c-fn">source</span> ./use-fable5.sh
+
+<span class="c-cmt"># back to the real thing</span>
+<span class="c-kw">unset</span> <span class="c-var">ANTHROPIC_BASE_URL</span> <span class="c-var">ANTHROPIC_MODEL</span>
+<span class="c-fn">claude</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section id="fix">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="sec-num">05</span>
+      <h2>When it doesn't connect</h2>
+    </div>
+    <p class="sec-sub reveal">The failures you'll actually hit on self-hosted endpoints, and the one-line fix for each.</p>
+
+    <div class="trouble reveal">
+      <details class="tq">
+        <summary><span class="plus">+</span>Connection refused on launch</summary>
+        <div class="ans">The inference server isn't up yet — the most common issue. Confirm
+          <code>vllm serve</code> (or <code>llama-server</code>) is answering at its port before launching
+          Claude Code. For the cluster, the FP8 download and 8-GPU shard load take minutes; wait for the
+          ready log line.</div>
+      </details>
+      <details class="tq">
+        <summary><span class="plus">+</span>404 Not Found on background calls</summary>
+        <div class="ans">Claude Code is still firing the <code>haiku</code> / <code>sonnet</code> / <code>opus</code>
+          aliases, which resolve to Anthropic IDs your endpoint doesn't serve. Map all of them to your
+          <code>--served-model-name</code> (or <code>--alias</code>) with the
+          <code>ANTHROPIC_DEFAULT_*_MODEL</code> variables shown above.</div>
+      </details>
+      <details class="tq">
+        <summary><span class="plus">+</span>Throughput collapses under load</summary>
+        <div class="ans">Two usual causes on a GLM cluster. First, the per-request system-prompt hash defeating
+          prefix caching — fix with vLLM &gt; 0.17.1 or <code>CLAUDE_CODE_ATTRIBUTION_HEADER=0</code>. Second,
+          KV-cache saturation: watch <code>vllm:gpu_cache_usage_perc</code> on <code>/metrics</code> and back off
+          once you cross ~90% sustained.</div>
+      </details>
+      <details class="tq">
+        <summary><span class="plus">+</span>It answers, but ignores tools or stalls mid-task</summary>
+        <div class="ans">Claude Code's agentic loop was tuned for Claude's tool-calling. Open models can struggle
+          with long read&nbsp;→&nbsp;think&nbsp;→&nbsp;edit chains. For GLM, run <code>/effort max</code> and confirm tool
+          calling is enabled in your serving stack. For the on-device model, make sure you're on a recent
+          llama.cpp build that supports the <code>gemma4_unified</code> architecture, and scope tasks smaller.</div>
+      </details>
+      <details class="tq">
+        <summary><span class="plus">+</span>Stuck on Anthropic even after setting the URL</summary>
+        <div class="ans">A leftover <code>ANTHROPIC_API_KEY</code> can override your endpoint token. Set
+          <code>ANTHROPIC_AUTH_TOKEN</code> for self-hosted endpoints (vLLM accepts a dummy value).
+          To fully reset, <code>unset ANTHROPIC_BASE_URL</code> and relaunch.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="row">
+      <span>claude-code · self-hosted routing guide</span>
+      <span>
+        <a href="https://code.claude.com/docs/en/model-config" target="_blank" rel="noopener">model-config docs</a> ·
+        <a href="https://docs.vllm.ai/en/stable/serving/integrations/claude_code/" target="_blank" rel="noopener">vLLM × Claude Code</a> ·
+        <a href="https://huggingface.co/yuxinlu1/gemma-4-12B-coder-fable5-composer2.5-v1-GGUF" target="_blank" rel="noopener">gemma-4-12B-coder</a>
+      </span>
+    </div>
+    <p class="disc">
+      Model IDs, VRAM figures, and quant sizes reflect vendor and community documentation as of June 2026
+      and can change — confirm current values before relying on them. GLM 5.2 is developed by Z.ai/Zhipu
+      under MIT; the FP8 checkpoint requires multi-GPU infrastructure. gemma-4-12B-coder is a community
+      fine-tune of Google's Gemma 4 under Apache 2.0. Self-hosting and pointing Claude Code at your own
+      endpoints is independent of Anthropic.
+    </p>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById('src-' + btn.dataset.copy);
+      navigator.clipboard.writeText(el.innerText).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = 'COPIED ✓';
+        btn.classList.add('done');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('done'); }, 1500);
+      });
+    });
+  });
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce) {
+    function animatePacket(id, duration, delay) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      let start = null;
+      function frame(ts) {
+        if (start === null) start = ts;
+        const vertical = window.matchMedia('(max-width: 760px)').matches;
+        const t = ((ts - start - delay) % duration) / duration;
+        const p = t < 0 ? 0 : t;
+        if (vertical) { el.style.top = (p * 100) + '%'; el.style.left = '50%'; }
+        else { el.style.left = (p * 100) + '%'; el.style.top = '50%'; }
+        el.style.opacity = (p < 0.04 || p > 0.96) ? '0' : '1';
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+    animatePacket('pk-glm', 1900, 0);
+    animatePacket('pk-loc', 1900, 950);
+  }
+
+  if (!reduce) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          const el = e.target;
+          el.style.transition = 'opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1)';
+          el.style.opacity = '1';
+          el.style.transform = 'none';
+          io.unobserve(el);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal').forEach((el, i) => {
+      el.style.transitionDelay = (Math.min(i % 4, 3) * 60) + 'ms';
+      io.observe(el);
+    });
+  } else {
+    document.querySelectorAll('.reveal').forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
+  }
+</script>
+</body>
+</html>

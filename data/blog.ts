@@ -11,6 +11,18 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "claude-code-routing",
+    file: "/blog/claude-code-routing.html",
+    title: "Wire Any Model Into Claude Code — Self-Hosted Routing",
+    blurb:
+      "Three environment variables, no patching: point Claude Code at any Anthropic-compatible endpoint you host yourself. Route to a cluster (claude-glm) or an on-device model (claude-fable5) — plus how to name them in the /model picker and fix the connection failures you'll actually hit on self-hosted endpoints.",
+    readTime: "~ 8 min",
+    topic: "Claude Code",
+    date: "June 2026",
+    cover:
+      "https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
     slug: "moe",
     file: "/blog/moe.html",
     title: "Mixture of Experts — A Hands-On Workbook",
