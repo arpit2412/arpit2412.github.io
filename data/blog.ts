@@ -11,6 +11,18 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "spec-kit",
+    file: "/blog/spec-kit.html",
+    title: "Spec Kit — How GitHub Killed Vibe Coding",
+    blurb:
+      "GitHub's Spec Kit hit 111K stars in four months by flipping how you build with AI: it makes your agent write a full spec before a single line of code. A hands-on walkthrough of the seven-command workflow, wired for Claude Code — install it and follow along.",
+    readTime: "~ 6 min",
+    topic: "Claude Code",
+    date: "July 2026",
+    cover:
+      "https://images.unsplash.com/photo-1516116216624-53e697fedbea?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
     slug: "claude-code-routing",
     file: "/blog/claude-code-routing.html",
     title: "Wire Any Model Into Claude Code — Self-Hosted Routing",
