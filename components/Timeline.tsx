@@ -1,101 +1,77 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { experience, education } from "@/data/experience";
-import SectionHeading from "./SectionHeading";
+import { useRef } from "react";
+import { motion, useReducedMotion, useScroll, useSpring } from "framer-motion";
+import Reveal from "@/components/Reveal";
+import SectionHeading from "@/components/SectionHeading";
+import { experience } from "@/data/experience";
 
 export default function Timeline() {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.75", "end 0.6"] });
+  const line = useSpring(scrollYProgress, { stiffness: 60, damping: 20 });
+
   return (
-    <section id="experience" className="relative py-32 md:py-40 bg-ink-950">
-      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+    <section id="journey" className="relative border-t border-edge bg-surface py-28 transition-colors duration-500 md:py-40">
+      <div className="mx-auto max-w-shell px-6">
         <SectionHeading
-          eyebrow="Experience"
-          title="A research career, shipped to production."
-          description="Lab to live system, from defence imagery and indie VFX through TikTok-scale Trust & Safety MLLMs to frontier H200 training."
+          eyebrow="Journey"
+          title="Defence labs to frontier datacenters."
+          lede="Eight years across research, industry, film, and national-scale AI infrastructure."
         />
 
-        <ol className="relative border-l border-ink-800/80 pl-8 md:pl-12 space-y-16">
-          {experience.map((job, i) => (
-            <motion.li
-              key={job.role + i}
-              initial={{ opacity: 0, x: -24 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: i * 0.05 }}
-              className="relative"
-            >
-              <span className="absolute -left-[42px] md:-left-[54px] top-2 flex items-center justify-center">
-                <span className="absolute h-9 w-9 rounded-full bg-gold/10 animate-float-slow" />
-                <span className="relative h-3 w-3 rounded-full bg-gold ring-4 ring-ink-950" />
-              </span>
-              <div className="grid md:grid-cols-12 gap-8">
-                <div className="md:col-span-3 text-2xs uppercase tracking-eyebrow text-ink-400 font-mono nums pt-3">
-                  {job.dates}
-                </div>
-                <div className="md:col-span-9">
-                  <h3 className="font-display text-4xl text-ink-100">
-                    {job.role}
-                  </h3>
-                  <p className="mt-2 text-gold text-sm">
-                    {job.org}
-                    {job.meta && (
-                      <span className="text-ink-400"> · {job.meta}</span>
-                    )}
-                    {job.location && (
-                      <span className="text-ink-500"> · {job.location}</span>
-                    )}
-                  </p>
-                  <ul className="mt-6 space-y-3.5 text-ink-200 text-base leading-reading max-w-prose">
-                    {job.bullets.map((b, j) => (
-                      <li key={j} className="flex gap-4">
-                        <span className="text-gold/70 select-none mt-3 w-1 h-1 rounded-full bg-current shrink-0" />
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {job.tags && (
-                    <div className="mt-6 flex flex-wrap gap-1.5">
-                      {job.tags.map((t) => (
-                        <span
-                          key={t}
-                          className="text-2xs uppercase tracking-eyebrow px-3 py-1 border border-ink-700 text-ink-300 rounded-full"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.li>
-          ))}
-        </ol>
+        <div ref={ref} className="relative">
+          {/* spine: static track + scroll-driven fill */}
+          <div className="absolute bottom-0 left-[7px] top-2 w-px bg-edge md:left-1/2" />
+          <motion.div
+            style={{ scaleY: reduce ? 1 : line }}
+            className="absolute bottom-0 left-[7px] top-2 w-px origin-top md:left-1/2"
+            // gradient spine picks up both accents
+            initial={false}
+          >
+            <div className="h-full w-full" style={{ background: "linear-gradient(to bottom, var(--accent), var(--accent-2))" }} />
+          </motion.div>
 
-        {/* Education */}
-        <div className="mt-32">
-          <div className="eyebrow mb-8 inline-flex items-center gap-3">
-            <span className="h-px w-8 bg-gold" /> Education
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {education.map((ed, i) => (
-              <motion.div
-                key={ed.degree}
-                initial={{ opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.7, delay: i * 0.08 }}
-                className="border border-ink-800 bg-ink-900/40 p-7 lift"
-              >
-                <div className="text-2xs uppercase tracking-eyebrow text-ink-400 font-mono nums">
-                  {ed.dates}
-                </div>
-                <h4 className="mt-4 font-display text-2xl text-ink-100 leading-[1.2]">
-                  {ed.degree}
-                </h4>
-                <p className="mt-3 text-sm text-gold">{ed.org}</p>
-                {ed.meta && <p className="mt-1 text-xs text-ink-400">{ed.meta}</p>}
-              </motion.div>
-            ))}
+          <div className="space-y-16 md:space-y-24">
+            {experience.map((e, i) => {
+              const left = i % 2 === 0;
+              return (
+                <Reveal key={`${e.role}-${e.org}`} className="relative">
+                  <div className={`md:grid md:grid-cols-2 md:gap-16 ${left ? "" : ""}`}>
+                    {/* node */}
+                    <span className="absolute left-[3px] top-2 h-[9px] w-[9px] rounded-full border-2 border-accent bg-base md:left-1/2 md:-translate-x-1/2" />
+
+                    <div
+                      className={`pl-10 md:pl-0 ${
+                        left ? "md:pr-16 md:text-right" : "md:col-start-2 md:pl-16"
+                      }`}
+                    >
+                      <p className="font-mono text-2xs uppercase tracking-wider text-accent">{e.dates}</p>
+                      <h3 className="mt-2 font-display text-d-sm font-semibold">{e.role}</h3>
+                      <p className="mt-1 font-medium text-muted">{e.org}</p>
+                      {e.meta && <p className="mt-0.5 font-mono text-2xs uppercase tracking-wider text-faint">{e.meta}</p>}
+
+                      <ul className={`mt-5 space-y-2.5 text-sm leading-relaxed text-muted ${left ? "md:ml-auto" : ""} max-w-lg`}>
+                        {e.bullets.slice(0, 3).map((b) => (
+                          <li key={b}>{b}</li>
+                        ))}
+                      </ul>
+
+                      {e.tags && (
+                        <div className={`mt-5 flex flex-wrap gap-2 ${left ? "md:justify-end" : ""}`}>
+                          {e.tags.map((t) => (
+                            <span key={t} className="rounded-full bg-accent-soft px-3 py-1 font-mono text-2xs text-accent">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </div>

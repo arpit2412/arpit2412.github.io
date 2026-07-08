@@ -1,52 +1,41 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import SmoothScroll from "@/components/SmoothScroll";
-import Navigation from "@/components/Navigation";
+import Nav from "@/components/Nav";
 
-const mono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", display: "swap" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Arpit Garg — Senior ML / Research Engineer",
+  metadataBase: new URL("https://arpit2412.github.io"),
+  title: "Arpit Garg — AI Researcher · ML Engineer · Founder",
   description:
-    "Senior ML engineer and published researcher (CVPR 2026, ECCV, WACV, TPAMI). LLMs, multimodal AI, computer vision, machine unlearning, and efficient training systems.",
+    "Senior ML engineer and published researcher (CVPR, ECCV, WACV, TPAMI). LLMs, multimodal AI, machine unlearning, efficient training on 256× H200 GPUs, and ML for film VFX. Co-founder of A2.AI.",
   openGraph: {
     title: "Arpit Garg",
     description:
-      "LLMs · Multimodal AI · Computer Vision · VFX ML · Efficient Training Systems",
+      "LLMs · Multimodal AI · Machine Unlearning · Efficient Training · VFX ML. Research fellow at AIML/CSIRO, senior MLE at TikTok, co-founder of A2.AI.",
     type: "website",
+    url: "https://arpit2412.github.io",
   },
+  twitter: { card: "summary_large_image", title: "Arpit Garg — AI Researcher" },
 };
+
+// Set theme class before first paint to avoid a flash of the wrong theme.
+const themeInit = `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(!t&&matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={mono.variable}>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${display.variable} ${mono.variable}`}>
       <head>
-        {/* Erode (display serif) + Switzer (body sans) via Fontshare — free for commercial use */}
-        <link
-          rel="preconnect"
-          href="https://api.fontshare.com"
-          crossOrigin=""
-        />
-        <link
-          rel="preconnect"
-          href="https://cdn.fontshare.com"
-          crossOrigin=""
-        />
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f[]=erode@300,400,500,600,700,300i,400i,500i,600i,700i&f[]=switzer@300,400,500,600,700&display=swap"
-        />
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>
-      <body className="bg-ink-950 text-ink-100 grain antialiased font-sans">
-        <SmoothScroll>
-          <Navigation />
-          {children}
-        </SmoothScroll>
+      <body className="bg-base font-sans text-ink">
+        <SmoothScroll />
+        <Nav />
+        {children}
       </body>
     </html>
   );

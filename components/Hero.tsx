@@ -1,112 +1,119 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { ArrowDown, ArrowUpRight, Github, Linkedin, GraduationCap, Mail } from "lucide-react";
 import { profile } from "@/data/profile";
+import ParticleField from "@/components/ParticleField";
+
+const socials = [
+  { icon: Github, href: profile.links.github, label: "GitHub" },
+  { icon: Linkedin, href: profile.links.linkedin, label: "LinkedIn" },
+  { icon: GraduationCap, href: profile.links.scholar, label: "Google Scholar" },
+  { icon: Mail, href: `mailto:${profile.email}`, label: "Email" },
+];
+
+const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function Hero() {
+  const reduce = useReducedMotion();
+  const { scrollY } = useScroll();
+  // subtle parallax: content drifts slower than the scroll
+  const y = useTransform(scrollY, [0, 600], [0, reduce ? 0 : 140]);
+  const fade = useTransform(scrollY, [0, 500], [1, 0]);
+
+  const stagger = (i: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 36 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.9, delay: 0.15 + i * 0.12, ease },
+        };
+
   return (
-    <section
-      id="top"
-      className="relative h-[100svh] w-full overflow-hidden bg-ink-950"
-    >
-      {/* Video background — no transform, no scroll listener.
-         Static placement is fast and reliable. */}
-      <div className="absolute inset-0">
-        <video
-          className="h-full w-full object-cover opacity-70"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          poster="/hero-poster.jpg"
-        >
-          <source src="/hero.mp4" type="video/mp4" media="(min-width: 768px)" />
-          <source src="/hero-720.mp4" type="video/mp4" />
-        </video>
-      </div>
+    <section id="top" className="relative flex min-h-[100svh] flex-col overflow-hidden">
+      {/* backdrop: glow orbs + particle net + grid */}
+      <div
+        className="pointer-events-none absolute -left-40 top-[-10%] h-[34rem] w-[34rem] rounded-full blur-3xl"
+        style={{ background: "var(--glow-a)" }}
+      />
+      <div
+        className="pointer-events-none absolute -right-40 bottom-[-15%] h-[30rem] w-[30rem] rounded-full blur-3xl"
+        style={{ background: "var(--glow-b)" }}
+      />
+      <div className="grid-texture absolute inset-0 opacity-60" />
+      <ParticleField />
 
-      {/* Tints + scanlines */}
-      <div className="absolute inset-0 bg-gradient-to-b from-ink-950/40 via-ink-950/30 to-ink-950" />
-      <div className="absolute inset-0 vignette pointer-events-none" />
-
-      {/* Foreground content — initial entrance only, no scroll-tied transforms */}
-      <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-10 h-full flex flex-col justify-end pb-24">
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1], delay: 0.3 }}
-          className="eyebrow mb-7 inline-flex items-center gap-3"
-        >
-          <span className="h-px w-10 bg-gold" />
-          {profile.location} · Available for research collaborations
-        </motion.div>
-
-        <h1 className="font-display text-hero text-ink-100">
-          {profile.name.split(" ").map((word, i) => (
-            <motion.span
-              key={i}
-              initial={{ y: "110%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{
-                duration: 0.8,
-                ease: [0.2, 0.8, 0.2, 1],
-                delay: 0.2 + i * 0.1,
-              }}
-              className="inline-block overflow-hidden mr-[0.18em]"
-            >
-              <span className="inline-block">{word}</span>
-            </motion.span>
-          ))}
-        </h1>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1], delay: 0.6 }}
-          className="mt-10 max-w-2xl"
-        >
-          <p className="italic-display text-3xl text-gold-soft leading-[1.2]">
-            {profile.title}
-          </p>
-          <p className="mt-4 text-ink-300 text-base md:text-lg">
-            {profile.subtitle}
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 1.0 }}
-          className="mt-12 flex items-center gap-8"
-        >
-          <a
-            href="#about"
-            className="group inline-flex items-center gap-3 text-ink-300 text-2xs uppercase tracking-eyebrow"
-          >
-            <span className="h-px w-12 bg-gold transition-all duration-500 group-hover:w-20" />
-            Scroll the story
-          </a>
-        </motion.div>
-      </div>
-
-      {/* Scroll cue */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 1.2 }}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center text-ink-400"
+        style={{ y, opacity: fade }}
+        className="relative z-10 mx-auto flex w-full max-w-shell flex-1 flex-col justify-center px-6 pb-24 pt-32"
       >
-        <span className="text-2xs uppercase tracking-eyebrow mb-2.5">scroll</span>
-        <ArrowDown className="w-4 h-4 scroll-cue-dot" />
+        <motion.p {...stagger(0)} className="eyebrow mb-6">
+          AI Researcher · ML Engineer · Founder
+        </motion.p>
+
+        <motion.h1 {...stagger(1)} className="font-display text-d-xl font-semibold">
+          Arpit Garg<span className="text-signal">.</span>
+        </motion.h1>
+
+        <motion.p {...stagger(2)} className="mt-6 max-w-2xl font-display text-d-sm text-muted">
+          I build frontier AI systems — and teach them <span className="text-signal">to forget</span>.
+        </motion.p>
+
+        <motion.p {...stagger(3)} className="mt-5 max-w-xl leading-relaxed text-muted">
+          PhD in machine learning. Research fellow at AIML & CSIRO, senior ML engineer at TikTok,
+          co-founder of A2.AI. Published at CVPR, ECCV, and WACV — shipped to production at
+          platform scale and onto nine feature films.
+        </motion.p>
+
+        <motion.div {...stagger(4)} className="mt-10 flex flex-wrap items-center gap-4">
+          <a
+            href="#research"
+            className="group inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium text-base transition-transform duration-300 ease-spring hover:scale-[1.03]"
+          >
+            Explore my research
+            <ArrowDown size={15} className="transition-transform duration-300 group-hover:translate-y-0.5" />
+          </a>
+          <a
+            href="#contact"
+            className="inline-flex items-center gap-2 rounded-full border border-edge-2 px-6 py-3 text-sm font-medium transition-colors hover:border-accent hover:text-accent"
+          >
+            Get in touch
+            <ArrowUpRight size={15} />
+          </a>
+          <div className="ml-1 flex items-center gap-1">
+            {socials.map(({ icon: Icon, href, label }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={label}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-all duration-300 hover:-translate-y-0.5 hover:text-accent"
+              >
+                <Icon size={17} />
+              </a>
+            ))}
+          </div>
+        </motion.div>
       </motion.div>
 
-      <div className="hidden md:flex absolute bottom-10 right-10 z-10 flex-col items-end gap-1 text-right">
-        <span className="text-2xs uppercase tracking-eyebrow text-ink-400 font-mono nums">
-          CVPR 2026 · TPAMI · NeurIPS · ECCV · WACV · TikTok · CSIRO
-        </span>
-      </div>
+      {/* stat strip */}
+      <motion.div
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1, duration: 1 }}
+        className="relative z-10 border-t border-edge backdrop-blur-sm"
+      >
+        <div className="mx-auto grid max-w-shell grid-cols-2 gap-px px-6 py-6 sm:grid-cols-3 md:grid-cols-6">
+          {profile.stats.map((s) => (
+            <div key={s.label} className="py-2 text-center md:text-left">
+              <div className="font-display text-xl font-semibold tracking-tight">{s.value}</div>
+              <div className="mt-0.5 font-mono text-2xs uppercase tracking-wider text-faint">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
     </section>
   );
 }
