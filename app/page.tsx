@@ -1,5 +1,6 @@
 import Hero from "@/components/Hero";
 import About from "@/components/About";
+import Lifecycle from "@/components/Lifecycle";
 import Research from "@/components/Research";
 import Projects from "@/components/Projects";
 import Timeline from "@/components/Timeline";
@@ -12,6 +13,7 @@ export default function Home() {
     <main className="overflow-x-clip">
       <Hero />
       <About />
+      <Lifecycle />
       <Research />
       <Projects />
       <Timeline />
