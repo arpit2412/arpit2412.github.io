@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vLLM, From the Inside Out — and the Linear Attention Question</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,450;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS — "engineering graph paper"
+   blue  = softmax attention / paged KV world
+   orange= linear attention / recurrent state world
+   ============================================================ */
+:root{
+  --bg:#F3F5F7;
+  --grid-line:rgba(24,40,72,.055);
+  --surface:#FFFFFF;
+  --surface-2:#F8FAFB;
+  --ink:#0E1420;
+  --ink-2:#3E4A5E;
+  --ink-3:#7B879B;
+  --line:#DFE5EC;
+  --line-2:#CBD4DE;
+
+  --blue:#2848D8;
+  --blue-deep:#1B34A8;
+  --blue-soft:#E9EEFC;
+  --blue-mid:#B9C7F5;
+
+  --orange:#E25A0F;
+  --orange-deep:#B94708;
+  --orange-soft:#FCEEE3;
+  --orange-mid:#F6C8A6;
+
+  --green:#0E8A5F;
+  --green-soft:#E2F5EC;
+  --red:#C92A2A;
+  --red-soft:#FBEAEA;
+  --amber:#B7791F;
+  --amber-soft:#FBF3E0;
+
+  --code-bg:#101623;
+  --code-ink:#D7DEEB;
+
+  --display:'Space Grotesk',ui-sans-serif,system-ui,sans-serif;
+  --body:'IBM Plex Sans',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --shadow-sm:0 1px 2px rgba(14,20,32,.05),0 1px 1px rgba(14,20,32,.03);
+  --shadow:0 1px 2px rgba(14,20,32,.05),0 8px 24px -12px rgba(14,20,32,.14);
+  --shadow-lift:0 2px 4px rgba(14,20,32,.06),0 16px 40px -16px rgba(20,32,64,.22);
+
+  --spring:cubic-bezier(.22,1,.36,1);
+  --spring-pop:cubic-bezier(.34,1.56,.64,1);
+
+  --w-text:880px;
+  --w-wide:1120px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+body{
+  font-family:var(--body);
+  font-size:16.5px;
+  line-height:1.72;
+  color:var(--ink);
+  background:
+    linear-gradient(var(--grid-line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-line) 1px,transparent 1px),
+    var(--bg);
+  background-size:26px 26px,26px 26px,auto;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+::selection{background:var(--blue-mid);color:var(--ink)}
+
+/* ---------- layout scaffold ---------- */
+.progress{position:fixed;top:0;left:0;height:3px;width:0%;background:linear-gradient(90deg,var(--blue),var(--orange));z-index:120}
+.shell{display:grid;grid-template-columns:240px minmax(0,1fr);gap:0;max-width:1440px;margin:0 auto}
+.rail{position:sticky;top:0;height:100vh;padding:32px 8px 32px 28px;overflow-y:auto;scrollbar-width:thin}
+.rail::-webkit-scrollbar{width:4px}
+.rail::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:2px}
+.rail-brand{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin-bottom:20px;display:block}
+.rail-brand b{color:var(--ink);font-weight:600}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:6px 10px 6px 8px;border-radius:6px;text-decoration:none;color:var(--ink-3);font-size:13px;line-height:1.35;transition:color .18s var(--spring),background .18s var(--spring)}
+.toc a .adr{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);opacity:.75;min-width:34px;transition:color .18s}
+.toc a:hover{color:var(--ink);background:rgba(255,255,255,.7)}
+.toc a.active{color:var(--ink);background:var(--surface);box-shadow:var(--shadow-sm);font-weight:500}
+.toc a.active .adr{color:var(--blue)}
+.toc .toc-split{margin:14px 0 8px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-left:8px}
+.main{min-width:0;padding:0 clamp(18px,4vw,64px) 120px}
+
+@media (max-width:1023px){
+  .shell{grid-template-columns:1fr}
+  .rail{display:none}
+}
+
+/* ---------- typography ---------- */
+.eyebrow{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center;gap:10px}
+.eyebrow .adr{color:var(--blue);font-weight:600}
+.eyebrow::after{content:"";height:1px;flex:1;max-width:110px;background:var(--line-2)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(2.5rem,5.6vw,4.35rem);line-height:1.02;letter-spacing:-.028em}
+h2{font-family:var(--display);font-weight:700;font-size:clamp(1.7rem,3.2vw,2.45rem);line-height:1.12;letter-spacing:-.02em;margin:14px 0 8px}
+h3{font-family:var(--display);font-weight:600;font-size:1.28rem;line-height:1.3;letter-spacing:-.012em;margin:34px 0 10px}
+h4{font-family:var(--display);font-weight:600;font-size:1.02rem;margin:26px 0 8px}
+p{margin:0 0 16px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:600}
+p b,li b{color:var(--ink);font-weight:600}
+a{color:var(--blue-deep)}
+section{max-width:var(--w-text);margin:0 auto;padding-top:92px}
+.wide{max-width:var(--w-wide);margin-left:auto;margin-right:auto}
+.lede{font-size:1.13rem;line-height:1.66;color:var(--ink-2)}
+.dim{color:var(--ink-3);font-size:.92rem}
+ul.flow,ol.flow{margin:0 0 18px 22px;color:var(--ink-2)}
+ul.flow li,ol.flow li{margin-bottom:9px}
+code{font-family:var(--mono);font-size:.86em;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:.08em .38em;color:var(--blue-deep);white-space:nowrap}
+.k-orange{color:var(--orange-deep)}
+hr.sep{border:0;height:1px;background:var(--line-2);margin:44px 0 4px}
+
+/* ---------- pills / tags ---------- */
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:99px;border:1px solid}
+.pill.blue{color:var(--blue-deep);background:var(--blue-soft);border-color:var(--blue-mid)}
+.pill.orange{color:var(--orange-deep);background:var(--orange-soft);border-color:var(--orange-mid)}
+.pill.green{color:var(--green);background:var(--green-soft);border-color:#BFE6D4}
+.pill.red{color:var(--red);background:var(--red-soft);border-color:#F0C4C4}
+.pill.amber{color:var(--amber);background:var(--amber-soft);border-color:#EBD9AE}
+.pill.gray{color:var(--ink-3);background:var(--surface-2);border-color:var(--line)}
+
+/* ---------- cards ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);padding:22px 24px;transition:transform .35s var(--spring),box-shadow .35s var(--spring),border-color .35s}
+.card.hoverable:hover{transform:translateY(-3px);box-shadow:var(--shadow-lift);border-color:var(--line-2)}
+.card h4{margin-top:0}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+.callout{border-radius:var(--r-lg);padding:18px 22px;margin:22px 0;border:1px solid;font-size:.98rem}
+.callout .co-label{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;display:block;margin-bottom:6px}
+.callout.blue{background:var(--blue-soft);border-color:var(--blue-mid)}
+.callout.blue .co-label{color:var(--blue-deep)}
+.callout.orange{background:var(--orange-soft);border-color:var(--orange-mid)}
+.callout.orange .co-label{color:var(--orange-deep)}
+.callout.green{background:var(--green-soft);border-color:#BFE6D4}
+.callout.green .co-label{color:var(--green)}
+.callout.plain{background:var(--surface);border-color:var(--line)}
+.callout.plain .co-label{color:var(--ink-3)}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- code blocks ---------- */
+.codeblock{background:var(--code-bg);color:var(--code-ink);border-radius:var(--r-lg);padding:18px 22px;font-family:var(--mono);font-size:13px;line-height:1.72;overflow-x:auto;margin:20px 0;box-shadow:var(--shadow)}
+.codeblock .cm{color:#66738C}
+.codeblock .kw{color:#8FB4FF}
+.codeblock .st{color:#F2B98C}
+.codeblock .fn{color:#9CE0C0}
+.codeblock .nb{color:#E3C88E}
+
+/* ---------- math strip ---------- */
+.math{font-family:var(--mono);font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 18px;margin:18px 0;overflow-x:auto;color:var(--ink);line-height:1.9;white-space:nowrap}
+.math .hl-b{color:var(--blue-deep);font-weight:600}
+.math .hl-o{color:var(--orange-deep);font-weight:600}
+.math .dm{color:var(--ink-3)}
+sub,sup{font-size:.68em}
+
+/* ---------- tables ---------- */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;font-size:.92rem;box-shadow:var(--shadow-sm);margin:20px 0}
+.tbl th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);text-align:left;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);font-weight:600}
+.tbl td{padding:12px 16px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:top;line-height:1.55}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td:first-child{color:var(--ink);font-weight:500}
+.tbl-scroll{overflow-x:auto;margin:20px -4px;padding:0 4px}
+.tbl-scroll .tbl{min-width:640px;margin:0}
+
+/* ---------- reveal / motion system (framer-motion style) ---------- */
+[data-reveal]{opacity:0;transform:translateY(26px);transition:opacity .7s var(--spring),transform .7s var(--spring)}
+[data-reveal].in{opacity:1;transform:none}
+[data-reveal="left"]{transform:translateX(-30px)}
+[data-reveal="right"]{transform:translateX(30px)}
+[data-reveal="scale"]{transform:scale(.94) translateY(12px)}
+[data-stagger]>*{opacity:0;transform:translateY(18px);transition:opacity .6s var(--spring),transform .6s var(--spring)}
+[data-stagger].in>*{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  [data-reveal],[data-stagger]>*{opacity:1!important;transform:none!important}
+}
+
+/* ---------- hero ---------- */
+.hero{padding-top:76px;max-width:var(--w-wide);margin:0 auto}
+.hero-tags{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}
+.hero h1 .h-blue{color:var(--blue)}
+.hero h1 .h-orange{color:var(--orange)}
+.hero .lede{max-width:720px;margin-top:22px}
+.hero-meta{display:flex;gap:22px;flex-wrap:wrap;margin-top:26px;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.hero-meta span b{color:var(--ink);font-weight:600}
+.hero-strip{margin-top:44px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:22px 24px 18px;overflow:hidden}
+.strip-head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px;gap:12px;flex-wrap:wrap}
+.strip-lanes{display:grid;gap:18px}
+.strip-lane{display:flex;align-items:center;gap:14px;min-width:0}
+.strip-label{font-family:var(--mono);font-size:11px;width:104px;flex:none;line-height:1.45}
+.strip-label b{display:block;font-size:11.5px}
+.strip-label.b b{color:var(--blue-deep)}
+.strip-label.o b{color:var(--orange-deep)}
+.kv-track{display:flex;gap:4px;flex:1;min-width:0;overflow:hidden;align-items:center}
+.kv-blockrow{display:flex;gap:2px;padding:3px;border:1.5px solid var(--blue-mid);border-radius:6px;background:var(--blue-soft);flex:none}
+.kv-cell{width:9px;height:20px;border-radius:2.5px;background:#fff;border:1px solid var(--blue-mid)}
+.kv-cell.f{background:var(--blue);border-color:var(--blue)}
+.state-box{position:relative;flex:none;display:grid;grid-template-columns:repeat(8,12px);gap:2px;padding:6px;border:1.5px solid var(--orange-mid);border-radius:8px;background:var(--orange-soft)}
+.state-cell{width:12px;height:12px;border-radius:2.5px;background:#fff;border:1px solid var(--orange-mid);transition:background .25s,border-color .25s}
+.state-cell.hot{background:var(--orange);border-color:var(--orange)}
+.strip-note{font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:none;margin-left:auto;text-align:right;line-height:1.5}
+.strip-note b{color:var(--ink)}
+@media (max-width:640px){.strip-note{display:none}.strip-label{width:80px}}
+
+/* ---------- section header block ---------- */
+.sec-head{margin-bottom:20px}
+.sec-head .lede{margin-top:6px}
+
+/* ---------- widget frame ---------- */
+.widget{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);margin:26px 0;overflow:hidden}
+.widget-bar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--surface-2);flex-wrap:wrap}
+.widget-bar .wt{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin-right:auto}
+.widget-body{padding:20px 22px}
+.btn{font-family:var(--mono);font-size:12px;font-weight:500;padding:7px 14px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer;transition:transform .2s var(--spring-pop),box-shadow .2s,background .2s,border-color .2s;letter-spacing:.02em}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm);border-color:var(--ink-3)}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{background:#1E2838}
+.btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.blue:hover{background:var(--blue-deep)}
+.btn.orange{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.orange:hover{background:var(--orange-deep)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn:focus-visible,.toc a:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ---------- calculator ---------- */
+.calc{display:grid;grid-template-columns:280px 1fr;gap:26px}
+@media (max-width:860px){.calc{grid-template-columns:1fr}}
+.calc-controls label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:16px 0 7px}
+.calc-controls select{width:100%;font-family:var(--body);font-size:14px;padding:9px 12px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
+.slider-row{display:flex;align-items:center;gap:12px}
+input[type=range]{flex:1;accent-color:var(--blue);height:4px}
+.slider-val{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);min-width:74px;text-align:right}
+.calc-readout{display:grid;gap:14px;align-content:start}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:10px}
+.stat-row .sl{font-size:13px;color:var(--ink-3)}
+.stat-row .sv{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--ink)}
+.stat-row .sv small{font-size:11px;color:var(--ink-3);font-weight:400}
+.membar{margin-top:6px}
+.membar .mb-cap{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--ink-3);margin-bottom:6px;text-transform:uppercase}
+.mb-track{height:26px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex}
+.mb-seg{height:100%;transition:width .55s var(--spring);min-width:0}
+.mb-seg.w{background:#5B6B84}
+.mb-seg.kv{background:var(--blue)}
+.mb-seg.st{background:var(--orange)}
+.mb-legend{display:flex;gap:16px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-3);flex-wrap:wrap}
+.mb-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+.calc-warn{font-family:var(--mono);font-size:11.5px;margin-top:2px;min-height:18px}
+.calc-warn.over{color:var(--red)}
+.calc-warn.ok{color:var(--green)}
+.calc-compare{margin-top:8px;padding:12px 14px;border-radius:10px;background:var(--orange-soft);border:1px solid var(--orange-mid);font-size:13px;color:var(--ink-2)}
+.calc-compare b{color:var(--orange-deep)}
+
+/* ---------- paged attention playground ---------- */
+.pg-wrap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px}
+@media (max-width:900px){.pg-wrap{grid-template-columns:1fr}}
+.pg-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.phys-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+.pblock{aspect-ratio:1/1;border-radius:7px;border:1.5px solid var(--line-2);background:var(--surface-2);position:relative;display:flex;align-items:flex-end;overflow:hidden;transition:border-color .3s,box-shadow .3s,transform .3s var(--spring-pop)}
+.pblock .fillv{position:absolute;left:0;right:0;bottom:0;height:0%;transition:height .35s var(--spring);opacity:.88}
+.pblock .padr{position:absolute;top:3px;left:5px;font-family:var(--mono);font-size:8.5px;color:var(--ink-3);z-index:2}
+.pblock .prc{position:absolute;top:2px;right:4px;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--ink);background:rgba(255,255,255,.85);border-radius:4px;padding:0 4px;z-index:2;opacity:0;transform:scale(.6);transition:opacity .25s,transform .25s var(--spring-pop)}
+.pblock.shared .prc{opacity:1;transform:scale(1)}
+.pblock.pop{animation:blockpop .45s var(--spring-pop)}
+@keyframes blockpop{0%{transform:scale(.7)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+.pblock.cow-flash{animation:cowflash .8s ease}
+@keyframes cowflash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 3px var(--amber)}}
+.req-list{display:grid;gap:12px}
+.req-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface);transition:border-color .3s,box-shadow .3s}
+.req-card.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.req-card .rq-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-family:var(--mono);font-size:11.5px;flex-wrap:wrap}
+.req-card .rq-top .rq-name{font-weight:600}
+.req-card .rq-top .rq-len{color:var(--ink-3);margin-left:auto}
+.lb-row{display:flex;gap:5px;flex-wrap:wrap}
+.lblock{width:34px;height:26px;border-radius:5px;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--ink);background:#fff;position:relative;transition:transform .3s var(--spring-pop)}
+.lblock.newb{animation:blockpop .4s var(--spring-pop)}
+.lblock .shr{position:absolute;top:-7px;right:-7px;background:var(--amber);color:#fff;border-radius:99px;font-size:8px;padding:0 4px;line-height:13px}
+.pg-log{font-family:var(--mono);font-size:11.5px;line-height:1.8;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:16px;max-height:150px;overflow-y:auto}
+.pg-log div b{color:var(--ink)}
+.pg-log .lg-b{color:var(--blue-deep)}
+.pg-log .lg-o{color:var(--orange-deep)}
+.pg-log .lg-a{color:var(--amber)}
+.pg-log .lg-r{color:var(--red)}
+.pg-stats{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.pg-stats b{color:var(--ink);font-size:14px}
+
+/* ---------- batching timeline ---------- */
+.bt-wrap{display:grid;gap:26px}
+.bt-panel .bt-cap{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.bt-cap .util{font-size:13px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0}
+.bt-lanes{display:grid;gap:6px}
+.bt-lane{display:flex;align-items:center;gap:10px}
+.bt-lane .bl-name{font-family:var(--mono);font-size:10px;color:var(--ink-3);width:30px;flex:none}
+.bt-track{flex:1;height:20px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);position:relative;overflow:hidden}
+.bt-fill{position:absolute;left:0;top:0;bottom:0;width:0%;border-radius:5px}
+.bt-fill.pf{background:var(--blue-mid)}
+.bt-fill.dc{background:var(--blue)}
+.bt-fill.idle{background:repeating-linear-gradient(45deg,#EAD9D9 0 6px,#F6ECEC 6px 12px)}
+.bt-fill.done{background:var(--green-soft);border:1px solid #BFE6D4}
+.bt-time{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-top:8px;text-align:right}
+
+/* ---------- decode compare (softmax vs linear) ---------- */
+.dc-wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media (max-width:820px){.dc-wrap{grid-template-columns:1fr}}
+.dc-panel{border:1.5px solid;border-radius:12px;padding:16px 18px;min-height:230px;display:flex;flex-direction:column}
+.dc-panel.b{border-color:var(--blue-mid);background:linear-gradient(180deg,var(--blue-soft),#fff 65%)}
+.dc-panel.o{border-color:var(--orange-mid);background:linear-gradient(180deg,var(--orange-soft),#fff 65%)}
+.dc-panel .dc-head{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.dc-panel.b .dc-head{color:var(--blue-deep)}
+.dc-panel.o .dc-head{color:var(--orange-deep)}
+.dc-head .dc-cost{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0}
+.kvlist{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;flex:1}
+.kvtok{width:16px;height:22px;border-radius:4px;background:#fff;border:1px solid var(--blue-mid);transition:background .12s,border-color .12s,transform .12s}
+.kvtok.scan{background:var(--blue);border-color:var(--blue);transform:translateY(-2px)}
+.stgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1;align-content:center;max-width:220px;margin:0 auto}
+.stcell{aspect-ratio:1/1;border-radius:4px;background:#fff;border:1px solid var(--orange-mid);transition:background .3s,border-color .3s}
+.stcell.hot{background:var(--orange);border-color:var(--orange)}
+.dc-foot{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dc-foot b{color:var(--ink)}
+
+/* ---------- assumption cards ---------- */
+.assume{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm);margin:16px 0}
+@media (max-width:760px){.assume{grid-template-columns:1fr}}
+.assume>div{padding:18px 20px}
+.assume .a-l{border-right:1px solid var(--line);background:linear-gradient(180deg,rgba(40,72,216,.045),transparent)}
+@media (max-width:760px){.assume .a-l{border-right:0;border-bottom:1px solid var(--line)}}
+.assume .a-r{background:linear-gradient(180deg,rgba(226,90,15,.05),transparent)}
+.assume .a-tag{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;margin-bottom:8px;display:block}
+.assume .a-l .a-tag{color:var(--blue-deep)}
+.assume .a-r .a-tag{color:var(--orange-deep)}
+.assume p{font-size:.94rem;margin-bottom:0}
+.assume h4{margin:0 0 6px;font-size:1rem}
+.a-verdict{grid-column:1/-1;border-top:1px solid var(--line);background:var(--surface-2);font-size:.9rem;color:var(--ink-2);display:flex;gap:10px;align-items:flex-start}
+.a-verdict .pill{flex:none;margin-top:2px}
+
+/* ---------- alignment widget ---------- */
+.al-stage{display:grid;gap:22px;margin-top:6px}
+.al-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.al-lab{font-family:var(--mono);font-size:11px;color:var(--ink-3);width:120px;flex:none;line-height:1.5}
+.al-lab b{color:var(--ink);display:block}
+.al-blocks{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+.al-attn{background:var(--blue-soft);border:1.5px solid var(--blue-mid);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;color:var(--blue-deep);font-weight:600;transition:width .6s var(--spring),height .6s var(--spring);text-align:center;line-height:1.3;padding:2px}
+.al-mamba{background:var(--orange-soft);border:1.5px solid var(--orange-mid);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;color:var(--orange-deep);font-weight:600;transition:width .6s var(--spring),height .6s var(--spring);text-align:center;line-height:1.3;padding:2px;position:relative}
+.al-mamba .pad{position:absolute;right:0;top:0;bottom:0;background:repeating-linear-gradient(45deg,rgba(226,90,15,.18) 0 5px,transparent 5px 10px);border-left:1px dashed var(--orange-mid);width:0;transition:width .6s var(--spring);border-radius:0 6px 6px 0}
+.al-note{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);line-height:1.7}
+.al-note b{color:var(--ink)}
+
+/* ---------- lifecycle rail ---------- */
+.life{display:grid;gap:0;counter-reset:step;margin:24px 0}
+.life-step{display:grid;grid-template-columns:44px 1fr;gap:16px;position:relative;padding-bottom:26px}
+.life-step::before{content:"";position:absolute;left:21px;top:38px;bottom:0;width:2px;background:var(--line-2)}
+.life-step:last-child::before{display:none}
+.life-num{width:42px;height:42px;border-radius:12px;background:var(--surface);border:1.5px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink);box-shadow:var(--shadow-sm);z-index:1}
+.life-body h4{margin:8px 0 6px}
+.life-body p{font-size:.95rem;margin-bottom:6px}
+.life-body .dim{margin-bottom:0}
+
+/* ---------- scoreboard ---------- */
+.score .tbl td:nth-child(2){white-space:nowrap}
+
+/* ---------- footer ---------- */
+.foot{max-width:var(--w-text);margin:100px auto 0;border-top:1px solid var(--line-2);padding-top:26px;font-family:var(--mono);font-size:12px;color:var(--ink-3);line-height:2}
+.foot a{color:var(--ink-2)}
+.refs{margin:14px 0 0}
+.refs li{margin-bottom:6px}
+
+/* mobile TOC quick-jump */
+.mob-jump{display:none;position:sticky;top:0;z-index:110;background:rgba(243,245,247,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:10px clamp(18px,4vw,64px)}
+.mob-jump select{width:100%;font-family:var(--mono);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink)}
+@media (max-width:1023px){.mob-jump{display:block}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="mob-jump"><select id="mobJump" aria-label="Jump to section"><option value="">Jump to a section…</option></select></div>
+
+<div class="shell">
+<!-- ===================== LEFT RAIL ===================== -->
+<nav class="rail" aria-label="Table of contents">
+  <span class="rail-brand"><b>vLLM</b> · inside out</span>
+  <div class="toc" id="toc">
+    <div class="toc-split">Part I — The Engine</div>
+    <a href="#s01"><span class="adr">0x01</span>The shape of the problem</a>
+    <a href="#s02"><span class="adr">0x02</span>The world before vLLM</a>
+    <a href="#s03"><span class="adr">0x03</span>PagedAttention</a>
+    <a href="#s04"><span class="adr">0x04</span>Continuous batching &amp; the scheduler</a>
+    <a href="#s05"><span class="adr">0x05</span>The full machine (V1)</a>
+    <a href="#s06"><span class="adr">0x06</span>The optimization stack</a>
+    <div class="toc-split">Part II — Linear Attention</div>
+    <a href="#s07"><span class="adr">0x07</span>Linear attention, from scratch</a>
+    <a href="#s08"><span class="adr">0x08</span>The collision</a>
+    <a href="#s09"><span class="adr">0x09</span>How vLLM made it work</a>
+    <a href="#s0A"><span class="adr">0x0A</span>Scoreboard &amp; open problems</a>
+    <a href="#s0B"><span class="adr">0x0B</span>Takeaways &amp; reading</a>
+  </div>
+</nav>
+
+<!-- ===================== MAIN ===================== -->
+<main class="main">
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="s00">
+  <div class="hero-tags" data-reveal>
+    <span class="pill blue">softmax attention · paged KV</span>
+    <span class="pill orange">linear attention · fixed state</span>
+    <span class="pill gray">serving systems deep dive</span>
+  </div>
+  <h1 data-reveal style="transition-delay:.08s">vLLM, from the <span class="h-blue">inside out</span> — and what happens when attention goes <span class="h-orange">linear</span>.</h1>
+  <p class="lede" data-reveal style="transition-delay:.18s">vLLM is, at its heart, an <b>operating system for tokens</b>: it took virtual-memory paging from OS design and applied it to the KV cache. Every major piece of the engine — the block tables, the scheduler, prefix caching, preemption, even speculative decoding — leans on one quiet assumption: <em>a request's memory grows one token at a time, append-only, forever readable</em>. Linear attention breaks that assumption on purpose. This page builds vLLM up piece by piece, then shows exactly where linear attention collides with it, and exactly how the engine was rebuilt so the two could coexist.</p>
+  <div class="hero-meta" data-reveal style="transition-delay:.26s">
+    <span>Origin · <b>SOSP 2023, UC Berkeley</b></span>
+    <span>Core idea · <b>PagedAttention</b></span>
+    <span>Engine · <b>V1 (2025 rewrite)</b></span>
+    <span>Color code · <b><span style="color:var(--blue)">blue = paged KV</span> / <span style="color:var(--orange)">orange = recurrent state</span></b></span>
+  </div>
+
+  <div class="hero-strip" data-reveal="scale" style="transition-delay:.34s" aria-hidden="true">
+    <div class="strip-head"><span>live · decoding one token per tick</span><span id="stripTick">t = 0</span></div>
+    <div class="strip-lanes">
+      <div class="strip-lane">
+        <div class="strip-label b"><b>Softmax attention</b>KV cache grows</div>
+        <div class="kv-track" id="stripKV"></div>
+        <div class="strip-note">memory <b>O(t)</b> · reads all of it<br>every step</div>
+      </div>
+      <div class="strip-lane">
+        <div class="strip-label o"><b>Linear attention</b>state overwritten</div>
+        <div class="state-box" id="stripState"></div>
+        <div class="strip-note">memory <b>O(1)</b> · same matrix,<br>updated in place</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 0x01 THE PROBLEM ============ -->
+<section id="s01">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x01</span> Part I · The Engine</div>
+    <h2>The shape of the problem vLLM was built to solve</h2>
+    <p class="lede">You can't understand any of vLLM's design decisions until you understand the two-phase structure of LLM inference, and why the KV cache — not compute — is what actually limits a serving system.</p>
+  </div>
+
+  <h3 data-reveal>Prefill and decode are two different workloads wearing one trench coat</h3>
+  <p data-reveal>Generating from a decoder-only transformer has two phases with opposite performance characters. <b>Prefill</b> processes the entire prompt in one pass. Every layer runs big matrix multiplications over thousands of tokens at once, so the GPU's tensor cores are saturated — prefill is <b>compute-bound</b>, and its cost grows quadratically with prompt length inside the attention layers (every token attends to every earlier token). <b>Decode</b> then produces the response one token at a time. Each step is a forward pass for a <em>single</em> token per sequence: the arithmetic is tiny, but the GPU must still stream <em>all model weights</em> plus <em>the entire accumulated KV cache</em> from HBM to compute units. Decode is therefore <b>memory-bandwidth-bound</b> — the GPU spends most of its time waiting on memory, with compute units mostly idle.</p>
+  <p data-reveal>This asymmetry drives everything. If decode is bandwidth-bound and one sequence can't saturate the GPU, the obvious fix is <b>batching</b>: run many sequences' decode steps in the same forward pass, reusing each weight-load across the whole batch. Throughput rises almost linearly with batch size — until you run out of the one resource batching consumes: <b>memory for KV caches</b>.</p>
+
+  <h3 data-reveal>What the KV cache actually is</h3>
+  <p data-reveal>In causal attention, token <i>t</i> computes attention over the keys and values of every token ≤ <i>t</i>. Those keys and values don't change once computed, so recomputing them every step would waste a quadratic amount of work. Instead, each layer stores each token's <b>K</b> and <b>V</b> vectors after computing them once. That store is the KV cache. Its size per token is fixed by architecture:</p>
+  <div class="math" data-reveal>
+    bytes/token <span class="dm">=</span> 2 <span class="dm">(K and V)</span> × n<sub>layers</sub> × n<sub>kv_heads</sub> × d<sub>head</sub> × bytes<sub>dtype</sub>
+  </div>
+  <p data-reveal>Plug in real models: <b>Llama-3-8B</b> (32 layers, 8 KV heads via GQA, head dim 128, fp16) needs 2×32×8×128×2 = <b>128 KiB per token</b> — about 1 GiB per sequence at an 8K context. The vLLM paper's example, <b>OPT-13B</b> (40 layers, 40 full heads, head dim 128), needs <b>~800 KiB per token</b>: a single 2K-token sequence eats 1.6 GiB. And critically, the cache <b>grows during generation</b> and its final size is <b>unknown in advance</b> — you don't know how long the model will talk.</p>
+
+  <div class="widget" data-reveal="scale">
+    <div class="widget-bar"><span class="wt">Interactive · KV cache memory calculator</span><span class="pill gray">H100 · 80 GB frame</span></div>
+    <div class="widget-body">
+      <div class="calc">
+        <div class="calc-controls">
+          <label for="calcModel">Model</label>
+          <select id="calcModel"></select>
+          <label for="calcCtx">Context length per request</label>
+          <div class="slider-row"><input type="range" id="calcCtx" min="9" max="17" step="1" value="12"><span class="slider-val" id="calcCtxV">4,096</span></div>
+          <label for="calcBatch">Concurrent requests (batch)</label>
+          <div class="slider-row"><input type="range" id="calcBatch" min="1" max="256" step="1" value="16"><span class="slider-val" id="calcBatchV">16</span></div>
+          <p class="dim" style="margin-top:16px">fp16/bf16 weights &amp; cache. GQA already reflected in per-model KV head counts. Figures are architectural approximations for intuition, not benchmark numbers.</p>
+        </div>
+        <div class="calc-readout">
+          <div class="stat-row"><span class="sl">KV cache per token</span><span class="sv" id="calcPerTok">—</span></div>
+          <div class="stat-row"><span class="sl">KV cache per request @ context</span><span class="sv" id="calcPerReq">—</span></div>
+          <div class="stat-row"><span class="sl">KV cache for whole batch</span><span class="sv" id="calcTotalKV">—</span></div>
+          <div class="membar">
+            <div class="mb-cap"><span>one H100 · 80 GB</span><span id="calcPct">—</span></div>
+            <div class="mb-track"><div class="mb-seg w" id="segW"></div><div class="mb-seg kv" id="segKV"></div><div class="mb-seg st" id="segST"></div></div>
+            <div class="mb-legend"><span><i style="background:#5B6B84"></i>weights</span><span><i style="background:var(--blue)"></i>KV cache</span><span><i style="background:var(--orange)"></i>fixed recurrent state</span></div>
+            <div class="calc-warn" id="calcWarn"></div>
+          </div>
+          <div class="calc-compare" id="calcCompare"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3 data-reveal>Why this is a systems problem, not a model problem</h3>
+  <p data-reveal>Put the pieces together. Throughput requires large batches; large batches require holding many KV caches simultaneously; each cache grows unpredictably; and GPU memory left over after weights is finite. <b>The KV cache is the scarce, dynamically-sized, per-request resource</b> — exactly the profile of a problem operating systems solved fifty years ago for process memory. vLLM's founding observation (Kwon et al., <em>Efficient Memory Management for Large Language Model Serving with PagedAttention</em>, SOSP 2023) was that pre-2023 serving systems were managing this resource the way computers managed memory <em>before</em> virtual memory existed — and wasting most of it.</p>
+</section>
+
+<!-- ============ 0x02 BEFORE VLLM ============ -->
+<section id="s02">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x02</span> Part I · The Engine</div>
+    <h2>The world before vLLM: contiguous chunks and static batches</h2>
+    <p class="lede">Two pre-vLLM defaults — contiguous KV allocation and request-level batching — each silently threw away most of the GPU. Quantifying that waste explains why PagedAttention was worth inventing.</p>
+  </div>
+
+  <h3 data-reveal>Failure #1 — contiguous allocation and its three kinds of waste</h3>
+  <p data-reveal>Attention kernels of the era (FasterTransformer and friends) expected each sequence's K and V tensors to live in <b>one contiguous slab</b> of GPU memory. Since output length is unknown, systems pre-allocated each request a slab sized for the <b>maximum possible length</b> (say 2,048 tokens). Three distinct pathologies follow:</p>
+  <div class="grid-3" data-stagger>
+    <div class="card hoverable"><span class="pill red">waste 1</span><h4>Reserved-but-unused</h4><p class="dim">A request that ends at 80 tokens held a 2,048-token slab the entire time. The unused 1,968 slots were locked away from every other request for the request's whole lifetime.</p></div>
+    <div class="card hoverable"><span class="pill red">waste 2</span><h4>Internal fragmentation</h4><p class="dim">Even the used region over-provisions: memory reserved ahead of the current position is dead until (unless) generation reaches it. Waste scales with max_len − actual_len.</p></div>
+    <div class="card hoverable"><span class="pill red">waste 3</span><h4>External fragmentation</h4><p class="dim">Differently-sized contiguous slabs leave gaps between them — free memory that exists but is too scattered to fit a new request's slab. Classic malloc pain, on an 80 GB heap.</p></div>
+  </div>
+  <p data-reveal style="margin-top:18px">The SOSP paper measured the combined effect: in existing systems, <b>only 20.4%–38.2% of KV cache memory held actual token state</b>. The majority of the most precious resource on the GPU stored nothing. On top of that, contiguous slabs make <b>sharing impossible</b>: parallel sampling (n answers from one prompt) and beam search duplicated the entire prompt's KV per branch, even though the prompt portion is byte-identical.</p>
+
+  <h3 data-reveal>Failure #2 — request-level (static) batching</h3>
+  <p data-reveal>The second default: form a batch of N requests, run them <b>in lockstep until every one finishes</b>, then admit the next batch. Sequences finish at wildly different lengths, so a request that generated 20 tokens sits idle — occupying its batch slot and its memory slab — while a neighbor generates 900. GPU lanes go dark one by one. New requests queue outside no matter how much capacity has effectively freed up. You'll see this animated (against its fix) in section <a href="#s04">0x04</a>.</p>
+
+  <div class="callout blue" data-reveal>
+    <span class="co-label">The founding diagnosis</span>
+    <p>Serving throughput was limited not by FLOPs, and not even by raw memory capacity, but by <b>memory management policy</b>. Fix allocation granularity and fix scheduling granularity, and the same GPU serves several times more traffic. Those two fixes are, respectively, <b>PagedAttention</b> (0x03) and <b>continuous batching</b> (0x04) — the twin pillars of vLLM.</p>
+  </div>
+</section>
+
+<!-- ============ 0x03 PAGEDATTENTION ============ -->
+<section id="s03" class="wide">
+  <div class="sec-head" data-reveal style="max-width:var(--w-text);margin-left:auto;margin-right:auto">
+    <div class="eyebrow"><span class="adr">0x03</span> Part I · The Engine</div>
+    <h2>PagedAttention: virtual memory for the KV cache</h2>
+    <p class="lede">One idea, borrowed whole from operating systems: stop storing a sequence's cache contiguously. Chop it into fixed-size blocks, scatter them anywhere in a shared pool, and keep a per-request page table that maps logical order to physical location.</p>
+  </div>
+
+  <div style="max-width:var(--w-text);margin:0 auto">
+    <h3 data-reveal>The mechanism, precisely</h3>
+    <ul class="flow" data-stagger>
+      <li><b>Blocks.</b> GPU memory reserved for KV is carved into equal <b>physical blocks</b>, each holding the K and V vectors of a fixed number of tokens — <code>block_size</code>, default <b>16</b>. A block is the unit of allocation, the "page".</li>
+      <li><b>Logical blocks.</b> Each request's cache is a sequence of <b>logical blocks</b>: block 0 holds tokens 0–15, block 1 holds 16–31, and so on. Logical order is just the token order.</li>
+      <li><b>Block table.</b> Per request, a small array mapping logical index → physical block ID (plus a fill count for the last block). This is exactly a per-process page table. Physical blocks backing one request can be scattered arbitrarily across the pool.</li>
+      <li><b>On-demand allocation.</b> A new physical block is grabbed from a free list only when generation crosses a 16-token boundary. Nothing is reserved for a future that may not happen.</li>
+      <li><b>The kernel side.</b> Attention math doesn't change — but the kernel can no longer assume contiguous K/V. vLLM ships custom kernels (<code>paged_attention_v1/v2</code>, and today paged variants inside FlashAttention and FlashInfer) that take the block table as an argument and <b>gather</b> keys/values block-by-block while computing online softmax. The cost of the indirection is small and is the price of everything below.</li>
+    </ul>
+
+    <h3 data-reveal>What the paging buys, item by item</h3>
+    <p data-reveal><b>Fragmentation collapses to a rounding error.</b> Internal waste is bounded by <em>less than one block per sequence</em> — at most 15 unfilled slots in the final block, a few hundred KB instead of gigabytes. External fragmentation is <b>zero by construction</b>: every allocation is the same size, so any free block satisfies any request. Reserved-but-unused waste disappears because nothing is reserved. Measured KV memory utilization went from ~20–40% to <b>near 96%+</b>, which directly converts into batch size, which converts into throughput — the paper reported <b>2–4× throughput</b> over FasterTransformer and Orca at equal latency, with bigger gains for longer sequences.</p>
+    <p data-reveal><b>Sharing becomes a pointer operation.</b> Because the map from logical to physical is per-request, two requests may map to the <em>same</em> physical block. Each physical block carries a <b>reference count</b>. This unlocks:</p>
+    <ul class="flow" data-stagger>
+      <li><b>Parallel sampling</b> — n samples from one prompt map their prompt blocks to the same physical blocks (refcount = n). Only divergent generated tokens allocate new memory.</li>
+      <li><b>Copy-on-write</b> — when a sequence must append into a block with refcount &gt; 1 (a shared, partially-filled last prompt block), vLLM copies that one block, decrements the original's count, and writes into the private copy. Block-granular COW, exactly like fork().</li>
+      <li><b>Beam search</b> — beams fork and die constantly; with paging, a surviving beam shares all ancestor blocks and abandoned beams just decrement refcounts. Memory cost of beam search drops massively versus slab-copying.</li>
+      <li><b>Prefix caching</b> — shared system prompts across <em>different</em> requests can be deduplicated the same way. This grows into a full feature in section 0x06.</li>
+    </ul>
+
+    <div class="callout plain" data-reveal>
+      <span class="co-label">Load-bearing assumption — remember this for Part II</span>
+      <p>Everything above works because KV entries are <b>append-only and immutable</b>: written once when their token is processed, then only ever <em>read</em>. Immutability is what makes sharing safe, refcounts sufficient, copy-on-write meaningful, and any prefix of the cache forever reusable. Hold that thought.</p>
+    </div>
+  </div>
+
+  <div class="widget" data-reveal="scale">
+    <div class="widget-bar">
+      <span class="wt">Interactive · block table playground</span>
+      <button class="btn blue" id="pgNew">+ New request</button>
+      <button class="btn" id="pgStep">Decode 4 tokens</button>
+      <button class="btn" id="pgFork">Fork selected (n=2)</button>
+      <button class="btn" id="pgFinish">Finish selected</button>
+      <button class="btn" id="pgReset">Reset</button>
+    </div>
+    <div class="widget-body">
+      <div class="pg-wrap">
+        <div>
+          <div class="pg-title">Physical block pool · 48 blocks × 16 tokens · badge = refcount when shared</div>
+          <div class="phys-grid" id="physGrid"></div>
+          <div class="pg-stats">
+            <span>used <b id="pgUsed">0</b>/48</span>
+            <span>free <b id="pgFree">48</b></span>
+            <span>slot waste <b id="pgWaste">0</b> tok</span>
+            <span>utilization <b id="pgUtil">—</b></span>
+          </div>
+        </div>
+        <div>
+          <div class="pg-title">Requests · logical block tables (click to select)</div>
+          <div class="req-list" id="reqList"></div>
+          <div class="pg-log" id="pgLog" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="dim" style="margin:16px 0 0">Try: create two requests → decode until one crosses a block boundary (watch a block <em>pop</em> into the pool) → select a request and <b>fork</b> it (its blocks gain a ×2 refcount, no new memory) → decode again and watch <b>copy-on-write</b> flash amber as the forked pair splits its shared partial block. Waste never exceeds 15 tokens per sequence.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x04 SCHEDULER ============ -->
+<section id="s04" class="wide">
+  <div class="sec-head" data-reveal style="max-width:var(--w-text);margin-left:auto;margin-right:auto">
+    <div class="eyebrow"><span class="adr">0x04</span> Part I · The Engine</div>
+    <h2>Continuous batching and the scheduler</h2>
+    <p class="lede">Paging fixed <em>where</em> token state lives. The scheduler fixes <em>when</em> work happens: decisions are made every single model step, not once per batch.</p>
+  </div>
+
+  <div style="max-width:var(--w-text);margin:0 auto">
+    <h3 data-reveal>Iteration-level scheduling</h3>
+    <p data-reveal>The idea (introduced by Orca, OSDI 2022, and adopted then extended by vLLM) is called <b>continuous batching</b>: the "batch" is re-formed at <em>every forward pass</em>. The moment a sequence emits its end-of-sequence token, it leaves the batch and its blocks return to the pool <em>on that very step</em>; a waiting request is admitted into the freed capacity immediately. No GPU lane ever idles waiting for a slow neighbor. Combined with paging (which makes admission possible whenever <em>any</em> blocks are free, not whenever a contiguous slab is free), this is where vLLM's throughput comes from.</p>
+
+    <div class="widget" data-reveal="scale">
+      <div class="widget-bar"><span class="wt">Interactive · static vs continuous batching (4 GPU slots, 8 requests)</span><button class="btn primary" id="btPlay">▶ Run simulation</button><button class="btn" id="btReset">Reset</button></div>
+      <div class="widget-body">
+        <div class="bt-wrap">
+          <div class="bt-panel">
+            <div class="bt-cap"><span>static · batch waits for its slowest member</span><span class="util">slot-time busy: <span id="btUtilS">0%</span></span></div>
+            <div class="bt-lanes" id="btStatic"></div>
+          </div>
+          <div class="bt-panel">
+            <div class="bt-cap"><span>continuous · finished seq is replaced next step</span><span class="util">slot-time busy: <span id="btUtilC">0%</span></span></div>
+            <div class="bt-lanes" id="btCont"></div>
+          </div>
+          <div class="bt-time" id="btClock">t = 0</div>
+        </div>
+        <p class="dim" style="margin:14px 0 0">Striped red = an occupied slot doing nothing (its sequence finished, batch hasn't). Light blue = prefill, solid blue = decode, green outline = done. Same 8 requests, same lengths, both sides.</p>
+      </div>
+    </div>
+
+    <h3 data-reveal>Inside the V1 scheduler: one loop, one currency</h3>
+    <p data-reveal>vLLM's original (V0) scheduler kept prefill and decode as separate request states with separate scheduling paths. The <b>V1 engine rewrite</b> (rolled out through 2025, now the only engine) deleted that distinction. The scheduler thinks in a single currency — <b>tokens to process this step</b> — and emits a plain mapping like <code>{reqA: 512, reqB: 1, reqC: 1}</code>: reqA is mid-prefill (chunked), B and C are decoding. There is no "prefill phase" or "decode phase" at the batch level anymore; every step is just a token budget (<code>max_num_batched_tokens</code>, alongside a concurrency cap <code>max_num_seqs</code>) allocated across requests by policy (FCFS or priority).</p>
+    <ul class="flow" data-stagger>
+      <li><b>Chunked prefill (default in V1).</b> A 100K-token prompt is not processed in one monolithic pass — that would stall every decoding request behind it for seconds, spiking inter-token latency. Instead the prompt is fed in budget-sized chunks, and each step <b>mixes</b> prefill chunks with ongoing decodes in one batch. Compute-heavy chunks and bandwidth-heavy decodes overlap beautifully on the hardware; latency becomes smooth and controllable.</li>
+      <li><b>Admission control.</b> A request is scheduled only if the KV cache manager can supply the blocks its next chunk needs. Memory, not slot count, is the true admission gate.</li>
+      <li><b>Preemption.</b> When the pool runs dry mid-flight (many long generations), the scheduler evicts the lowest-priority running request. Two mechanisms exist: <b>recomputation</b> — free its blocks entirely and, later, re-run its prefill (cheap to trigger, wastes compute; the V1 default) — and <b>swapping</b> — copy its blocks to pinned CPU RAM over PCIe and bring them back later (saves compute, costs transfer time and host memory). Either way the request resumes correctly because its state is <em>reconstructible</em>: for recompute, from its token IDs; for swap, byte-for-byte. Note this reconstructibility — it's another thing Part II will stress-test.</li>
+      <li><b>Speculative &amp; multi-token steps.</b> The V1 scheduler natively handles steps that consume/emit more than one token per request (speculative decoding verification, jump-decoding in structured output), because "n tokens for request X" is already its native vocabulary.</li>
+    </ul>
+
+    <div class="callout blue" data-reveal>
+      <span class="co-label">Why the scheduler matters for Part II</span>
+      <p>Notice what the scheduler <em>doesn't</em> know: anything about attention math. It reasons about token budgets and block availability. That abstraction boundary is precisely why continuous batching survives the jump to linear attention untouched — while the memory manager underneath it very much does not.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 0x05 FULL MACHINE ============ -->
+<section id="s05">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x05</span> Part I · The Engine</div>
+    <h2>The full machine: a request's life through vLLM V1</h2>
+    <p class="lede">Zooming out from the two big ideas to the whole pipeline. This is what actually happens between an HTTP POST and streamed tokens — every component named, in order.</p>
+  </div>
+
+  <p data-reveal>Architecturally, V1 splits vLLM into <b>two processes</b>. Process 0 hosts the API layer and everything CPU-flavored around it (tokenization, detokenization, streaming); Process 1 hosts the <b>EngineCore</b> — the scheduler + model execution busy-loop — kept deliberately lean so the GPU never waits on Python bookkeeping. They talk over <b>ZeroMQ</b> with asynchronous message passing, so detokenizing step <i>n</i> overlaps with computing step <i>n+1</i>. This isolation of the hot loop is one of the quiet reasons V1 is fast.</p>
+
+  <div class="life" data-stagger>
+    <div class="life-step"><div class="life-num">01</div><div class="life-body"><h4>Entry: API server / <code>LLM</code> class</h4><p>Online serving enters through an OpenAI-compatible FastAPI server (<code>vllm serve</code>); offline batch jobs use the <code>LLM</code> Python class. Both funnel into <code>AsyncLLM</code>, the process-0 client of the engine.</p><p class="dim">Chat templates are applied, multimodal inputs preprocessed, sampling params validated here.</p></div></div>
+    <div class="life-step"><div class="life-num">02</div><div class="life-body"><h4>Tokenize &amp; enqueue</h4><p>The prompt becomes token IDs and the request is shipped over ZMQ to the EngineCore, landing in the scheduler's <b>waiting</b> queue with its sampling parameters and any structured-output grammar attached.</p></div></div>
+    <div class="life-step"><div class="life-num">03</div><div class="life-body"><h4>Schedule</h4><p>Each iteration, the scheduler assembles the step: continuing every running request, admitting waiting ones while the token budget and block supply allow, chunking prefills, preempting if cornered. Output: the token-count map from 0x04.</p></div></div>
+    <div class="life-step"><div class="life-num">04</div><div class="life-body"><h4>KV cache manager: allocate</h4><p>For every scheduled request, the <b>KVCacheManager</b> hands out physical blocks from the pool and updates block tables. With prefix caching on (V1 default), it first checks whether needed blocks <em>already exist</em> — hash hit means tokens are skipped, not recomputed (details in 0x06).</p><p class="dim">Pool size is set at startup: vLLM profiles a worst-case forward pass, sees what's left of <code>gpu_memory_utilization</code> (default 0.9), and carves it all into blocks.</p></div></div>
+    <div class="life-step"><div class="life-num">05</div><div class="life-body"><h4>Execute: workers &amp; model runner</h4><p>The <b>Executor</b> broadcasts the step to one <b>Worker per GPU</b> (tensor/pipeline parallel ranks). Each worker's <b>ModelRunner</b> maintains a <b>persistent batch</b> — input tensors kept resident on-GPU and diff-updated each step rather than rebuilt, a signature V1 optimization — and launches the forward pass.</p></div></div>
+    <div class="life-step"><div class="life-num">06</div><div class="life-body"><h4>Forward pass: attention backend</h4><p>Inside each attention layer, new K/V vectors are written into their block-table slots and the <b>attention backend</b> — FlashAttention-2/3, FlashInfer, Triton, or FlexAttention, chosen per hardware — computes paged attention over scattered blocks. Everything else (MLPs, norms, MoE routing) is ordinary tensor math, compiled and graph-captured (0x06).</p></div></div>
+    <div class="life-step"><div class="life-num">07</div><div class="life-body"><h4>Sample</h4><p>Final-layer logits flow through the sampler: repetition/presence penalties, temperature, top-k/top-p, seeds, logprobs. Structured output applies grammar masks (XGrammar/Guidance) so invalid tokens are literally unpickable. One token (or more, under speculation) emerges per sequence.</p></div></div>
+    <div class="life-step"><div class="life-num">08</div><div class="life-body"><h4>Stream back &amp; loop</h4><p>Token IDs return over ZMQ; process 0 detokenizes incrementally and streams SSE chunks to the client while the EngineCore is already computing the next step. On EOS/stop/max-tokens, the scheduler frees the request's blocks — instantly reusable, possibly retained as cached prefix.</p></div></div>
+  </div>
+</section>
+
+<!-- ============ 0x06 OPTIMIZATION STACK ============ -->
+<section id="s06">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x06</span> Part I · The Engine</div>
+    <h2>The optimization stack layered on top</h2>
+    <p class="lede">Each of these features quietly assumes the paged, append-only KV world. Reading them with that lens now makes Part II's collision obvious later.</p>
+  </div>
+
+  <h3 data-reveal>Automatic prefix caching (APC)</h3>
+  <p data-reveal>Every full physical block gets a content hash: <b>hash(parent block's hash, this block's 16 token IDs)</b> — a hash <em>chain</em>, so a block's identity encodes its entire prefix, not just its own tokens. Finished requests' blocks aren't zeroed; they linger in the pool under their hashes (evicted LRU only when space is needed). A new request's prompt is hashed block-by-block; every leading hit means those 16 tokens' KV is <b>mapped, not computed</b>. Multi-turn chat, shared system prompts, and agent loops routinely skip most of their prefill this way. Cost when it misses: a hash lookup — effectively free, hence on by default in V1. Two structural facts to remember: reuse works at <b>16-token granularity</b>, for <b>any prefix-aligned subset</b>, because each block's KV is independently addressable and immutable.</p>
+
+  <h3 data-reveal>CUDA graphs &amp; <code>torch.compile</code></h3>
+  <p data-reveal>Decode steps are so small that <em>launching</em> their kernels from Python can cost more than running them. vLLM's answer is layered: <b>torch.compile</b> fuses and specializes the model graph, and <b>CUDA Graphs</b> record entire step's kernel sequences for replay at near-zero CPU cost. V1 defaults to <b>piecewise</b> capture — graph the compiled tensor regions, leave attention (whose shapes shift with batch composition) eager — with <b>full-graph</b> modes for uniform decode batches. File away: graph capture dislikes shape-shifting <em>and</em> is sensitive to in-place mutation patterns — both return in Part II.</p>
+
+  <h3 data-reveal>The rest of the arsenal, compactly</h3>
+  <div class="grid-2" data-stagger>
+    <div class="card hoverable"><span class="pill blue">memory</span><h4>Quantization</h4><p class="dim">Weights: GPTQ, AWQ, FP8, INT8, bitsandbytes shrink the static footprint, freeing pool space. The KV cache itself can be stored FP8, nearly doubling cacheable tokens at slight fidelity cost.</p></div>
+    <div class="card hoverable"><span class="pill blue">scale-out</span><h4>Parallelism</h4><p class="dim">Tensor parallel splits every layer (and each KV head-set) across GPUs; pipeline parallel splits by layer depth; expert parallel spreads MoE experts; data parallel replicates engines. KV blocks shard right along with the attention heads they belong to.</p></div>
+    <div class="card hoverable"><span class="pill blue">latency</span><h4>Speculative decoding</h4><p class="dim">A cheap drafter (small model, n-gram, EAGLE, Medusa, or the model's own MTP heads) proposes k tokens; the target model verifies them in one parallel pass. Rejected tail? Just truncate the KV cache back — append-only makes rollback a pointer move. Remember that.</p></div>
+    <div class="card hoverable"><span class="pill blue">datacenter</span><h4>Disaggregation &amp; KV transfer</h4><p class="dim">Prefill/decode disaggregation runs the two phases on separate GPU pools sized to their different natures, shipping KV blocks between them via KV-connectors (NIXL, LMCache…). Works because KV pages are well-defined, serializable byte ranges.</p></div>
+    <div class="card hoverable"><span class="pill blue">workloads</span><h4>Multi-LoRA</h4><p class="dim">Many LoRA adapters served concurrently over one base model; punica-style batched kernels apply a different adapter per sequence within a single batch.</p></div>
+    <div class="card hoverable"><span class="pill blue">correctness</span><h4>Structured output</h4><p class="dim">Grammar-constrained decoding compiled to token-level masks (XGrammar), applied in the sampler with near-zero overhead; V1 added jump-ahead decoding for forced token spans.</p></div>
+  </div>
+
+  <div class="callout blue" data-reveal>
+    <span class="co-label">Part I in one paragraph</span>
+    <p>vLLM = a paged memory system for an append-only, per-token, immutable cache + a scheduler that re-decides the batch every step + a lean two-process executor with compiled, graph-captured kernels + a feature stack (prefix caching, COW sharing, speculative rollback, KV transfer) that all exploit the same property: <b>any token's cached state is an addressable, immutable 16-token-block citizen</b>. Now we break that property.</p>
+  </div>
+</section>
+
+<!-- ============ 0x07 LINEAR ATTENTION PRIMER ============ -->
+<section id="s07" class="wide">
+  <div class="sec-head" data-reveal style="max-width:var(--w-text);margin-left:auto;margin-right:auto">
+    <div class="eyebrow"><span class="adr">0x07</span> Part II · Linear Attention</div>
+    <h2>Linear attention, from scratch</h2>
+    <p class="lede">Before the collision, the other party. "Linear attention" names a family — kernelized attention, gated variants, delta-rule variants, and state space models like Mamba — that all share one property: <b>a fixed-size recurrent state instead of a growing KV cache</b>.</p>
+  </div>
+
+  <div style="max-width:var(--w-text);margin:0 auto">
+    <h3 data-reveal>Step 1 — remove the softmax</h3>
+    <p data-reveal>Softmax attention for query <i>t</i> computes similarity <code>exp(qₜ·kᵢ)</code> against every past key — the exponential couples q and k, so nothing can be precomputed independent of the query. Katharopoulos et al. (2020) asked: what if similarity were a plain dot product of feature maps, <code>φ(qₜ)·φ(kᵢ)</code>? Then associativity works magic:</p>
+    <div class="math" data-reveal>
+      <span class="hl-b">softmax:</span>&nbsp; oₜ = Σᵢ exp(qₜ·kᵢ) vᵢ / Z &nbsp;&nbsp;<span class="dm">— must touch every (kᵢ,vᵢ) → O(t) per step, O(t) memory</span><br>
+      <span class="hl-o">linear:</span>&nbsp;&nbsp;&nbsp; oₜ = φ(qₜ)ᵀ <b>Sₜ</b> / (φ(qₜ)ᵀzₜ),&nbsp; where&nbsp; <b>Sₜ = Sₜ₋₁ + φ(kₜ)vₜᵀ</b> &nbsp;<span class="dm">— O(1) per step, O(1) memory</span>
+    </div>
+    <p data-reveal>The sum over history collapses into a running matrix <b>S</b> of shape <code>d_key × d_value</code> per head (plus a normalizer vector z, dropped in most modern variants). All of history now lives inside a <b>fixed-size, lossy, in-place-updated summary</b>. That single sentence contains the entire systems consequence of Part II.</p>
+
+    <h3 data-reveal>Step 2 — make the state <em>forget and edit</em>: the modern family</h3>
+    <p data-reveal>Pure additive state (above) just accumulates and eventually smears. Modern variants make the update <em>selective</em>, and they're not academic curiosities — each row below is running in production models that vLLM serves:</p>
+    <div class="tbl-scroll" data-reveal>
+    <table class="tbl">
+      <tr><th>Mechanism</th><th>State update rule</th><th>Intuition</th><th>Shipped in</th></tr>
+      <tr><td>Vanilla linear attention</td><td><code>S ← S + kvᵀ</code></td><td>Pure accumulation, no forgetting</td><td>(foundation for all below)</td></tr>
+      <tr><td>Lightning Attention</td><td>decayed <code>S ← λS + kvᵀ</code>, tiled I/O-aware kernel</td><td>Exponential forgetting, hardware-shaped</td><td>MiniMax-Text-01 / M1</td></tr>
+      <tr><td>Gated Linear Attn (GLA)</td><td><code>S ← Diag(αₜ)S + kvᵀ</code></td><td>Learned, per-channel, data-dependent forgetting</td><td>GLA models; ancestor of GDN</td></tr>
+      <tr><td>DeltaNet</td><td><code>S ← S(I − βₜkₜkₜᵀ) + βₜkₜvₜᵀ</code></td><td>Delta rule: <em>erase</em> old value at key k, write new — associative-memory editing</td><td>DeltaNet line</td></tr>
+      <tr><td>Gated DeltaNet (GDN)</td><td>gating × delta rule combined</td><td>Forget globally <em>and</em> edit precisely</td><td><b>Qwen3-Next, Qwen3.5/3.6 hybrids</b></td></tr>
+      <tr><td>Mamba-1 (selective SSM)</td><td><code>hₜ = Āₜhₜ₋₁ + B̄ₜxₜ</code>, A/B/C input-dependent</td><td>Control-theory lineage; selectivity fixed S4's copying failures</td><td>Mamba, Falcon-Mamba, Codestral Mamba</td></tr>
+      <tr><td>Mamba-2 (SSD)</td><td>scalar-decay structured SSM ≡ a linear attention</td><td>The duality result: SSMs and linear attention are one family; matmul-friendly → tensor cores</td><td>Granite 4.0, Nemotron-H/Nano-2, Falcon-H1, Bamba, Zamba2, Jamba(M1)</td></tr>
+      <tr><td>Kimi Delta Attention</td><td>refined gated delta variant</td><td>Finer-grained channel-wise gating</td><td>Kimi Linear</td></tr>
+    </table>
+    </div>
+
+    <h3 data-reveal>Step 3 — the three computation modes (this is the systems-relevant part)</h3>
+    <p data-reveal>Every member of the family admits three equivalent ways to compute the same function, and a serving engine uses all three:</p>
+    <ul class="flow" data-stagger>
+      <li><b>Recurrent mode — decode.</b> One tiny state update + readout per token. O(1) compute, O(1) memory traffic per step, no dependence on context length whatsoever. This is the superpower.</li>
+      <li><b>Parallel mode — theory.</b> Materialize the full T×T (masked, unnormalized) interaction — quadratic, defeats the purpose, never used at scale.</li>
+      <li><b>Chunkwise-parallel mode — prefill.</b> The workhorse: split the prompt into chunks (64–256 tokens); within a chunk, compute with dense matmuls (tensor cores go brrr); between chunks, carry the recurrent state forward. Linear in T with matmul-class hardware efficiency. Mamba-2's SSD paper made this the standard recipe, and every serious kernel — the FLA (flash-linear-attention) Triton kernels vLLM uses for GLA/GDN, Mamba's fused scan kernels, Lightning Attention's tiled kernels — is a variation on it.</li>
+    </ul>
+    <div class="callout orange" data-reveal>
+      <span class="co-label">A structural gift, noted for later</span>
+      <p>Chunkwise prefill naturally <em>passes through</em> the exact recurrent state at every chunk boundary. If you wanted to snapshot states at regular token intervals — say, block boundaries — the algorithm is already handing them to you. This becomes the key that unlocks prefix caching in 0x09.</p>
+    </div>
+
+    <h3 data-reveal>Step 4 — the memory arithmetic that motivates everything</h3>
+    <p data-reveal>Concrete numbers, from the vLLM/IBM team's write-up on NVIDIA-Nemotron-Nano-12B-v2: one 16-token attention KV block ≈ <b>64 KiB</b>; one sequence's whole Mamba state ≈ <b>2.57 MiB</b>, <em>total, forever</em> (a chunky object: the SSM state matrices plus a small causal-conv1d rolling window, typically kept fp32 for numerical stability). So for short prompts the recurrent model actually spends <em>more</em> memory per sequence. But KV grows and state doesn't: at 128K context the KV cache is roughly <b>200× larger</b> than the Mamba state. Decode bandwidth tells the same story — softmax streams an ever-growing cache per token; linear streams a constant few MiB. That, plus linear-time prefill (no quadratic TTFT blowup), is the entire pitch for RAG, agents, and long reasoning traces.</p>
+
+    <div class="widget" data-reveal="scale">
+      <div class="widget-bar"><span class="wt">Interactive · one decode step, two worlds</span><button class="btn primary" id="dcPlay">▶ Decode</button><button class="btn" id="dcReset">Reset</button></div>
+      <div class="widget-body">
+        <div class="dc-wrap">
+          <div class="dc-panel b">
+            <div class="dc-head"><span>Softmax · KV cache</span><span class="dc-cost" id="dcCostB">reads: 0</span></div>
+            <div class="kvlist" id="dcKV"></div>
+            <div class="dc-foot"><span>entries: <b id="dcCntB">0</b></span><span>per-step reads grow with t</span></div>
+          </div>
+          <div class="dc-panel o">
+            <div class="dc-head"><span>Linear · recurrent state S</span><span class="dc-cost" id="dcCostO">reads: 49 (const)</span></div>
+            <div class="stgrid" id="dcST"></div>
+            <div class="dc-foot"><span>entries: <b>49, always</b></span><span>updated in place, every step</span></div>
+          </div>
+        </div>
+        <p class="dim" style="margin:14px 0 0">Left: each step appends a KV entry <em>and re-scans all of them</em> (watch the sweep lengthen). Right: the same matrix flickers — overwritten in place, never larger. This in-place overwrite is precisely what breaks vLLM's assumptions next.</p>
+      </div>
+    </div>
+
+    <h3 data-reveal>Why hybrids, though?</h3>
+    <p data-reveal>Pure recurrence compresses all history into a fixed budget, and lossy compression has a price: exact long-range recall (find the needle, quote it verbatim) degrades, and in-context retrieval is provably bounded by state capacity. The field's pragmatic answer is the <b>hybrid</b>: mostly linear/Mamba layers for scale, a sprinkling of full-attention layers (often ~1 in 4 to 1 in 8, sometimes sliding-window) as random-access memory. Qwen3-Next &amp; Qwen3.5/3.6 (GDN + attention), Nemotron-Nano-2, Granite 4.0, Falcon-H1, Jamba, Zamba2, MiniMax-Text-01 all follow this template — which means a serving engine can't pick one memory model. <b>It must run both, in the same forward pass, from the same memory pool.</b> That is the actual engineering problem vLLM had to solve.</p>
+  </div>
+</section>
+
+<!-- ============ 0x08 THE COLLISION ============ -->
+<section id="s08">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x08</span> Part II · Linear Attention</div>
+    <h2>The collision: four load-bearing assumptions, tested</h2>
+    <p class="lede">Here is the honest answer to "can vLLM work with linear attention?" — decomposed into the four properties Part I kept flagging. Two survive. Two shatter.</p>
+  </div>
+
+  <div class="assume" data-reveal>
+    <div class="a-l"><span class="a-tag">A1 · vLLM assumed</span><h4>Memory grows one token-slot at a time</h4><p>Paging exists to tame unpredictable per-token growth: allocate a 16-token block on demand, never reserve the future.</p></div>
+    <div class="a-r"><span class="a-tag">R1 · linear reality</span><h4>Memory never grows at all</h4><p>The state is allocated once, at admission, at full size (~MiBs), and stays that size until the request dies. There is nothing to page <em>in the growth sense</em> — but a big fixed object still needs a slot in a shared pool.</p></div>
+    <div class="a-verdict"><span class="pill green">reconcilable</span><span>Growth-paging is unnecessary, but pooling isn't: treat the whole state as <em>one giant page</em> allocated up front. The mechanism generalizes; the sizes clash (64 KiB vs 2.57 MiB pages) — fixed in 0x09 by page-size alignment.</span></div>
+  </div>
+
+  <div class="assume" data-reveal>
+    <div class="a-l"><span class="a-tag">A2 · vLLM assumed</span><h4>Cached state is append-only &amp; immutable</h4><p>Written once, read forever. This is what makes refcounted sharing, copy-on-write, hash-chained prefix caching, and truncate-to-rollback all <em>sound</em>.</p></div>
+    <div class="a-r"><span class="a-tag">R2 · linear reality</span><h4>The state is destructively overwritten every token</h4><p>S ← f(S, token). The state at time t <em>replaces</em> the state at t−1. Yesterday's state is gone unless you explicitly snapshotted it.</p></div>
+    <div class="a-verdict"><span class="pill red">breaks</span><span>Sharing a live state between two forked sequences is impossible — one write corrupts the other. Fork must <b>eagerly copy MiBs</b> (no lazy COW). Content-hashing "the cache" is meaningless for a mutating object. Every immutability-dependent feature needs a new design.</span></div>
+  </div>
+
+  <div class="assume" data-reveal>
+    <div class="a-l"><span class="a-tag">A3 · vLLM assumed</span><h4>Every token's cache entry is independently addressable</h4><p>Want tokens 0–4095's KV? Take those 256 blocks. Drop tokens outside a sliding window? Free those blocks. Reuse half a prefix? Take half the blocks.</p></div>
+    <div class="a-r"><span class="a-tag">R3 · linear reality</span><h4>Per-token state does not exist</h4><p>The state is a holistic, <em>lossy fold</em> of the whole prefix. You cannot extract "tokens 0–4095's contribution", cannot evict token spans, cannot combine state(A) with tokens(B). A snapshot is valid for <b>one exact prefix</b>, in full, or not at all.</p></div>
+    <div class="a-verdict"><span class="pill red">breaks</span><span>Prefix reuse degrades from "any block-aligned prefix subset" to "<b>exact match against a stored checkpoint</b>". Partial-hit caching, window trimming, mid-sequence dedup: all structurally gone. This is the deepest incompatibility — it's mathematical, not an engineering gap.</span></div>
+  </div>
+
+  <div class="assume" data-reveal>
+    <div class="a-l"><span class="a-tag">A4 · vLLM assumed</span><h4>Rollback = truncation</h4><p>Speculative decoding verifies k draft tokens, keeps j, discards the rest by <em>pointing the length counter back</em>. Preempted requests recompute from raw token IDs. Cheap, exact, trivial.</p></div>
+    <div class="a-r"><span class="a-tag">R4 · linear reality</span><h4>The update is a one-way door</h4><p>After absorbing k speculative tokens, S cannot be un-updated (inverting it is numerically hopeless even where algebraically defined). Going "back 3 tokens" means restoring a snapshot from before, then re-advancing.</p></div>
+    <div class="a-verdict"><span class="pill amber">reworkable</span><span>Speculation survives via <b>checkpoint-verify-restore</b>: snapshot S, run the draft, accept j tokens by recomputing/advancing from the snapshot, discard the rest. Correct, but costs state copies + bookkeeping per speculative round instead of a free pointer move.</span></div>
+  </div>
+
+  <h3 data-reveal>And the parts that never cared</h3>
+  <p data-reveal>Just as important is what <em>doesn't</em> collide. <b>Continuous batching</b> is attention-agnostic — a token budget per request schedules identically (admission control even gets <em>easier</em>: memory need per request is a known constant, no growth forecasting). <b>Chunked prefill</b> maps one-to-one onto chunkwise-parallel kernels. The <b>two-process engine, persistent batch, sampler, structured output, API layer</b>: untouched. Even the decode-side economics <em>improve</em> — batches are capped by compute, not by a ballooning cache. vLLM's skeleton fits linear attention beautifully; it's the <b>memory manager and every feature built on cache immutability</b> that had to be reinvented. Which brings us to how they actually did it.</p>
+</section>
+
+<!-- ============ 0x09 HOW IT WORKS ============ -->
+<section id="s09" class="wide">
+  <div class="sec-head" data-reveal style="max-width:var(--w-text);margin-left:auto;margin-right:auto">
+    <div class="eyebrow"><span class="adr">0x09</span> Part II · Linear Attention</div>
+    <h2>How vLLM made it work — the actual engineering</h2>
+    <p class="lede">The story in three acts: a fragile V0 hack, a unified V1 allocator with page-size alignment, and the slow reconquest of every advanced feature — prefix caching, CUDA graphs, speculation — under the new rules.</p>
+  </div>
+
+  <div style="max-width:var(--w-text);margin:0 auto">
+    <h3 data-reveal>Act I · The V0 hack: two memory systems in a trench coat</h3>
+    <p data-reveal>First support (Jamba-era, 2024) bolted a separate <code>MambaCacheManager</code> next to the paged pool: each Mamba layer got a plain tensor holding one state slot per possible concurrent sequence, sized by the user-set <code>max_num_seqs</code>. It worked, and it was miserable. The two allocators couldn't see each other, so <b>the user had to guess the memory split</b>: set <code>max_num_seqs</code> too high → OOM crash; too low → idle GPU. Being outside the paged world, the state was invisible to prefix caching, KV transfer, and disaggregation — permanently. The vLLM/IBM team's own retrospective calls it "a pragmatic but fragile hack." V0's whole hybrid path has since been deleted.</p>
+
+    <h3 data-reveal>Act II · The V1 unified allocator: one pool, many page dialects</h3>
+    <p data-reveal>V1 rebuilt memory management around a generalization: layers declare a <b>KVCacheSpec</b> describing what they cache, and layers with identical specs form a <b>KVCacheGroup</b>. A hybrid model has (at least) two groups — full-attention layers and Mamba/linear layers — and a coordinator (<code>HybridKVCacheCoordinator</code>) runs a per-group manager over <b>one shared pool of physical pages</b>, backed by shared <code>KVCacheTensors</code>. (The same machinery is what serves sliding-window hybrids like Gemma-3 and gpt-oss, where a window layer only keeps blocks for the last W tokens — linear attention is the extreme point of the same generalization.) For this to be simple and fragmentation-free, one invariant is enforced: <b>every group's page must be the same number of bytes</b>. And there's the rub — an attention page was 16 tokens ≈ 64 KiB; a Mamba "page" is one whole state ≈ 2.57 MiB.</p>
+
+    <div class="widget" data-reveal="scale">
+      <div class="widget-bar"><span class="wt">Interactive · page-size alignment (Nemotron-Nano-12B-v2 numbers)</span><button class="btn primary" id="alToggle">Align pages →</button></div>
+      <div class="widget-body">
+        <div class="al-stage">
+          <div class="al-row">
+            <div class="al-lab"><b>Attention group</b><span id="alAttnLab">16-token blocks</span></div>
+            <div class="al-blocks" id="alAttnRow"></div>
+          </div>
+          <div class="al-row">
+            <div class="al-lab"><b>Mamba group</b><span id="alMambaLab">1 state / seq</span></div>
+            <div class="al-blocks"><div class="al-mamba" id="alMamba" style="width:300px;height:56px">state · 2.57 MiB<div class="pad" id="alPad"></div></div></div>
+          </div>
+          <div class="al-note" id="alNote"><b>Before:</b> pages of 64 KiB and 2.57 MiB can't share one allocator cleanly — a Mamba state would need ~41 attention-sized pages stitched together, reintroducing exactly the fragmentation paging was built to kill.</div>
+        </div>
+      </div>
+    </div>
+
+    <p data-reveal>The fix is delightfully blunt: <b>make the attention block bigger until the byte sizes meet</b>. vLLM auto-raises the attention <code>block_size</code> so one attention page ≥ one Mamba state, then <b>pads the Mamba page</b> slightly so the two are byte-identical. Real values: <b>672 tokens/block</b> for Nemotron-Nano-12B-v2, <b>528</b> for Qwen3.5 (you'll see it in the logs: <em>"Setting attention block size to 528 tokens to ensure that attention page size is &gt;= mamba page size"</em>). Now any free page serves either group; allocation stays trivially uniform. Two wrinkles, both solved:</p>
+    <ul class="flow" data-stagger>
+      <li><b>Giant blocks vs kernels.</b> Some attention kernels (e.g. FlashInfer's TRT-LLM path on Blackwell) only accept small block sizes. vLLM <b>decoupled the manager's block size from the kernel's view</b>: memory is bookkept in 672-token pages, while the kernel sees them re-sliced into its preferred granularity. Measured cost of the odd block sizes themselves: negligible — in these models attention is the minority of runtime anyway.</li>
+      <li><b>The striding bug.</b> Groups share the same underlying tensors through different <em>views</em>. Attention backends store K/V interleaved block-by-block; Mamba's default layout stored all conv-states then all SSM-states — so a Mamba write could land inside a <em>different request's attention block</em>. Silent cross-request corruption. Fix: restride the Mamba state tensors (and later, the FlashAttention view too) so both views tile the shared memory identically. A great reminder that "unified memory" is a layout contract, not just an allocator.</li>
+    </ul>
+
+    <h3 data-reveal>Act III · Winning the features back, one by one</h3>
+
+    <h4 data-reveal>Prefix caching → state checkpoints at block boundaries</h4>
+    <p data-reveal>Recall the collision: no per-token addressability, so reuse must mean <em>exact-prefix snapshots</em>. And recall the gift from 0x07: chunked prefill already surfaces the recurrent state at chunk boundaries. vLLM combines them — during prefill, <b>snapshot the Mamba/linear state at attention-block-aligned boundaries</b> (every 528/672 tokens) into pool pages that are hashed and retained exactly like KV blocks. A new request that exactly matches a cached prefix up to some boundary loads the snapshot and skips that much prefill; attention layers reuse their KV blocks as usual over the same span. Shipped first for Mamba-2 hybrids (experimental, late 2025), then extended across the family — Mamba-1, GDN, short-conv and linear-attention layers — with two flavors: an <b>align mode</b> (snapshot only at aligned boundaries) and an <b>all mode</b> (denser snapshots for more hit chances), plus Marconi-style admission policies deciding <em>which</em> prefixes are worth the MiB-sized snapshot rent, and fused GPU-side post-processing kernels to keep snapshotting off the CPU critical path.</p>
+    <div class="callout orange" data-reveal>
+      <span class="co-label">The honest fine print</span>
+      <p>Granularity hurts short prompts: caching happens per <em>full</em> page, and pages are now 528–672 tokens. A 500-token shared system prompt → <b>0% hit rate</b>; 979 tokens → ~1 page cached, ~450 recomputed. Pure transformers with 16-token blocks would cache nearly all of it. Also, each snapshot spends MiBs where softmax spends KiBs, so cache capacity (in reusable prefixes) is thinner. Fundamental? No. The natural consequence of R3? Exactly.</p>
+    </div>
+
+    <h4 data-reveal>CUDA graphs → FULL_AND_PIECEWISE</h4>
+    <p data-reveal>The linear/Mamba kernels are mostly <b>Triton</b> — superb for iterating on exotic recurrences, portable across vendors, but saddled with heavy CPU launch overhead, which is deadly precisely where these models shine (small-batch, low-latency decode: Granite-4.0-h-tiny activates ~1B params — the GPU finishes before Python does). vLLM staged its way out: eager → piecewise graphs → full graphs for decode-only batches → the now-default <b>FULL_AND_PIECEWISE</b>: fully-captured graphs for uniform decode steps, piecewise for mixed prefill+decode steps. That final stage is what let V1 beat V0 and delete it: on H100s, +2–18% throughput for Nemotron-Nano-12B-v2 and up to <b>+91%</b> for granite-4.0-h-tiny, with better TTFT and ITL across the sweep.</p>
+
+    <h4 data-reveal>Speculative decoding → checkpoint, verify, re-advance</h4>
+    <p data-reveal>Qwen3-Next ships MTP heads, so speculation had to work over GDN layers. The recipe follows A4's verdict: hold the pre-speculation state, verify the k drafted tokens in one chunked pass, and commit by advancing the state only through the j accepted tokens (the kernels expose the intermediate states the verification pass produces, so "re-advance" is a select, not a recompute). Rejected tokens simply never touch the canonical state. Same contract as truncation — achieved with snapshots instead of pointers.</p>
+
+    <h4 data-reveal>Scheduling &amp; preemption → mostly free, one asymmetry</h4>
+    <p data-reveal>As promised, the scheduler barely noticed: a linear layer's "block need" is constant, chunked prefill drives the chunkwise kernels directly, admission control is simpler than ever. Preemption inverted its economics: <b>swapping</b> a preempted request is now cheap (2.57 MiB beats gigabytes of KV over PCIe), while <b>recompute-style</b> preemption is pricier per unit of progress lost — without a checkpoint, a 100K-token prefix must be fully re-folded, since no partial state survives. Snapshots from prefix caching double as recovery points here, softening exactly this cost. KV-transfer / disaggregation followed the same trick as everything else: once the state is an opaque, fixed-size <em>page</em>, connectors like LMCache ship it between nodes with zero model-specific code.</p>
+  </div>
+</section>
+
+<!-- ============ 0x0A SCOREBOARD ============ -->
+<section id="s0A">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x0A</span> Part II · Linear Attention</div>
+    <h2>Scoreboard: what works, what's partial, what's just different</h2>
+    <p class="lede">The state of play in current vLLM (V1 engine, 2026), feature by feature — plus the model landscape this machinery now serves.</p>
+  </div>
+
+  <div class="tbl-scroll score" data-reveal>
+  <table class="tbl">
+    <tr><th>Capability</th><th>Status</th><th>How / why</th></tr>
+    <tr><td>Continuous batching</td><td><span class="pill green">full</span></td><td>Token-budget scheduling is attention-agnostic; admission is even simpler (constant per-request footprint).</td></tr>
+    <tr><td>Chunked prefill</td><td><span class="pill green">full</span></td><td>Maps directly onto chunkwise-parallel kernels (FLA/Triton, Mamba fused scans, Lightning tiles).</td></tr>
+    <tr><td>Unified paged memory</td><td><span class="pill green">full</span></td><td>State = one padded page; page-size alignment (528/672-token attention blocks); shared pool, shared tensors, fixed strides.</td></tr>
+    <tr><td>CUDA graphs / low-latency decode</td><td><span class="pill green">full</span></td><td>FULL_AND_PIECEWISE default; tames Triton launch overhead; up to +91% throughput vs V0 on small-activation hybrids.</td></tr>
+    <tr><td>Tensor / expert parallelism</td><td><span class="pill green">full</span></td><td>State shards along the head/group dimension like everything else; MoE hybrids (Qwen3-Next, Granite 4.0) run EP as usual.</td></tr>
+    <tr><td>Automatic prefix caching</td><td><span class="pill amber">partial</span></td><td>Exact-prefix state checkpoints at page boundaries (align/all modes). Coarse granularity: prompts shorter than one ~528-token page get zero reuse; snapshots cost MiBs each.</td></tr>
+    <tr><td>Speculative decoding / MTP</td><td><span class="pill amber">partial</span></td><td>Checkpoint-verify-re-advance for GDN (Qwen3-Next MTP). Correct; costs state bookkeeping per round instead of free truncation.</td></tr>
+    <tr><td>Preemption</td><td><span class="pill amber">partial</span></td><td>Swap: cheaper than ever. Recompute: all-or-nothing without a checkpoint — no partial-prefix credit exists to salvage.</td></tr>
+    <tr><td>Copy-on-write forking (n&gt;1, beams)</td><td><span class="pill red">gone by nature</span></td><td>In-place mutation forbids lazy sharing; forks eagerly copy the full state. Cheap-ish in absolute MiBs, but the elegant refcount trick doesn't translate.</td></tr>
+    <tr><td>Per-token cache surgery</td><td><span class="pill red">gone by nature</span></td><td>No trimming to a window, no partial-prefix stitching, no mid-sequence dedup — the state has no per-token anatomy. Mathematical, not fixable.</td></tr>
+  </table>
+  </div>
+
+  <h3 data-reveal>The models this serves today</h3>
+  <div class="grid-2" data-stagger>
+    <div class="card hoverable"><span class="pill orange">pure recurrent</span><h4>SSM-only lines</h4><p class="dim">Mamba &amp; Mamba-2 checkpoints, Falcon-Mamba, Codestral Mamba (7B code model), Bamba, PLaMo-2, Zamba-family cores — the maximal "no KV cache anywhere" bet; strongest at raw long-context throughput, weakest at exact recall.</p></div>
+    <div class="card hoverable"><span class="pill orange">hybrid · mamba-2</span><h4>Attention + SSD</h4><p class="dim">Jamba (the original hybrid at scale), IBM Granite 4.0 (MoE hybrids to enterprise), NVIDIA Nemotron-H / Nemotron-Nano-2, Falcon-H1, Zamba2 — a minority of attention layers as random-access memory over an SSD backbone.</p></div>
+    <div class="card hoverable"><span class="pill orange">hybrid · linear attn</span><h4>Attention + GDN/Lightning/KDA</h4><p class="dim">Qwen3-Next 80B-A3B and the Qwen3.5/3.6 series (Gated DeltaNet), MiniMax-Text-01/M1 (Lightning Attention at 456B), Kimi Linear (Kimi Delta Attention) — the current frontier of the recipe, all V1-only citizens.</p></div>
+    <div class="card hoverable"><span class="pill blue">the control group</span><h4>Sliding-window hybrids</h4><p class="dim">Gemma-3, Llama-4, gpt-oss mix full + windowed attention — served by the <em>same</em> hybrid coordinator. Proof that the V1 allocator is a general theory of heterogeneous caches, of which linear attention is one (extreme) dialect.</p></div>
+  </div>
+</section>
+
+<!-- ============ 0x0B TAKEAWAYS ============ -->
+<section id="s0B">
+  <div class="sec-head" data-reveal>
+    <div class="eyebrow"><span class="adr">0x0B</span> Coda</div>
+    <h2>Takeaways</h2>
+  </div>
+  <div class="grid-2" data-stagger>
+    <div class="card hoverable"><h4>1 · vLLM is an OS, and that's why it survived</h4><p class="dim">Its deepest ideas — pages, page tables, iteration-level scheduling — are resource-management ideas, not transformer ideas. The parts that assumed nothing about attention (scheduler, executor, API) crossed over to linear attention untouched.</p></div>
+    <div class="card hoverable"><h4>2 · The real dependency was immutability</h4><p class="dim">"Can vLLM do linear attention?" resolves to "which features depend on an append-only, per-token, immutable cache?" Sharing, hashing, COW, truncation-rollback did — and each had to be re-derived for a mutable, holistic, fixed-size state.</p></div>
+    <div class="card hoverable"><h4>3 · The reconciliation was conceptual, not brute force</h4><p class="dim">One move unlocked everything: <em>promote the recurrent state to a first-class page</em>. Align page bytes, fix strides, checkpoint at boundaries — and prefix caching, disaggregation, KV transfer all come back as corollaries.</p></div>
+    <div class="card hoverable"><h4>4 · The trade-offs that remain are mathematics</h4><p class="dim">Coarse cache granularity, eager fork copies, exact-match-only reuse aren't bugs in vLLM — they're the systems-level shadow of lossy compression. Hybrids exist precisely to buy those properties back where they matter.</p></div>
+  </div>
+
+  <div class="callout green" data-reveal style="margin-top:26px">
+    <span class="co-label">The one-sentence answer</span>
+    <p><b>Yes, vLLM works with linear attention</b> — because its scheduler never cared about attention math, and its memory manager was generalized (V1) until a fixed-size mutable state could masquerade as one big immutable-ish page; what cannot be recovered — per-token addressability and lazy sharing — is lost to the math of lossy recurrent compression, not to any limitation of vLLM, and hybrid architectures are the industry's standing compromise with exactly that fact.</p>
+  </div>
+
+  <footer class="foot">
+    <b style="color:var(--ink)">Primary sources &amp; further reading</b>
+    <ul class="refs">
+      <li>Kwon et al., <i>Efficient Memory Management for LLM Serving with PagedAttention</i> — SOSP 2023 · <a href="https://arxiv.org/abs/2309.06180">arXiv:2309.06180</a></li>
+      <li>vLLM docs — <a href="https://docs.vllm.ai">docs.vllm.ai</a> · esp. <i>Hybrid KV Cache Manager</i> design doc &amp; <i>V1 architecture</i> pages</li>
+      <li>vLLM × IBM, <i>Hybrid Models as First-Class Citizens in vLLM</i> — PyTorch blog, Nov 2025 (source of the 64 KiB / 2.57 MiB / 672-token / +91% figures)</li>
+      <li>vLLM GitHub — RFC #11382 <i>Hybrid Memory Allocator</i>; tracking issue #26201 <i>Prefix Caching for Hybrid Models</i></li>
+      <li>Katharopoulos et al. 2020 (linear attention) · Gu &amp; Dao 2023 (Mamba) · Dao &amp; Gu 2024 (Mamba-2 / SSD) · Yang et al. (GLA, Gated DeltaNet) · MiniMax-01 (Lightning Attention)</li>
+      <li>Orca — Yu et al., OSDI 2022 (iteration-level scheduling / continuous batching)</li>
+    </ul>
+    <p style="margin-top:14px">Built as a self-contained page · graph-paper light theme · spring-physics reveals in vanilla JS (Framer-Motion-style, no framework) · <span style="color:var(--blue)">blue = paged KV</span> · <span style="color:var(--orange)">orange = recurrent state</span></p>
+  </footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const el=(tag,cls)=>{const e=document.createElement(tag);if(cls)e.className=cls;return e;};
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ============ reveal / stagger (framer-motion style) ============ */
+document.querySelectorAll('[data-stagger]').forEach(p=>{
+  [...p.children].forEach((c,i)=>{c.style.transitionDelay=(i*70)+'ms';});
+});
+const io=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+},{threshold:.12,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('[data-reveal],[data-stagger]').forEach(n=>io.observe(n));
+
+/* ============ progress bar + TOC ============ */
+const prog=$('progress');
+const tocLinks=[...document.querySelectorAll('.toc a')];
+const secs=tocLinks.map(a=>document.querySelector(a.getAttribute('href')));
+const mobSel=$('mobJump');
+if(mobSel){tocLinks.forEach(a=>{const o=document.createElement('option');o.value=a.getAttribute('href');o.textContent=a.querySelector('.adr').textContent+' — '+a.textContent.replace(a.querySelector('.adr').textContent,'').trim();mobSel.appendChild(o);});
+mobSel.addEventListener('change',()=>{if(mobSel.value)location.hash=mobSel.value;});}
+function onScroll(){
+  const h=document.documentElement;
+  const pct=h.scrollTop/(h.scrollHeight-h.clientHeight);
+  if(prog)prog.style.width=(pct*100)+'%';
+  let cur=-1;const mark=window.innerHeight*.38;
+  secs.forEach((s,i)=>{if(s&&s.getBoundingClientRect().top<mark)cur=i;});
+  tocLinks.forEach((a,i)=>a.classList.toggle('active',i===cur));
+}
+window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+/* ============ hero strip ============ */
+(function(){
+  const kv=$('stripKV'),st=$('stripState'),tick=$('stripTick');
+  if(!kv||!st)return;
+  for(let i=0;i<24;i++){const c=el('div','state-cell');st.appendChild(c);}
+  st.style.gridTemplateColumns='repeat(8,12px)';
+  let t=0,row=null;
+  function step(){
+    t++;if(tick)tick.textContent='t = '+t;
+    if(t>34){kv.innerHTML='';t=0;row=null;return;}
+    if(!row||row.children.length>=8){row=el('div','kv-blockrow');kv.appendChild(row);}
+    const c=el('div','kv-cell f');row.appendChild(c);
+    const cells=st.children;
+    [...cells].forEach(c=>c.classList.remove('hot'));
+    for(let i=0;i<6;i++){cells[Math.floor(Math.random()*cells.length)].classList.add('hot');}
+  }
+  if(!reduced)setInterval(step,650);else{for(let i=0;i<18;i++)step();}
+})();
+
+/* ============ 0x01 calculator ============ */
+(function(){
+  const sel=$('calcModel');if(!sel)return;
+  const MiB=1048576,GiB=1073741824,FRAME=80*GiB;
+  const P={
+    l38:{n:'Llama-3-8B · 32L · 8 KV heads (GQA) · fp16',arch:[32,8,128,2],wGB:16,state:0},
+    o13:{n:'OPT-13B · 40L · 40 heads (MHA, the paper example)',arch:[40,40,128,2],wGB:26,state:0},
+    l70:{n:'Llama-3-70B · 80L · 8 KV heads (GQA) · fp16',arch:[80,8,128,2],wGB:140,state:0},
+    nem:{n:'Nemotron-Nano-12B-v2 · hybrid (attn+Mamba-2)',kvTok:4096,wGB:24,state:2.57*MiB},
+    ssm:{n:'Pure SSM · illustrative 7B (no KV at all)',kvTok:0,wGB:14,state:40*MiB,ill:true}
+  };
+  Object.entries(P).forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v.n;sel.appendChild(o);});
+  const ctx=$('calcCtx'),bat=$('calcBatch');
+  const fmtB=b=>{if(b>=GiB)return (b/GiB).toFixed(b/GiB>=10?0:1)+' GiB';if(b>=MiB)return (b/MiB).toFixed(1)+' MiB';return (b/1024).toFixed(0)+' KiB';};
+  const fmtI=n=>n.toLocaleString('en-US');
+  function upd(){
+    const p=P[sel.value],C=Math.pow(2,+ctx.value),B=+bat.value;
+    $('calcCtxV').textContent=fmtI(C);$('calcBatchV').textContent=B;
+    const kvTok=p.arch?2*p.arch[0]*p.arch[1]*p.arch[2]*p.arch[3]:p.kvTok;
+    const perReqKV=kvTok*C, perReq=perReqKV+p.state;
+    const totKV=perReqKV*B, totST=p.state*B, W=p.wGB*GiB, total=W+totKV+totST;
+    $('calcPerTok').innerHTML=kvTok?fmtB(kvTok)+' <small>KV</small>':'0 <small>KV — state only</small>';
+    $('calcPerReq').innerHTML=fmtB(perReq)+(p.state?' <small>incl. '+fmtB(p.state)+' state'+(p.ill?' (illustrative)':'')+'</small>':'');
+    $('calcTotalKV').innerHTML=fmtB(totKV+totST)+' <small>× '+B+' reqs</small>';
+    const denom=Math.max(FRAME,total);
+    $('segW').style.width=(W/denom*100)+'%';
+    $('segKV').style.width=(totKV/denom*100)+'%';
+    $('segST').style.width=(totST/denom*100)+'%';
+    $('calcPct').textContent=fmtB(total)+' / 80 GiB';
+    const warn=$('calcWarn');
+    if(total>FRAME){warn.className='calc-warn over';warn.textContent='✗ exceeds one H100 — a real engine would shrink the batch, preempt, quantize, or shard';}
+    else{const free=FRAME-total;warn.className='calc-warn ok';warn.textContent='✓ fits · '+fmtB(free)+' left → room for ~'+fmtI(Math.floor(free/Math.max(perReq,1)))+' more identical requests';}
+    const cmp=$('calcCompare');
+    if(p.arch){const ratio=perReqKV/(2.57*MiB);cmp.innerHTML='Same request on a recurrent model: a fixed <b>~2.57 MiB</b> state — this KV cache is <b>'+(ratio>=10?ratio.toFixed(0):ratio.toFixed(1))+'×</b> larger at this context, and the gap widens every generated token.';}
+    else if(sel.value==='nem'){cmp.innerHTML='Hybrid split at this context: <b>'+fmtB(perReqKV)+'</b> growing KV (blue) vs <b>2.57 MiB</b> fixed state (orange) per request. At 128K the KV side is ~<b>200×</b> the state.';}
+    else{cmp.innerHTML='No KV cache exists. Per-request memory is <b>flat</b> across the whole context slider — that is the entire pitch, and the entire systems problem.';}
+  }
+  [sel,ctx,bat].forEach(x=>x.addEventListener('input',upd));upd();
+})();
+
+/* ============ 0x03 paged playground ============ */
+(function(){
+  const grid=$('physGrid');if(!grid)return;
+  const NB=48,BS=16,COLORS=['#2848D8','#0E8A5F','#7048D8','#D8286E','#0E8AA8','#B7791F'];
+  let phys=[],reqs=[],nextId=1,sel=null;
+  for(let i=0;i<NB;i++){
+    const b=el('div','pblock');
+    b.innerHTML='<span class="padr">'+i.toString(16).padStart(2,'0')+'</span><span class="prc"></span><div class="fillv"></div>';
+    grid.appendChild(b);
+    phys.push({refs:0,fill:0,color:null,node:b});
+  }
+  const log=(msg)=>{const l=$('pgLog');const d=document.createElement('div');d.innerHTML=msg;l.prepend(d);while(l.children.length>26)l.lastChild.remove();};
+  function drawBlock(i,pop){
+    const p=phys[i],n=p.node,f=n.querySelector('.fillv'),rc=n.querySelector('.prc');
+    f.style.height=(p.fill/BS*100)+'%';
+    f.style.background=p.color||'transparent';
+    n.style.borderColor=p.refs>0?(p.color||'var(--line-2)'):'var(--line-2)';
+    n.classList.toggle('shared',p.refs>1);
+    rc.textContent=p.refs>1?('×'+p.refs):'';
+    if(pop&&!reduced){n.classList.remove('pop');void n.offsetWidth;n.classList.add('pop');}
+  }
+  function alloc(color){
+    const i=phys.findIndex(p=>p.refs===0);
+    if(i<0)return -1;
+    phys[i].refs=1;phys[i].fill=0;phys[i].color=color;drawBlock(i,true);return i;
+  }
+  function stats(){
+    const used=phys.filter(p=>p.refs>0);
+    let waste=0,slots=0;used.forEach(p=>{waste+=BS-p.fill;slots+=p.fill;});
+    $('pgUsed').textContent=used.length;$('pgFree').textContent=NB-used.length;
+    $('pgWaste').textContent=waste;
+    $('pgUtil').textContent=used.length?Math.round(slots/(used.length*BS)*100)+'%':'—';
+  }
+  function renderReqs(){
+    const list=$('reqList');list.innerHTML='';
+    reqs.forEach(r=>{
+      const c=el('div','req-card'+(r===sel?' sel':''));
+      c.innerHTML='<div class="rq-top"><span style="width:10px;height:10px;border-radius:3px;background:'+r.color+'"></span><span class="rq-name">'+r.name+'</span>'+(r.forkOf?'<span class="pill amber" style="font-size:9px">fork of '+r.forkOf+'</span>':'')+'<span class="rq-len">'+r.tokens+' tok · '+r.blocks.length+' blk</span></div>';
+      const row=el('div','lb-row');
+      r.blocks.forEach((bi,li)=>{
+        const lb=el('div','lblock');lb.style.borderColor=r.color;
+        lb.textContent='L'+li+'→'+bi.toString(16).padStart(2,'0');
+        if(phys[bi].refs>1)lb.innerHTML+='<span class="shr">×'+phys[bi].refs+'</span>';
+        row.appendChild(lb);
+      });
+      c.appendChild(row);
+      c.addEventListener('click',()=>{sel=r;renderReqs();});
+      list.appendChild(c);
+    });
+    if(!reqs.length)list.innerHTML='<p class="dim" style="margin:4px">No requests. Create one to start allocating pages.</p>';
+  }
+  function newReq(){
+    if(reqs.length>=6){log('<span class="lg-r">✗ demo cap: 6 concurrent requests</span>');return;}
+    const tokens=20+Math.floor(Math.random()*26);
+    const color=COLORS[(nextId-1)%COLORS.length];
+    const need=Math.ceil(tokens/BS),blocks=[];
+    for(let i=0;i<need;i++){const bi=alloc(color);if(bi<0){blocks.forEach(b=>{phys[b].refs=0;drawBlock(b);});log('<span class="lg-r">✗ pool exhausted → scheduler would preempt (recompute or swap)</span>');stats();return;}
+      phys[bi].fill=(i===need-1)?(tokens%BS||BS):BS;drawBlock(bi,true);blocks.push(bi);}
+    const r={id:nextId,name:'R'+nextId,color,tokens,blocks,forkOf:null};nextId++;
+    reqs.push(r);sel=r;
+    log('<b>'+r.name+'</b> admitted · prompt <span class="lg-b">'+tokens+' tok</span> → '+need+' blocks, last block '+(tokens%BS||BS)+'/16 full');
+    renderReqs();stats();
+  }
+  function decodeOne(r){
+    let last=r.blocks[r.blocks.length-1];
+    if(phys[last].fill>=BS){
+      const bi=alloc(r.color);
+      if(bi<0){log('<span class="lg-r">✗ '+r.name+' needs a block, pool empty → preemption</span>');return false;}
+      r.blocks.push(bi);last=bi;
+      log('<b>'+r.name+'</b> crossed a 16-token boundary → <span class="lg-b">new block 0x'+bi.toString(16).padStart(2,'0')+'</span>');
+    } else if(phys[last].refs>1){
+      const bi=alloc(r.color);
+      if(bi<0){log('<span class="lg-r">✗ COW needs a block, pool empty</span>');return false;}
+      phys[bi].fill=phys[last].fill;phys[last].refs--;drawBlock(last);
+      r.blocks[r.blocks.length-1]=bi;
+      if(!reduced)phys[bi].node.classList.add('cow-flash');
+      log('<span class="lg-a">⚡ copy-on-write</span>: <b>'+r.name+'</b> writing into shared block 0x'+last.toString(16).padStart(2,'0')+' → copied to 0x'+bi.toString(16).padStart(2,'0'));
+      last=bi;
+    }
+    phys[last].fill++;r.tokens++;drawBlock(last);return true;
+  }
+  $('pgNew').addEventListener('click',newReq);
+  $('pgStep').addEventListener('click',()=>{
+    if(!reqs.length){log('<span class="lg-r">nothing running</span>');return;}
+    for(let s=0;s<4;s++)reqs.forEach(r=>decodeOne(r));
+    log('decode ×4 for all '+reqs.length+' running request(s)');
+    renderReqs();stats();
+  });
+  $('pgFork').addEventListener('click',()=>{
+    if(!sel){log('<span class="lg-r">select a request first</span>');return;}
+    if(reqs.length>=6){log('<span class="lg-r">✗ demo cap reached</span>');return;}
+    const r={id:nextId,name:'R'+nextId,color:sel.color,tokens:sel.tokens,blocks:[...sel.blocks],forkOf:sel.name};nextId++;
+    r.blocks.forEach(bi=>{phys[bi].refs++;drawBlock(bi);});
+    reqs.push(r);
+    log('<span class="lg-a">⑂ fork</span> '+sel.name+' → <b>'+r.name+'</b>: '+r.blocks.length+' blocks now shared (refcount++), <b>zero new memory</b>');
+    renderReqs();stats();
+  });
+  $('pgFinish').addEventListener('click',()=>{
+    if(!sel)return;
+    sel.blocks.forEach(bi=>{phys[bi].refs--;if(phys[bi].refs<=0){phys[bi].refs=0;phys[bi].fill=0;phys[bi].color=null;}drawBlock(bi);});
+    log('<b>'+sel.name+'</b> finished · its exclusive blocks returned to the pool <span class="lg-b">this step</span> (continuous batching would admit a waiter now)');
+    reqs=reqs.filter(x=>x!==sel);sel=reqs[reqs.length-1]||null;
+    renderReqs();stats();
+  });
+  $('pgReset').addEventListener('click',()=>{
+    reqs=[];sel=null;nextId=1;
+    phys.forEach((p,i)=>{p.refs=0;p.fill=0;p.color=null;drawBlock(i);});
+    $('pgLog').innerHTML='';renderReqs();stats();
+  });
+  renderReqs();stats();
+  log('pool online · 48 blocks × 16 tokens. <b>+ New request</b> to begin.');
+})();
+
+/* ============ 0x04 batching sim ============ */
+(function(){
+  const S=$('btStatic');if(!S)return;
+  const C=$('btCont');
+  const lens=[5,14,8,20,6,11,16,9],PF=2,SLOTS=4;
+  // static schedule
+  const st=[];let t0=0;
+  for(let b=0;b<2;b++){
+    const idx=[0,1,2,3].map(i=>i+b*4);
+    const bend=t0+PF+Math.max(...idx.map(i=>lens[i]));
+    idx.forEach(i=>{st[i]={start:t0,pfEnd:t0+PF,dEnd:t0+PF+lens[i],idleEnd:bend};});
+    t0=bend;
+  }
+  const T=t0;
+  // continuous schedule
+  const ct=[];const free=[0,0,0,0];
+  for(let i=0;i<8;i++){
+    free.sort((a,b)=>a-b);const s=free[0];
+    ct[i]={start:s,pfEnd:s+PF,dEnd:s+PF+lens[i],idleEnd:s+PF+lens[i]};
+    free[0]=s+PF+lens[i];
+  }
+  const cT=Math.max(...ct.map(r=>r.dEnd));
+  function build(panel,sched){
+    panel.innerHTML='';
+    return sched.map((r,i)=>{
+      const lane=el('div','bt-lane');
+      lane.innerHTML='<span class="bl-name">R'+(i+1)+'</span>';
+      const tr=el('div','bt-track');
+      const mk=(cls,a,b)=>{const s=el('div','bt-fill '+cls);s.style.left=(a/T*100)+'%';s.dataset.a=a;s.dataset.b=b;s.style.width='0%';tr.appendChild(s);return s;};
+      const segs=[mk('pf',r.start,r.pfEnd),mk('dc',r.pfEnd,r.dEnd)];
+      if(r.idleEnd>r.dEnd)segs.push(mk('idle',r.dEnd,r.idleEnd));
+      lane.appendChild(tr);panel.appendChild(lane);
+      return segs;
+    });
+  }
+  let sSegs=build(S,st),cSegs=build(C,ct),raf=null;
+  function paint(t){
+    [sSegs,cSegs].forEach(all=>all.forEach(segs=>segs.forEach(s=>{
+      const a=+s.dataset.a,b=+s.dataset.b;
+      s.style.width=(Math.max(0,Math.min(t,b)-a)/T*100)+'%';
+    })));
+    const busy=(sched,cap)=>{let bz=0;sched.forEach(r=>{bz+=Math.max(0,Math.min(t,r.dEnd)-r.start);});const dur=Math.min(t,cap);return dur>0?Math.round(bz/(SLOTS*dur)*100):0;};
+    $('btUtilS').textContent=busy(st,T)+'%';
+    $('btUtilC').textContent=busy(ct,cT)+'%';
+    $('btClock').textContent='t = '+t.toFixed(1)+' / '+T+' steps'+(t>=cT?'  ·  continuous side finished at t='+cT:'');
+  }
+  function run(){
+    if(raf)cancelAnimationFrame(raf);
+    if(reduced){paint(T);return;}
+    const start=performance.now(),DUR=7000;
+    const tick=now=>{
+      const p=Math.min(1,(now-start)/DUR);
+      paint(p*T);
+      if(p<1)raf=requestAnimationFrame(tick);
+    };
+    raf=requestAnimationFrame(tick);
+  }
+  $('btPlay').addEventListener('click',run);
+  $('btReset').addEventListener('click',()=>{if(raf)cancelAnimationFrame(raf);paint(0);});
+  paint(0);
+})();
+
+/* ============ 0x07 decode compare ============ */
+(function(){
+  const kv=$('dcKV');if(!kv)return;
+  const stg=$('dcST');
+  for(let i=0;i<49;i++)stg.appendChild(el('div','stcell'));
+  let t=0,timer=null;
+  function step(){
+    if(t>=48){stop();return;}
+    t++;
+    const tok=el('div','kvtok');kv.appendChild(tok);
+    const toks=[...kv.children];
+    toks.forEach((c,i)=>{setTimeout(()=>{c.classList.add('scan');setTimeout(()=>c.classList.remove('scan'),140);},i*(reduced?0:14));});
+    $('dcCostB').textContent='reads: '+t+' (grows)';
+    $('dcCntB').textContent=t;
+    const cells=[...stg.children];
+    cells.forEach(c=>c.classList.remove('hot'));
+    for(let i=0;i<11;i++)cells[Math.floor(Math.random()*49)].classList.add('hot');
+  }
+  function stop(){if(timer){clearInterval(timer);timer=null;$('dcPlay').textContent='▶ Decode';}}
+  $('dcPlay').addEventListener('click',()=>{
+    if(timer){stop();return;}
+    if(reduced){for(let i=0;i<20;i++)step();return;}
+    $('dcPlay').textContent='⏸ Pause';
+    timer=setInterval(step,420);
+  });
+  $('dcReset').addEventListener('click',()=>{stop();t=0;kv.innerHTML='';$('dcCostB').textContent='reads: 0';$('dcCntB').textContent='0';[...stg.children].forEach(c=>c.classList.remove('hot'));});
+})();
+
+/* ============ 0x09 alignment ============ */
+(function(){
+  const row=$('alAttnRow');if(!row)return;
+  const btn=$('alToggle'),note=$('alNote'),pad=$('alPad'),lab=$('alAttnLab');
+  let aligned=false;
+  function draw(){
+    row.innerHTML='';
+    if(!aligned){
+      for(let i=0;i<6;i++){
+        const b=el('div','al-attn');b.style.width='58px';b.style.height='26px';
+        b.textContent=i===0?'16t·64KiB':'16t';
+        row.appendChild(b);
+      }
+      const dots=el('span');dots.style.cssText='font-family:var(--mono);font-size:12px;color:var(--ink-3);align-self:center';dots.textContent='…×41 to equal one state';row.appendChild(dots);
+      pad.style.width='0';
+      lab.textContent='16-token blocks';
+      note.innerHTML='<b>Before:</b> pages of 64 KiB and 2.57 MiB can\'t share one allocator cleanly — a Mamba state would need ~41 attention-sized pages stitched together, reintroducing exactly the fragmentation paging was built to kill.';
+      btn.textContent='Align pages →';
+    }else{
+      const b=el('div','al-attn');b.style.width='300px';b.style.height='56px';
+      b.innerHTML='1 block = 672 tokens<br>= 2.62 MiB page';
+      row.appendChild(b);
+      pad.style.width='7%';
+      lab.textContent='672-token blocks';
+      note.innerHTML='<b>After:</b> attention block_size auto-raised 16 → <b>672 tokens</b> so its page ≥ the Mamba state; the state page gets a sliver of <b>padding</b> (hatched) to be byte-identical. One uniform page size → any free page serves either group. Kernels that dislike 672-token blocks get a re-sliced <em>view</em>; the allocator never knows.';
+      btn.textContent='← Un-align';
+    }
+  }
+  btn.addEventListener('click',()=>{aligned=!aligned;draw();});
+  draw();
+})();
+})();
+</script>
+</body>
+</html>

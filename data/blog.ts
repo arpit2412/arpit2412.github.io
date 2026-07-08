@@ -11,6 +11,18 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "vllm-inside-out",
+    file: "/blog/vllm-inside-out.html",
+    title: "vLLM, From the Inside Out — and the Linear Attention Question",
+    blurb:
+      "vLLM is an operating system for tokens: virtual-memory paging applied to the KV cache. This page builds the engine up piece by piece — block tables, scheduler, prefix caching, preemption, speculative decoding — then shows exactly where linear attention breaks its core assumption, and how the V1 engine was rebuilt so the two could coexist.",
+    readTime: "~ 35 min",
+    topic: "Inference",
+    date: "July 2026",
+    cover:
+      "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
     slug: "spec-kit",
     file: "/blog/spec-kit.html",
     title: "Spec Kit — How GitHub Killed Vibe Coding",
