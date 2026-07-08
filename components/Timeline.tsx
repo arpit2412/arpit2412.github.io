@@ -16,7 +16,6 @@ export default function Timeline() {
     <section id="journey" className="relative border-t border-edge bg-surface py-28 transition-colors duration-500 md:py-40">
       <div className="mx-auto max-w-shell px-6">
         <SectionHeading
-          eyebrow="Journey"
           title="Defence labs to frontier datacenters."
           lede="Eight years across research, industry, film, and national-scale AI infrastructure."
         />
@@ -30,7 +29,7 @@ export default function Timeline() {
             // gradient spine picks up both accents
             initial={false}
           >
-            <div className="h-full w-full" style={{ background: "linear-gradient(to bottom, var(--accent), var(--accent-2))" }} />
+            <div className="h-full w-full bg-accent" />
           </motion.div>
 
           <div className="space-y-16 md:space-y-24">

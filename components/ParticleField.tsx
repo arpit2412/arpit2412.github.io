@@ -3,9 +3,9 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Drifting node-and-edge field — the "neural" hero backdrop.
- * Theme-aware via the --particle CSS variable; pauses off-screen;
- * disabled entirely under prefers-reduced-motion.
+ * Drifting node-and-edge field behind the hero.
+ * Perf: color cached (re-read only on theme change), DPR capped at 1.5,
+ * node count capped at 60, paused off-screen, disabled under reduced motion.
  */
 export default function ParticleField() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -17,19 +17,27 @@ export default function ParticleField() {
     let w = 0,
       h = 0,
       raf = 0,
-      visible = true;
+      visible = true,
+      rgb = "";
+
+    const readColor = () => {
+      rgb = getComputedStyle(document.documentElement).getPropertyValue("--particle").trim();
+    };
+    readColor();
+    const mo = new MutationObserver(readColor);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     type P = { x: number; y: number; vx: number; vy: number };
     let pts: P[] = [];
 
     const resize = () => {
-      const dpr = Math.min(devicePixelRatio, 2);
+      const dpr = Math.min(devicePixelRatio, 1.5);
       w = canvas.offsetWidth;
       h = canvas.offsetHeight;
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const n = Math.min(90, Math.floor((w * h) / 16000));
+      const n = Math.min(60, Math.floor((w * h) / 22000));
       pts = Array.from({ length: n }, () => ({
         x: Math.random() * w,
         y: Math.random() * h,
@@ -38,12 +46,11 @@ export default function ParticleField() {
       }));
     };
 
+    const LINK = 110;
     const tick = () => {
       raf = requestAnimationFrame(tick);
       if (!visible) return;
       ctx.clearRect(0, 0, w, h);
-      const rgb = getComputedStyle(document.documentElement).getPropertyValue("--particle").trim();
-      const LINK = 120;
       for (const p of pts) {
         p.x += p.vx;
         p.y += p.vy;
@@ -58,14 +65,14 @@ export default function ParticleField() {
             dy = a.y - b.y;
           const d2 = dx * dx + dy * dy;
           if (d2 < LINK * LINK) {
-            ctx.strokeStyle = `rgba(${rgb},${(0.14 * (1 - Math.sqrt(d2) / LINK)).toFixed(3)})`;
+            ctx.strokeStyle = `rgba(${rgb},${(0.13 * (1 - Math.sqrt(d2) / LINK)).toFixed(3)})`;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y);
             ctx.lineTo(b.x, b.y);
             ctx.stroke();
           }
         }
-        ctx.fillStyle = `rgba(${rgb},0.35)`;
+        ctx.fillStyle = `rgba(${rgb},0.32)`;
         ctx.beginPath();
         ctx.arc(a.x, a.y, 1.3, 0, Math.PI * 2);
         ctx.fill();
@@ -80,9 +87,10 @@ export default function ParticleField() {
     return () => {
       cancelAnimationFrame(raf);
       io.disconnect();
+      mo.disconnect();
       window.removeEventListener("resize", resize);
     };
   }, []);
 
-  return <canvas ref={ref} className="absolute inset-0 h-full w-full" aria-hidden />;
+  return <canvas ref={ref} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden />;
 }

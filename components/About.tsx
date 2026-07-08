@@ -7,10 +7,7 @@ export default function About() {
   return (
     <section id="about" className="relative py-28 md:py-40">
       <div className="mx-auto max-w-shell px-6">
-        <SectionHeading
-          eyebrow="About"
-          title="Research-grade ideas, shipped at production scale."
-        />
+        <SectionHeading title="Research-grade ideas, shipped at production scale." />
 
         <div className="grid gap-16 md:grid-cols-[3fr,2fr]">
           <div className="space-y-6">
@@ -23,7 +20,7 @@ export default function About() {
 
           <Reveal delay={0.15}>
             <div className="border-l border-edge pl-8">
-              <p className="eyebrow mb-6">Education</p>
+              <h3 className="mb-6 font-display font-semibold">Education</h3>
               <ul className="space-y-7">
                 {education.map((e) => (
                   <li key={e.degree}>

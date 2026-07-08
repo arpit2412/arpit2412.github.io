@@ -3,9 +3,8 @@
 @tailwind utilities;
 
 /* ============================================================
-   Theme tokens.
-   Light: cool paper + deep ink + indigo signal.
-   Dark:  deep-space navy + starlight text + electric indigo/cyan.
+   Theme tokens. One accent: electric blue.
+   Light: cool paper + deep ink. Dark: deep-space navy + starlight.
    ============================================================ */
 :root {
   --bg: #f5f6f8;
@@ -16,13 +15,11 @@
   --faint: #8b93a7;
   --edge: rgba(11, 17, 32, 0.09);
   --edge-2: rgba(11, 17, 32, 0.18);
-  --accent: #4f46e5;
-  --accent-2: #0e7490;
-  --accent-soft: rgba(79, 70, 229, 0.08);
-  --glow-a: rgba(79, 70, 229, 0.14);
-  --glow-b: rgba(14, 116, 144, 0.1);
+  --accent: #2456d6;
+  --accent-soft: rgba(36, 86, 214, 0.08);
+  --glow: rgba(36, 86, 214, 0.1);
   --nav: rgba(245, 246, 248, 0.72);
-  --shadow-lift: 0 1px 2px rgba(8, 12, 24, 0.05), 0 14px 36px -14px rgba(8, 12, 24, 0.16);
+  --shadow-lift: 0 1px 2px rgba(8, 12, 24, 0.05), 0 14px 36px -14px rgba(16, 32, 64, 0.18);
   --particle: 11, 17, 32;
 }
 
@@ -35,11 +32,9 @@
   --faint: #5c6579;
   --edge: rgba(233, 237, 245, 0.08);
   --edge-2: rgba(233, 237, 245, 0.18);
-  --accent: #8b90ff;
-  --accent-2: #38d5ee;
-  --accent-soft: rgba(139, 144, 255, 0.1);
-  --glow-a: rgba(99, 102, 241, 0.22);
-  --glow-b: rgba(34, 211, 238, 0.09);
+  --accent: #7aa5ff;
+  --accent-soft: rgba(122, 165, 255, 0.1);
+  --glow: rgba(84, 120, 220, 0.16);
   --nav: rgba(5, 7, 13, 0.62);
   --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.45), 0 18px 44px -18px rgba(0, 0, 0, 0.65);
   --particle: 233, 237, 245;
@@ -56,6 +51,7 @@
     background: var(--bg);
     color-scheme: light;
     scroll-behavior: smooth;
+    scroll-padding-top: 4.5rem;
   }
   html.dark {
     color-scheme: dark;
@@ -64,7 +60,7 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    transition: background-color 0.45s ease, color 0.45s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::selection {
@@ -93,7 +89,7 @@
 }
 
 @layer components {
-  /* Faint blueprint grid laid over section backgrounds */
+  /* Faint blueprint grid behind the hero */
   .grid-texture {
     background-image:
       linear-gradient(var(--edge) 1px, transparent 1px),
@@ -102,17 +98,25 @@
     mask-image: linear-gradient(to bottom, transparent, black 12%, black 88%, transparent);
   }
 
+  /* Ambient light, painted as gradients: no filter:blur layers (GPU cost) */
+  .hero-glow {
+    background:
+      radial-gradient(38rem 26rem at 12% 8%, var(--glow), transparent 70%),
+      radial-gradient(32rem 24rem at 88% 92%, var(--glow), transparent 70%);
+  }
+  .cta-glow {
+    background: radial-gradient(36rem 20rem at 50% 0%, var(--glow), transparent 70%);
+  }
+
   .eyebrow {
     @apply font-mono text-2xs uppercase tracking-eyebrow text-accent;
   }
 
   .card-lift {
-    box-shadow: none;
     transition:
-      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.3s ease,
-      background-color 0.45s ease;
+      transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.3s ease;
   }
   .card-lift:hover {
     transform: translateY(-4px);
@@ -120,12 +124,14 @@
     border-color: var(--edge-2);
   }
 
-  /* Gradient text for hero emphasis */
-  .text-signal {
-    background: linear-gradient(100deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* Cursor-tracked spotlight (SpotlightCard). Opacity-only transition. */
+  .spotlight-layer {
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    background: radial-gradient(22rem circle at var(--mx, 50%) var(--my, 50%), var(--accent-soft), transparent 65%);
+  }
+  .spotlight-card:hover .spotlight-layer {
+    opacity: 1;
   }
 
   /* Underline-on-hover for inline links */

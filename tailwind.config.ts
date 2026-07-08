@@ -19,7 +19,6 @@ const config: Config = {
         edge: "var(--edge)",
         "edge-2": "var(--edge-2)",
         accent: "var(--accent)",
-        "accent-2": "var(--accent-2)",
         "accent-soft": "var(--accent-soft)",
       },
       fontFamily: {

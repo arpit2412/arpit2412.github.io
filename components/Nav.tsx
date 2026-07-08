@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
 import { Moon, Sun, Menu, X } from "lucide-react";
 
 const links = [
@@ -37,6 +37,8 @@ function ThemeToggle() {
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { scrollYProgress } = useScroll();
+  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 26, restDelta: 0.001 });
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -52,6 +54,12 @@ export default function Nav() {
       }`}
       style={{ background: scrolled ? "var(--nav)" : "transparent" }}
     >
+      {/* reading progress */}
+      <motion.div
+        style={{ scaleX: progress }}
+        className="absolute inset-x-0 top-0 h-[2px] origin-left bg-accent"
+        aria-hidden
+      />
       <nav className="mx-auto flex h-16 max-w-shell items-center justify-between px-6">
         <a href="#top" className="font-display text-sm font-semibold tracking-tight">
           Arpit Garg<span className="text-accent">.</span>

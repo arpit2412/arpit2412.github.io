@@ -3,8 +3,8 @@ export type Film = {
   year?: number;
   studio?: string;
   role: string;
-  banner: string;       // horizontal 16:9 — atmospheric marquee imagery
-  poster: string;       // portrait 2:3 — official poster art
+  banner: string;       // horizontal 16:9, atmospheric marquee imagery
+  poster: string;       // portrait 2:3, official poster art
   themeNote: string;    // short alt / story descriptor
 };
 

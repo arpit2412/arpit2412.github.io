@@ -9,9 +9,8 @@ export default function Writing() {
     <section id="writing" className="relative border-t border-edge bg-surface py-28 transition-colors duration-500 md:py-40">
       <div className="mx-auto max-w-shell px-6">
         <SectionHeading
-          eyebrow="Writing"
           title="Interactive deep-dives into how AI actually works."
-          lede="Visual, hands-on explainers — from attention mechanisms to inference engines."
+          lede="Visual, hands-on explainers, from attention mechanisms to inference engines."
         />
 
         {/* lead post */}
@@ -31,7 +30,7 @@ export default function Writing() {
             </div>
             <div className="flex flex-col justify-center p-8 md:p-12">
               <p className="mb-3 font-mono text-2xs uppercase tracking-wider text-accent">
-                {lead.topic} · {lead.date} · {lead.readTime}
+                {lead.topic} · {lead.readTime}
               </p>
               <h3 className="font-display text-d-sm font-semibold transition-colors group-hover:text-accent">
                 {lead.title}

@@ -13,7 +13,7 @@ export const projects: Project[] = [
     title: "Frontier-Scale Foundation Model Training",
     kicker: "AIML · ResetData Grant",
     description:
-      "Co-investigator on an A$1.2M grant training language, multimodal, and reasoning models on a 256× NVIDIA H200 cluster — owning training methodology, alignment research, and stability/throughput validation of the datacenter.",
+      "Co-investigator on an A$1.2M grant training language, multimodal, and reasoning models on a 256× NVIDIA H200 cluster, owning training methodology, alignment research, and stability/throughput validation of the datacenter.",
     tags: ["LLMs", "256× H200", "Distributed Training", "Alignment"],
     featured: true,
   },
@@ -21,7 +21,7 @@ export const projects: Project[] = [
     title: "Trust & Safety MLLMs at TikTok",
     kicker: "Production ML",
     description:
-      "Novel multimodal LLM architectures reasoning over image, video, and text at platform scale — +2–3% AUC on business data, +5% further via ensembling and distillation. Owned retraining, evaluation, and deployment.",
+      "Novel multimodal LLM architectures reasoning over image, video, and text at platform scale, +2-3% AUC on business data, +5% further via ensembling and distillation. Owned retraining, evaluation, and deployment.",
     tags: ["MLLM", "SigLIP", "DINOv2", "Gemma", "Production"],
     featured: true,
   },
@@ -29,7 +29,7 @@ export const projects: Project[] = [
     title: "ML for Film VFX",
     kicker: "Rising Sun Pictures",
     description:
-      "Research shipped into production VFX pipelines on nine films — occlusion-aware deepfake losses (−15% FID), production gaze estimation, and generative pipelines across diffusion, GANs, NeRF, and Gaussian Splatting.",
+      "Research shipped into production VFX pipelines on nine films, occlusion-aware deepfake losses (−15% FID), production gaze estimation, and generative pipelines across diffusion, GANs, NeRF, and Gaussian Splatting.",
     tags: ["Deepfake", "Diffusion", "Gaussian Splatting", "9 Films"],
     href: "https://www.imdb.com/name/nm16969018/",
     linkLabel: "Credits on IMDb",
@@ -39,7 +39,7 @@ export const projects: Project[] = [
     title: "A2.AI",
     kicker: "Co-Founder",
     description:
-      "An applied-AI venture translating frontier research — LLMs, multimodal systems, efficient training — into deployed products.",
+      "An applied-AI venture translating frontier research in LLMs, multimodal systems, and efficient training into deployed products.",
     tags: ["Founder", "Applied AI"],
     href: "https://a2ai.com.au",
     linkLabel: "a2ai.com.au",
@@ -48,7 +48,7 @@ export const projects: Project[] = [
     title: "Interactive AI Explainers",
     kicker: "Writing & Teaching",
     description:
-      "A growing library of visual, interactive deep-dives — the Attention Atlas, a Mixture-of-Experts workbook, vLLM from the inside out — read by thousands.",
+      "A growing library of visual, interactive deep-dives: the Attention Atlas, a Mixture-of-Experts workbook, and vLLM from the inside out.",
     tags: ["Attention", "MoE", "vLLM", "Long Context"],
     href: "#writing",
     linkLabel: "Read the explainers",
@@ -67,7 +67,7 @@ export const projects: Project[] = [
 export const researchAreas = [
   {
     title: "Machine Unlearning",
-    body: "Making models forget — provably and stably. SineProject (CVPR 2026) and bounded parameter-efficient unlearning in LLMs.",
+    body: "Making models forget, provably and stably. SineProject (CVPR 2026) and bounded parameter-efficient unlearning in LLMs.",
     pubs: "CVPR 2026 · NeurIPS 2026 (sub.)",
   },
   {
@@ -87,7 +87,7 @@ export const researchAreas = [
   },
   {
     title: "Long Context & Attention",
-    body: "Attention mechanisms from first principles — from the original Transformer to linear attention and million-token contexts.",
+    body: "Attention mechanisms from first principles, from the original Transformer to linear attention and million-token contexts.",
     pubs: "Attention Atlas · vLLM deep-dive",
   },
   {

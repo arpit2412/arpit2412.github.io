@@ -13,9 +13,9 @@ export const posts: BlogPost[] = [
   {
     slug: "vllm-inside-out",
     file: "/blog/vllm-inside-out.html",
-    title: "vLLM, From the Inside Out — and the Linear Attention Question",
+    title: "vLLM From the Inside Out: The Linear Attention Question",
     blurb:
-      "vLLM is an operating system for tokens: virtual-memory paging applied to the KV cache. This page builds the engine up piece by piece — block tables, scheduler, prefix caching, preemption, speculative decoding — then shows exactly where linear attention breaks its core assumption, and how the V1 engine was rebuilt so the two could coexist.",
+      "vLLM is an operating system for tokens: virtual-memory paging applied to the KV cache. This page builds the engine up piece by piece, block tables, scheduler, prefix caching, preemption, speculative decoding, then shows exactly where linear attention breaks its core assumption, and how the V1 engine was rebuilt so the two could coexist.",
     readTime: "~ 35 min",
     topic: "Inference",
     date: "July 2026",
@@ -25,9 +25,9 @@ export const posts: BlogPost[] = [
   {
     slug: "spec-kit",
     file: "/blog/spec-kit.html",
-    title: "Spec Kit — How GitHub Killed Vibe Coding",
+    title: "Spec Kit: How GitHub Killed Vibe Coding",
     blurb:
-      "GitHub's Spec Kit hit 111K stars in four months by flipping how you build with AI: it makes your agent write a full spec before a single line of code. A hands-on walkthrough of the seven-command workflow, wired for Claude Code — install it and follow along.",
+      "GitHub's Spec Kit hit 111K stars in four months by flipping how you build with AI: it makes your agent write a full spec before a single line of code. A hands-on walkthrough of the seven-command workflow, wired for Claude Code, install it and follow along.",
     readTime: "~ 6 min",
     topic: "Claude Code",
     date: "July 2026",
@@ -37,9 +37,9 @@ export const posts: BlogPost[] = [
   {
     slug: "claude-code-routing",
     file: "/blog/claude-code-routing.html",
-    title: "Wire Any Model Into Claude Code — Self-Hosted Routing",
+    title: "Wire Any Model Into Claude Code: Self-Hosted Routing",
     blurb:
-      "Three environment variables, no patching: point Claude Code at any Anthropic-compatible endpoint you host yourself. Route to a cluster (claude-glm) or an on-device model (claude-fable5) — plus how to name them in the /model picker and fix the connection failures you'll actually hit on self-hosted endpoints.",
+      "Three environment variables, no patching: point Claude Code at any Anthropic-compatible endpoint you host yourself. Route to a cluster (claude-glm) or an on-device model (claude-fable5), plus how to name them in the /model picker and fix the connection failures you'll actually hit on self-hosted endpoints.",
     readTime: "~ 8 min",
     topic: "Claude Code",
     date: "June 2026",
@@ -49,9 +49,9 @@ export const posts: BlogPost[] = [
   {
     slug: "moe",
     file: "/blog/moe.html",
-    title: "Mixture of Experts — A Hands-On Workbook",
+    title: "Mixture of Experts: A Hands-On Workbook",
     blurb:
-      "Mixture of Experts explained from scratch. Why the smartest AI models don't use their whole brain, what an 'expert' actually is, and how a tiny router decides who answers — an interactive workbook you can play with and break. No ML background needed.",
+      "Mixture of Experts explained from scratch. Why the smartest AI models don't use their whole brain, what an 'expert' actually is, and how a tiny router decides who answers, an interactive workbook you can play with and break. No ML background needed.",
     readTime: "~ 12 min",
     topic: "Explainer",
     date: "June 2026",
@@ -61,7 +61,7 @@ export const posts: BlogPost[] = [
   {
     slug: "context-window",
     file: "/blog/context-window.html",
-    title: "The Window — Why Your Chatbot Slows Down",
+    title: "The Window: Why Your Chatbot Slows Down",
     blurb:
       "An interactive, jargon-free explainer of the context window: what the model can actually see, why doubling the conversation quadruples the cost, and what 'lost in the middle' really means.",
     readTime: "~ 15 min",
@@ -73,9 +73,9 @@ export const posts: BlogPost[] = [
   {
     slug: "llm-harness",
     file: "/blog/llm-harness.html",
-    title: "The Harness — What Wraps the Brain",
+    title: "The Harness: What Wraps the Brain",
     blurb:
-      "The model is only part of the story. An interactive tour of the six things that wrap a language model — turning a single chat turn into an agent that can read, search, run code, and act.",
+      "The model is only part of the story. An interactive tour of the six things that wrap a language model, turning a single chat turn into an agent that can read, search, run code, and act.",
     readTime: "~ 15 min",
     topic: "Explainer",
     date: "2026",
@@ -87,7 +87,7 @@ export const posts: BlogPost[] = [
     file: "/blog/attention-atlas.html",
     title: "The Attention Atlas",
     blurb:
-      "A field guide to every major attention mechanism, from the original Transformer to Flash Attention 4 — seven families, fifty mechanisms, one decade.",
+      "A field guide to every major attention mechanism, from the original Transformer to Flash Attention 4, seven families, fifty mechanisms, one decade.",
     readTime: "~ 90 min",
     topic: "Attention",
     date: "2026",
@@ -97,9 +97,9 @@ export const posts: BlogPost[] = [
   {
     slug: "lighthouse-attention",
     file: "/blog/lighthouse-attention.html",
-    title: "Lighthouse Attention — A Visual Deep Dive",
+    title: "Lighthouse Attention: A Visual Deep Dive",
     blurb:
-      "How a hierarchical, parameter-free trick lets you pre-train Transformers on million-token contexts — and still get a fully dense model at the end.",
+      "How a hierarchical, parameter-free trick lets you pre-train Transformers on million-token contexts, and still get a fully dense model at the end.",
     readTime: "~ 20 min",
     topic: "Long Context",
     date: "May 2026",
@@ -109,7 +109,7 @@ export const posts: BlogPost[] = [
   {
     slug: "lima-less",
     file: "/blog/lima-less.html",
-    title: "LIMA & LESS — The Statistics of Selecting Training Data",
+    title: "LIMA & LESS: The Statistics of Selecting Training Data",
     blurb:
       "LIMA argued a thousand carefully chosen examples can rival a million sloppy ones. LESS gave us the math. A complete recipe for data-efficient fine-tuning.",
     readTime: "~ 25 min",

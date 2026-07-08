@@ -24,7 +24,7 @@ export const patents: Patent[] = [
 
 export const honors = [
   {
-    title: "ICML 2025 Best Reviewer — Gold Award",
+    title: "ICML 2025 Best Reviewer: Gold Award",
     body: "Recognised among the top reviewers worldwide.",
   },
   {

@@ -1,6 +1,7 @@
 import { Award, FileBadge, Landmark, Mic, Star } from "lucide-react";
 import Reveal from "@/components/Reveal";
 import SectionHeading from "@/components/SectionHeading";
+import SpotlightCard from "@/components/SpotlightCard";
 import { honors, patents } from "@/data/patents";
 import { news } from "@/data/news";
 
@@ -10,14 +11,14 @@ export default function Honors() {
   return (
     <section id="honors" className="relative py-28 md:py-40">
       <div className="mx-auto max-w-shell px-6">
-        <SectionHeading eyebrow="Honors & Credentials" title="Recognition along the way." />
+        <SectionHeading title="Recognition along the way." />
 
         <div className="grid gap-5 sm:grid-cols-2">
           {honors.map((h, i) => {
             const Icon = icons[i % icons.length];
             return (
               <Reveal key={h.title} delay={(i % 2) * 0.1}>
-                <div className="card-lift flex h-full items-start gap-5 rounded-2xl border border-edge bg-card p-7">
+                <SpotlightCard className="h-full p-7" innerClassName="relative flex h-full items-start gap-5">
                   <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
                     <Icon size={19} />
                   </span>
@@ -25,14 +26,14 @@ export default function Honors() {
                     <h3 className="font-display font-semibold leading-snug">{h.title}</h3>
                     <p className="mt-1.5 text-sm leading-relaxed text-muted">{h.body}</p>
                   </div>
-                </div>
+                </SpotlightCard>
               </Reveal>
             );
           })}
 
           {patents.map((p, i) => (
             <Reveal key={p.title} delay={(i % 2) * 0.1}>
-              <div className="card-lift flex h-full items-start gap-5 rounded-2xl border border-edge bg-card p-7">
+              <SpotlightCard className="h-full p-7" innerClassName="relative flex h-full items-start gap-5">
                 <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent">
                   <FileBadge size={19} />
                 </span>
@@ -45,7 +46,7 @@ export default function Honors() {
                     {p.date ? ` · ${p.date}` : ""}
                   </p>
                 </div>
-              </div>
+              </SpotlightCard>
             </Reveal>
           ))}
         </div>
@@ -60,8 +61,8 @@ export default function Honors() {
               <div className="flex items-baseline gap-5">
                 <span className="w-20 shrink-0 font-mono text-2xs uppercase tracking-wider text-faint">{n.date}</span>
                 <p className="text-sm leading-relaxed">
-                  <span className="font-medium">{n.title}</span>
-                  <span className="text-muted"> — {n.body}</span>
+                  <span className="font-medium">{n.title}.</span>
+                  <span className="text-muted"> {n.body}</span>
                 </p>
               </div>
             </Reveal>

@@ -10,14 +10,14 @@ export const news: NewsItem[] = [
   {
     date: "May 2026",
     kind: "talk",
-    title: "Invited speaker — MLSS Melbourne 2026",
+    title: "Invited speaker: MLSS Melbourne 2026",
     body: "Lecturing at the Machine Learning Summer School, Melbourne (by invitation from Maincode).",
   },
   {
     date: "Apr 2026",
     kind: "patent",
     title: "UK Design Patent granted (No. 6520933)",
-    body: "AI-Assisted Rural & Indigenous Healthcare Robot — Class 24, Medical Equipment. UK Intellectual Property Office.",
+    body: "AI-Assisted Rural & Indigenous Healthcare Robot, Class 24, Medical Equipment. UK Intellectual Property Office.",
   },
   {
     date: "Mar 2026",
@@ -29,7 +29,7 @@ export const news: NewsItem[] = [
     date: "May 2026",
     kind: "patent",
     title: "US Provisional Patent filed",
-    body: "Attention mechanism for neural networks — compute and memory-efficient LLM training, productionised in internal pipelines.",
+    body: "Attention mechanism for neural networks, compute and memory-efficient LLM training, productionised in internal pipelines.",
   },
   {
     date: "Jan 2026",
@@ -46,13 +46,13 @@ export const news: NewsItem[] = [
   {
     date: "Aug 2025",
     kind: "award",
-    title: "ICML 2025 Best Reviewer — Gold Award",
+    title: "ICML 2025 Best Reviewer: Gold Award",
     body: "Recognised among the top reviewers worldwide.",
   },
   {
     date: "May 2025",
     kind: "grant",
-    title: "A$1.2M ResetData grant — investigator",
+    title: "A$1.2M ResetData grant: investigator",
     body: "Lead investigator for frontier-scale foundation model training on 256× NVIDIA H200 GPUs.",
   },
   {
@@ -70,13 +70,13 @@ export const news: NewsItem[] = [
   {
     date: "Sep 2024",
     kind: "paper",
-    title: "ECCV 2024 — Instance-Dependent Noisy-Label Learning",
+    title: "ECCV 2024: Instance-Dependent Noisy-Label Learning",
     body: "Graphical-model-based noise-rate estimation; published at ECCV 2024 (Springer).",
   },
   {
     date: "Ongoing",
     kind: "press",
-    title: "Open-source impact — 140,000+ repo visits",
+    title: "Open-source impact: 140,000+ repo visits",
     body: "Public ML projects across LLMs, attention mechanisms, noisy-label learning, and PEFT.",
   },
 ];
