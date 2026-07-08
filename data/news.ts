@@ -52,7 +52,7 @@ export const news: NewsItem[] = [
   {
     date: "May 2025",
     kind: "grant",
-    title: "A$2.1M ResetData grant — investigator",
+    title: "A$1.2M ResetData grant — investigator",
     body: "Lead investigator for frontier-scale foundation model training on 256× NVIDIA H200 GPUs.",
   },
   {

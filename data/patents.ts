@@ -28,7 +28,7 @@ export const honors = [
     body: "Recognised among the top reviewers worldwide.",
   },
   {
-    title: "Investigator, A$2.1M ResetData Grant",
+    title: "Investigator, A$1.2M ResetData Grant",
     body: "Training large foundation models on 256× NVIDIA H200 GPUs.",
   },
   {

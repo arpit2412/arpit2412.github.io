@@ -22,12 +22,12 @@ export const profile = {
   bio: [
     "Senior ML engineer and published researcher specialising in large language models, multimodal AI, computer vision, machine unlearning, and efficient training systems. Co-founder of A2.AI (a2ai.com.au).",
     "Recognised for shipping research-grade systems into production at scale — from TikTok's Trust & Safety MLLMs to VFX pipelines on Mad Max: Furiosa, Mortal Kombat II, Deadpool, Mickey 17, Sonic 3, Sinners, Michael and A Complete Unknown.",
-    "Inventor on a US provisional patent (attention mechanism) and a granted UK design patent (AI-Assisted Rural & Indigenous Healthcare Robot). Co-investigator on an A$2.1M grant powering frontier-scale training on 256× NVIDIA H200 GPUs.",
+    "Inventor on a US provisional patent (attention mechanism) and a granted UK design patent (AI-Assisted Rural & Indigenous Healthcare Robot). Co-investigator on an A$1.2M grant powering frontier-scale training on 256× NVIDIA H200 GPUs.",
   ],
   stats: [
     { value: "140K+", label: "GitHub repo visits" },
     { value: "256×", label: "H200 GPUs deployed" },
-    { value: "A$2.1M", label: "Grant co-investigator" },
+    { value: "A$1.2M", label: "Grant co-investigator" },
     { value: "9", label: "VFX films shipped" },
     { value: "10+", label: "Peer-reviewed papers" },
     { value: "2", label: "Patents (US + UK)" },
