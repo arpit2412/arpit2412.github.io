@@ -236,6 +236,88 @@
       “latent space” theme that resembled none of the references.</li>
 </ul>
 
+
+<div class="pb"></div>
+<h2>8. Revision — the narrative spine</h2>
+<p>
+  The v1 structure was five résumé folders inside a cinematic wrapper. Doors labelled
+  <i>Research / Engineering / Film / Writing / Honors</i> are navigation, not story. Adopted:
+  the five worlds are five expressions of one process.
+</p>
+<table>
+  <thead><tr><th>Display verb</th><th>World</th><th>Anchor (unchanged)</th><th>Narrative role</th></tr></thead>
+  <tbody>
+    <tr><td><b>QUESTION</b></td><td>Research</td><td><code>#research</code></td><td>Something unresolved must be understood</td></tr>
+    <tr><td><b>BUILD</b></td><td>Engineering</td><td><code>#work</code></td><td>Research survives contact with real systems</td></tr>
+    <tr><td><b>CREATE</b></td><td>Film &amp; VFX</td><td><code>#films</code></td><td>The technology disappears; the experience remains</td></tr>
+    <tr><td><b>EXPLAIN</b></td><td>Writing</td><td><code>#writing</code></td><td>Understanding is incomplete until it is explained</td></tr>
+    <tr><td><b>IMPACT</b></td><td>Impact <i>(was Honors)</i></td><td><code>#impact</code></td><td>Ideas leave evidence</td></tr>
+  </tbody>
+</table>
+<div class="note">
+  <b>Verbs are art direction, not information architecture.</b> Anchors, <code>&lt;h2&gt;</code>s and nav labels
+  stay the nouns. Recruiters Ctrl-F “Publications”; search engines index headings. The verb sits above the noun,
+  never instead of it.
+</div>
+
+<h3>8.1 The opening is now a silhouette — this unblocks B2</h3>
+<div class="ok">
+  <b>Do not fly into a literal skull.</b> The figure dissolves into particles / neural traces, revealing the hub.
+  Consequences, all good:
+  <ul>
+    <li>A silhouette needs <b>no likeness</b> → <b>Soul training is no longer required</b>. Blocker B2 downgrades
+        from blocking to optional. Arpit's face no longer has to survive seven generated scenes without drifting.</li>
+    <li>Removes the uncanny-valley risk of a generated full-body figure.</li>
+    <li><code>ParticleField.tsx</code> <b>already exists</b> in this repo — a live canvas node/edge network in the Hero.
+        The silhouette→particles transition renders <b>in-browser: zero credits, no video seam</b>.</li>
+    <li>The opening portrait still + dive may not need generating at all. Cost drops below 74 cr.</li>
+  </ul>
+</div>
+
+<h3>8.2 Returns get narrative lines (free)</h3>
+<p>
+  The reverse-scrub is an implementation detail the visitor never perceives — they simply scroll back. Overlaying a
+  different line on the way up costs <b>zero credits</b>, because the text is DOM, not video.
+</p>
+<ul>
+  <li>Leaving Research → <i>“An idea has been discovered. What should it become?”</i></li>
+  <li>Leaving Engineering → <i>“A system has been built. Where can it create impact?”</i></li>
+  <li>Leaving Film → <i>“Technology became an experience. How can it be understood?”</i></li>
+  <li>Leaving Writing → <i>“The idea has been explained. What evidence did it leave?”</i></li>
+</ul>
+
+<h3>8.3 Rejected / unresolved</h3>
+<div class="flag">
+  <b>Rejected — gating the ending.</b> The proposal shows “Build What's Next” only after two or more worlds are
+  visited. That hides the conversion point from the majority, who open one room and leave, and it needs visit-state
+  tracking. <b>The CTA is always present, quieter at first, growing in emphasis. Never absent.</b>
+</div>
+<div class="flag">
+  <b>Unresolved — the hub cannot be symmetric and hierarchical.</b> The proposal wants five doors, then ranks them
+  (Research + Engineering primary; Film + Writing differentiators; Impact as proof). Five equal doors <i>say</i> the
+  worlds are equal. Either the doors differ physically — size, light, camera proximity — or symmetry is accepted.
+  <b>Must be decided before the hub still is generated; it is baked into that image.</b> <i>Owner: Arpit.</i>
+</div>
+<div class="flag">
+  <b>Unresolved — the timeline cannot be a “subtle orbit.”</b> <code>Timeline.tsx</code> is the tallest component on
+  the site and drives its own scroll-linked spine. It cannot be ornamental decoration <i>and</i> hold the full career
+  (DRDO/WESEE → Rising Sun Pictures → TikTok → AIML/CSIRO). Either a real sixth destination, or the orbit shows five
+  org names and links out. <i>Owner: Arpit.</i>
+</div>
+
+<h3>8.4 Copy</h3>
+<p>Opening: <b>ARPIT GARG</b> — <i>I study intelligence, build it into systems, and bring it into the real world.</i><br>
+Hub: <b>ONE MIND. FIVE EXPRESSIONS.</b><br>
+Closing: <b>THE NEXT WORLD DOES NOT EXIST YET. Let's build it.</b></p>
+
+<h3>8.5 Cost impact</h3>
+<p>
+  Adding the sixth central destination (“Build What's Next”) costs ~12 cr (1 still + 1 dive + 1 edge). Removing the
+  generated opening portrait + dive in favour of the in-browser silhouette saves ~7 cr. Net build stays under
+  <b>~80 credits</b>, still inside Starter's 270 with rerolls — subject to the
+  <code>cinematic_studio_video_v2</code> access test.
+</p>
+
 <footer>
   Mind World spec · generated 2026-07-10 · all work confined to ~/Desktop/Resume/site-world
 </footer>
