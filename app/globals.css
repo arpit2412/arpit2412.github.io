@@ -456,3 +456,24 @@ html { overflow-x: clip; }
 /* Poster stays until a real frame paints (iOS shows nothing before the first seek). */
 .mw-scene.has-clip .mw-scene__img { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .mw-scene__video { display: none; } }
+
+/* ============================================================================
+   Audit fixes — found by RENDERING the page, not by reading the markup.
+   ========================================================================== */
+
+/* CRITICAL: the ledes sat at z-index 20, above the content track (10), so the opaque
+   cream content panel could never cover them. On a phone, where the lede is
+   bottom-anchored in the same band as the cards, a partly-faded verb painted straight
+   over the section ("Question" at 69% opacity across the PEFT card). This is the exact
+   "text not visible" failure the previous two attempts were rejected for.
+   The ledes belong ABOVE the island stage and BELOW the content. */
+.mw-ledes { z-index: 5; }
+
+/* Belt and braces: the lede is fully gone before the content panel can reach it,
+   rather than relying on the panel to occlude a still-fading element. */
+.mw-lede { pointer-events: none; }
+
+/* The nav wordmark kept its themed light colour when the nav bar went cream,
+   washing "Arpit Garg." out to illegible grey. */
+body:has(.mind-world) header :is(a, span, .font-display) { color: #231d16; }
+body:has(.mind-world) header a:hover { color: #8a5f1c; }

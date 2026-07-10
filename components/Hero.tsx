@@ -143,7 +143,7 @@ export default function Hero() {
             <KineticName text="Arpit Garg" />
             <motion.span
               className="inline-block text-accent"
-              initial={reduce ? false : { opacity: 0, scale: 0 }}
+              initial={reduce ? false : { opacity: 0, scale: 0.6 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, delay: 0.7, ease: EASE }}
             >
