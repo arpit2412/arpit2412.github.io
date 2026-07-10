@@ -1,15 +1,14 @@
 /**
- * Mind World — the chapter graph.
+ * Mind World v2 — the miniature island world.
  *
- * Eight plates, in scroll order. The narrative spine (spec §8) is carried by the VERB;
- * the noun stays the information architecture, because recruiters Ctrl-F "Publications"
- * and search engines index headings. The verb is art direction, never the anchor.
+ * Eight islands, in scroll order. Each chapter shows its island small, floating on flat
+ * cream, and scroll drives a **continuous zoom into it** — the camera closes on the island
+ * until you are inside. Because the background is flat and empty, there is no page edge and
+ * no parallax cue, so it reads as a world approaching rather than a page scrolling. That is
+ * the mechanic, measured from `docs/reference-scroll-world.mp4`; see docs/v2/ART-DIRECTION-V2.md.
  *
- * Rooms hang off the hub. In this first pass the rooms are laid out in scroll order
- * rather than as separate scroll tracks, so scrolling forward walks the whole world and
- * the route rail / hub doors jump between rooms. True per-room tracks (where surfacing
- * from a room reverse-scrubs its own edge clip) land with the video pass — the scrub
- * engine is already segment-based and does not care.
+ * The narrative spine (spec §8) is carried by the VERB. The noun stays the anchor and the
+ * heading, because recruiters Ctrl-F "Publications" and search engines index headings.
  */
 
 export type Chapter = {
@@ -18,11 +17,14 @@ export type Chapter = {
   verb: string;
   /** The real section name. This is the anchor and the heading. */
   noun: string;
-  plate: string;
-  /** Is this one of the five doors off the hub? */
+  /** One line of copy, shown while the island is still small. Fades as the zoom begins. */
+  lede: string;
+  island: string;
   door: boolean;
-  /** Minimum scroll length in viewport heights; content may exceed it. */
-  minScroll: number;
+  /** Scroll length in viewport-heights. Longer = slower zoom. */
+  scroll: number;
+  /** How far the camera closes on this island. 1 = no zoom. */
+  zoom: number;
 };
 
 export const CHAPTERS: Chapter[] = [
@@ -30,68 +32,86 @@ export const CHAPTERS: Chapter[] = [
     id: "journey",
     verb: "Descend",
     noun: "Journey",
-    plate: "/world/img/descent.webp",
+    lede: "Defence, then film, then platform scale, then frontier models. Not a wander — a climb.",
+    island: "/world/v2/island-journey.webp",
     door: false,
-    minScroll: 1.6,
+    scroll: 2.2,
+    zoom: 2.6,
   },
   {
     id: "about",
     verb: "One mind. Five expressions.",
     noun: "About",
-    plate: "/world/img/hub.webp",
+    lede: "I study intelligence, build it into systems, and bring it into the real world.",
+    island: "/world/v2/island-hero.webp",
     door: false,
-    minScroll: 1.4,
+    scroll: 2.0,
+    zoom: 2.2,
   },
   {
     id: "research",
     verb: "Question",
     noun: "Research",
-    plate: "/world/img/room-question.webp",
+    lede: "Before a system can be built, something unresolved has to be understood.",
+    island: "/world/v2/island-question.webp",
     door: true,
-    minScroll: 1.4,
+    scroll: 2.2,
+    zoom: 2.8,
   },
   {
     id: "work",
     verb: "Build",
     noun: "Engineering",
-    plate: "/world/img/room-build.webp",
+    lede: "Research matters when it survives contact with real systems.",
+    island: "/world/v2/island-build.webp",
     door: true,
-    minScroll: 1.4,
+    scroll: 2.2,
+    zoom: 2.8,
   },
   {
     id: "films",
     verb: "Create",
     noun: "Film & VFX",
-    plate: "/world/img/room-create.webp",
+    lede: "Sometimes the technology disappears, and only the experience remains.",
+    island: "/world/v2/island-create.webp",
     door: true,
-    minScroll: 1.2,
+    scroll: 2.0,
+    zoom: 3.0,
   },
   {
     id: "writing",
     verb: "Explain",
     noun: "Writing",
-    plate: "/world/img/room-explain.webp",
+    lede: "Understanding is incomplete until it can be explained.",
+    island: "/world/v2/island-explain.webp",
     door: true,
-    minScroll: 1.4,
+    scroll: 2.2,
+    zoom: 2.8,
   },
   {
     id: "honors",
     verb: "Impact",
     noun: "Impact",
-    plate: "/world/img/room-impact.webp",
+    lede: "Ideas leave evidence.",
+    island: "/world/v2/island-impact.webp",
     door: true,
-    minScroll: 1.4,
+    scroll: 2.0,
+    zoom: 2.6,
   },
   {
     id: "contact",
     verb: "The next world does not exist yet",
     noun: "Contact",
-    plate: "/world/img/core.webp",
+    lede: "You have seen how I question, build, create and explain. Let's build what's next.",
+    island: "/world/v2/island-next.webp",
     door: false,
-    minScroll: 1.2,
+    scroll: 1.8,
+    zoom: 2.2,
   },
 ];
 
-/** The hub is where the five doors are offered. */
 export const HUB_ID = "about";
 export const DOORS = CHAPTERS.filter((c) => c.door);
+
+/** Where the islands sit in frame — the zoom must converge here, not on frame centre. */
+export const ISLAND_ORIGIN = { x: 66, y: 48 };

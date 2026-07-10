@@ -277,3 +277,132 @@
   .mw-doors { transition: opacity 200ms linear; transform: translateX(-50%); }
   .mw-doors.is-open { transform: translateX(-50%); }
 }
+
+/* ============================================================================
+   Mind World v2 — miniature islands on flat cream. Overrides the v1 dark stage
+   above (later rules win). Scroll drives a zoom, not a crossfade.
+   ========================================================================== */
+
+/* The world is cream. Force the light token set inside it, so a visitor in dark
+   mode does not get light text on a cream island. */
+.mind-world {
+  --bg: #EFE7DA;
+  --surface: transparent;
+  --card: rgba(255, 252, 246, 0.66);
+  --ink: #231d16;
+  --muted: #6b5f52;
+  --faint: #9a8c7c;
+  --edge: rgba(35, 29, 22, 0.12);
+  --edge-2: rgba(35, 29, 22, 0.07);
+  --accent: #B07C2A;
+  --accent-soft: rgba(176, 124, 42, 0.10);
+  color: var(--ink);
+  position: relative;
+}
+.mind-world :is(section, div).bg-surface { background: transparent !important; }
+.mind-world .bg-base { background: transparent !important; }
+.mind-world .bg-card {
+  background: var(--card) !important;
+  backdrop-filter: blur(12px);
+  border-color: var(--edge) !important;
+}
+.mind-world :is(h1, h2, h3, .font-display) { color: var(--ink); }
+
+.mw-stage {
+  position: fixed; inset: 0; z-index: 0;
+  overflow: hidden; pointer-events: none;
+  background: #EFE7DA;
+}
+.mw-scene {
+  position: absolute; inset: 0; opacity: 0;
+  will-change: transform, opacity;
+  /* transform-origin is set inline to the island's real position in frame */
+}
+.mw-scene__img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  /* contain, not cover: the whole island must stay in the lens as it grows, and the
+     cream letterbox is the same cream as the stage, so the seam is invisible. */
+  object-fit: contain;
+  object-position: center;
+}
+/* v1's scrim is not needed: every island was generated with an empty left third. */
+.mw-scrim { display: none; }
+
+/* ---- sparse copy, beat one ---------------------------------------------- */
+.mw-ledes { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+.mw-lede {
+  position: absolute;
+  left: clamp(20px, 6vw, 90px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(30vw, 380px);
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.mw-lede__verb {
+  display: block;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--ink, #231d16);
+  margin-bottom: 12px;
+}
+.mw-lede p {
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  line-height: 1.6;
+  color: #6b5f52;
+  max-width: 34ch;
+}
+
+.mw-track { position: relative; z-index: 10; }
+.mw-chapter { position: relative; display: block; }
+/* Beat one: one clear viewport where the island is small and only the lede shows. */
+.mw-chapter__spacer { height: 100vh; }
+.mw-chapter__content { position: relative; }
+
+/* ---- rail + doors, restyled for cream ------------------------------------ */
+.mw-route::before { background: rgba(176, 124, 42, 0.3); }
+.mw-route__dot i { background: rgba(176, 124, 42, 0.35); }
+.mw-route__dot.is-active i {
+  background: #B07C2A;
+  box-shadow: 0 0 0 4px rgba(176, 124, 42, 0.16);
+}
+.mw-route__label {
+  color: #231d16;
+  background: rgba(255, 252, 246, 0.92);
+  border-color: rgba(176, 124, 42, 0.2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mw-route__dot:hover i { background: #B07C2A; }
+}
+.mw-doors__lead { color: rgba(35, 29, 22, 0.5); }
+.mw-doors button {
+  background: rgba(255, 252, 246, 0.78);
+  border-color: rgba(176, 124, 42, 0.22);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mw-doors button:hover { border-color: rgba(176, 124, 42, 0.55); }
+}
+.mw-doors__verb { color: #8a5f1c; }
+.mw-doors__noun { color: rgba(35, 29, 22, 0.5); }
+
+@media (max-width: 860px) {
+  /* On a phone the island is small; give the lede the bottom, not the left third. */
+  .mw-lede {
+    left: clamp(18px, 5vw, 40px);
+    right: clamp(18px, 5vw, 40px);
+    top: auto;
+    bottom: calc(12vh + env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+  }
+  .mw-scene__img { object-position: center 42%; }
+}
+
+/* Reduced motion: no zoom. The island appears, the copy appears. Nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .mw-scene { will-change: auto; transform: none !important; }
+  .mw-lede { transform: translateY(-50%) !important; }
+}

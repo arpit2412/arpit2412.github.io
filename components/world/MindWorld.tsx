@@ -1,45 +1,46 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { CHAPTERS, DOORS, HUB_ID } from "./mindWorld";
+import { CHAPTERS, DOORS, HUB_ID, ISLAND_ORIGIN } from "./mindWorld";
 
 /**
- * The Mind World stage.
+ * The miniature world stage.
  *
- * A fixed, full-viewport layer of plates behind the real content. Each chapter is a normal
- * in-flow <section> whose scroll range crossfades its plate in. Content scrolls over the
- * top, so nothing is clipped and nothing is lost.
+ * Scroll drives a **continuous zoom into each island**, not a crossfade between stills.
+ * The island starts small on flat cream and the camera closes on it until you are inside it;
+ * then the next island appears small and it happens again. Because the background is flat and
+ * empty there is no page edge and no parallax cue, so it reads as a world approaching rather
+ * than a page moving. That is the reference's mechanic (82% of its frames carry real motion).
  *
- * This pass is POSTER-ONLY on purpose: the plates cost 472KB, the clips will cost ~50MB.
- * Getting the router, the scrim and the transparency treatment wrong is cheap to discover
- * here and expensive to discover after 156 credits of video. When the clips land, each
- * scene gets a <video> appended by the scrub engine and the poster becomes its fallback —
- * exactly the shape the engine already expects (it hides `.world-scene__still` once a real
- * frame paints).
+ * The zoom origin is the island's actual position in frame (~66%/48%), NOT frame centre —
+ * scaling about the centre would slide the island out of view as it grows.
  *
- * Only `opacity` is animated. Offsets are cached and recomputed on resize / ResizeObserver,
- * never measured in the scroll handler, because that would thrash layout.
+ * Only `transform` and `opacity` are animated; both are compositor-only. Offsets are cached
+ * and recomputed on resize / ResizeObserver, never measured in the scroll handler.
+ *
+ * Copy is sparse and lives in the left third, which every island was generated to leave
+ * empty. It fades out as the zoom begins — the reference does exactly this. The dense content
+ * section then arrives on the settled frame. That is the two-beat chapter, and it is how a
+ * cinematic portfolio differs from a cinematic landing page: the landing page never had to
+ * carry a publication list.
  */
 
-const CROSSFADE = 0.35; // viewport-heights of overlap between adjacent plates
 const clamp = (x: number, a = 0, b = 1) => Math.min(b, Math.max(a, x));
-const smooth = (x: number) => {
-  const t = clamp(x);
-  return t * t * (3 - 2 * t);
-};
+const smooth = (x: number) => { const t = clamp(x); return t * t * (3 - 2 * t); };
 
 export default function MindWorld({ sections }: { sections: ReactNode[] }) {
   const trackRefs = useRef<(HTMLElement | null)[]>([]);
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const ledeRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [active, setActive] = useState(0);
   const [atHub, setAtHub] = useState(false);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
     let bounds: { top: number; height: number }[] = [];
     let ticking = false;
     let laidOutWidth = window.innerWidth;
-    const coarse = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 
     const measure = () => {
       laidOutWidth = window.innerWidth;
@@ -55,20 +56,43 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
     const read = () => {
       const y = window.scrollY;
       const vh = window.innerHeight;
-      const fade = CROSSFADE * vh;
       let front = 0;
-      for (let i = 0; i < bounds.length; i++) if (y >= bounds[i].top - fade) front = i;
 
       for (let i = 0; i < bounds.length; i++) {
         const scene = sceneRefs.current[i];
+        const lede = ledeRefs.current[i];
         if (!scene) continue;
         const { top, height } = bounds[i];
-        let outside = 0;
-        if (y < top) outside = top - y;
-        else if (y > top + height) outside = y - (top + height);
-        const op = reduce ? (i === front ? 1 : 0) : smooth(1 - outside / fade);
+        const ch = CHAPTERS[i];
+
+        // p: 0 when the chapter's top hits the viewport top, 1 at its bottom.
+        const p = clamp((y - top + vh * 0.5) / height, 0, 1);
+        if (y >= top - vh * 0.5 && y < top + height - vh * 0.5) front = i;
+
+        if (reduce) {
+          // No zoom, no motion. The island simply appears. Everything stays reachable.
+          scene.style.transform = "none";
+          scene.style.opacity = i === front ? "1" : "0";
+          if (lede) lede.style.opacity = i === front ? "1" : "0";
+          continue;
+        }
+
+        // The camera closes on the island. Scaling about the island's own position keeps it
+        // centred in the lens as it grows; scaling about frame centre would slide it away.
+        const scale = 1 + (ch.zoom - 1) * smooth(p);
+        scene.style.transform = `scale3d(${scale.toFixed(4)}, ${scale.toFixed(4)}, 1)`;
+
+        // Fade in over the first 12% of the chapter, out over the last 12%.
+        const op = Math.min(smooth(p / 0.12), smooth((1 - p) / 0.12));
         scene.style.opacity = String(op);
         scene.style.zIndex = i === front ? "2" : "1";
+
+        // Copy is legible only while the island is still small. It leaves as the zoom bites.
+        if (lede) {
+          const l = smooth(p / 0.08) * smooth((0.42 - p) / 0.14);
+          lede.style.opacity = String(clamp(l));
+          lede.style.transform = `translate3d(0, ${(-p * 40).toFixed(1)}px, 0)`;
+        }
       }
 
       if (front !== active) setActive(front);
@@ -77,12 +101,9 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
     };
 
     const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(read);
-      }
+      if (!ticking) { ticking = true; requestAnimationFrame(read); }
     };
-    // Mobile browsers fire resize when the URL bar slides; re-measuring there yanks scroll.
+    // Mobile fires resize when the URL bar slides; re-measuring there yanks scroll position.
     const onResize = () => {
       if (coarse && window.innerWidth === laidOutWidth) return;
       measure();
@@ -109,22 +130,31 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
 
   return (
     <div className="mind-world">
-      {/* Fixed plate stage. Decorative — all meaning lives in the content above it. */}
+      {/* Fixed island stage. Decorative — all meaning lives in the content above it. */}
       <div className="mw-stage" aria-hidden="true">
         {CHAPTERS.map((c, i) => (
           <div
             key={c.id}
             ref={(el) => { sceneRefs.current[i] = el; }}
             className="mw-scene"
+            style={{ transformOrigin: `${ISLAND_ORIGIN.x}% ${ISLAND_ORIGIN.y}%` }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={c.plate} alt="" className="mw-scene__still" decoding="async" loading={i < 2 ? "eager" : "lazy"} />
+            <img src={c.island} alt="" className="mw-scene__img" decoding="async" loading={i < 2 ? "eager" : "lazy"} />
           </div>
         ))}
-        <div className="mw-scrim" />
       </div>
 
-      {/* Route rail. Hover gated to fine pointers so a tap can't stick a hover. */}
+      {/* Sparse copy, in the left third every island was generated to leave empty. */}
+      <div className="mw-ledes" aria-hidden="true">
+        {CHAPTERS.map((c, i) => (
+          <div key={c.id} ref={(el) => { ledeRefs.current[i] = el; }} className="mw-lede">
+            <span className="mw-lede__verb">{c.verb}</span>
+            <p>{c.lede}</p>
+          </div>
+        ))}
+      </div>
+
       <nav className="mw-route" aria-label="Chapters">
         {CHAPTERS.map((c, i) => (
           <button
@@ -141,7 +171,6 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
         ))}
       </nav>
 
-      {/* The five doors, offered when the visitor is in the hub. */}
       <div className={`mw-doors${atHub ? " is-open" : ""}`} aria-hidden={!atHub}>
         <p className="mw-doors__lead">One mind. Five expressions.</p>
         <ul>
@@ -156,6 +185,7 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
         </ul>
       </div>
 
+      {/* Beat two: the dense content, arriving after the zoom has settled. */}
       <div className="mw-track">
         {CHAPTERS.map((c, i) => (
           <section
@@ -163,9 +193,10 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
             id={c.id}
             ref={(el) => { trackRefs.current[i] = el; }}
             className="mw-chapter"
-            style={{ minHeight: `${c.minScroll * 100}vh` }}
+            style={{ minHeight: `${c.scroll * 100}vh` }}
           >
-            {sections[i]}
+            <div className="mw-chapter__spacer" />
+            <div className="mw-chapter__content">{sections[i]}</div>
           </section>
         ))}
       </div>
