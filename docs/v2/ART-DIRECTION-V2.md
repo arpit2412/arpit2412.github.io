@@ -58,3 +58,25 @@ around a gold filament core, with gold roots trailing below.
 - Plus caps at **6 concurrent generation jobs**.
 - `cinematic_studio_video_v2` genres: auto, action, horror, comedy, western, suspense, intimate,
   spectacle. **No `epic`.**
+
+## Islands generated (i2i against the hero island)
+
+| island | bg corners | left third clear |
+|---|---|---|
+| hero (the mind) | (243,230,214) | yes |
+| journey | (246,232,219) | yes |
+| question | (248,231,219) | yes |
+| build | (246,231,219) | yes |
+| create | (244,229,217) | yes |
+
+All inside the reference's cream range. Every island is i2i against the hero, so the clay
+material, the tilt-shift, the gold roots and the single accent propagate — the same mechanism
+that held zero-blue across the v1 dark plates.
+
+Notable: **CREATE carried the split face onto the tiny cinema screen at miniature scale** —
+wireframe left, photoreal right — without being re-prompted for it.
+
+Decisions taken (Arpit delegated design calls):
+- **A new island per chapter**, as the reference does. Not one world flown around.
+- **The figure stays an anonymous clay person.** Making it read as Arpit drags the likeness
+  problem back in; unnamed, it reads as *a mind* rather than a portrait.
