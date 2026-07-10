@@ -16,3 +16,31 @@ Content: suspended academic pages at many depths, nearest legibly typeset with e
 figure plots, receding into warm shadow. Off-axis, no mirror.
 
 Status: accepted pending clip generation.
+
+## BUILD / CREATE / EXPLAIN / IMPACT
+
+All four generated i2i against the hub plate, in parallel. **Every one framed its interior
+through the stone arch unprompted** — so all five rooms already read as the view from a hub
+doorway. That is the continuity the dive clips need, obtained for free.
+
+| room | blue / lit px | luma L/C/R | left quiet |
+|---|---|---|---|
+| QUESTION  | 0 / 11866 | 2.5 / 50.7 / 47.3 | yes |
+| BUILD     | 0 / 13474 | 8.6 / 45.5 / 49.7 | yes |
+| CREATE r2 | 0 / 12835 | 7.6 / 75.0 / 61.0 | yes |
+| EXPLAIN   | 0 / 10050 | 7.1 / 40.6 / 54.0 | yes |
+| IMPACT    | 0 /  5286 | 11.1 / 25.3 / 20.1 | yes |
+
+Single warm axis holds across the whole world. **IMPACT is objectively the darkest room**
+(5,286 lit px vs BUILD's 13,474) — exactly what "deepest, dimmest, reached last" asked for.
+The hierarchy is measurable, not just asserted.
+
+### CREATE — r1 REJECTED, r2 accepted
+r1 put a **forest** on the cinema screen. The split plate *is* the concept — it is how the VFX
+work is shown without touching a frame of studio-owned footage (see spec §4 B3). Rerolled with
+the screen described as the explicit subject and every wrong answer named ("do not put a
+landscape, a forest, a sunset").
+
+r2: one human face, hard vertical seam at screen centre — triangulated wireframe with visible
+control vertices on the left, photoreal skin with pores on the right. Gaze, identity,
+reconstruction, in a single frame.
