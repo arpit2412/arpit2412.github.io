@@ -55,3 +55,34 @@ Measured: **0 blue / 14,953 lit.** Luma L/C/R = **10.1 / 42.7 / 115.9** — the 
 
 This is the frame under "THE NEXT WORLD DOES NOT EXIST YET. Let's build it." (spec §8.4).
 It is the only plate that is deliberately *unfinished*.
+
+## THE DESCENT (career corridor) — `24119eaf` — r1 accepted
+
+Took ~6 min to render vs ~60s for every other image. Not wedged, just slow.
+
+Four lit recesses step down the left wall at unequal depths, **each brighter than the last**, the
+corridor opening into the chamber's glow ahead. The four stations are the career:
+DRDO/WESEE → Rising Sun Pictures → TikTok → AIML/CSIRO. The corridor brightens as the work moves
+toward higher-impact systems — spec §9.2's narrative argument, made architectural.
+
+Measured: **0 blue / 10,741 lit.** Luma L/C/R = 6.4 / 44.4 / 60.8. The copy zone was moved to the
+**lower-left quadrant** (because the recesses occupy the upper-left wall): that quadrant measures
+**luma 2.0** — near-black. It works.
+
+---
+
+# ALL NINE PLATES COMPLETE
+
+| plate | blue px | note |
+|---|---|---|
+| descent | 0 | four career stations, brightening |
+| hub | 0 | five ranked apertures, no mirror |
+| QUESTION | 0 | suspended pages, legible typesetting |
+| BUILD | 0 | GPU cold aisle |
+| CREATE | 0 | split face: wireframe / photoreal |
+| EXPLAIN | 0 | reading desk, brass lamp |
+| IMPACT | 0 | vault alcoves — darkest room, 5286 lit px |
+| core | 0 | unfinished lattice, void left |
+
+**Zero blue pixels across all nine.** The single-hue constraint survived 13 generations because
+every plate is derived image-to-image from the approved hub, never prompted independently.
