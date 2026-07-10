@@ -1,9 +1,20 @@
 #!/usr/bin/env python3
 """
-Gate for an island push-in clip. Checks the three things that would sink the set:
+Gate for an island push-in clip.
+
   1. the zoom is REAL and monotonic (island area grows) -- not a fake or a drift
   2. the cream background never wavers (the model must not invent sky)
-  3. the final frames are calm (that frame becomes a connector's start_image)
+  3. endpoint motion -- INFORMATIONAL ONLY, no longer a gate.
+
+On (3): endpoint calmness mattered only because a connector's `start_image` had to be the
+previous clip's actual last frame. Connectors were eliminated after measuring the reference,
+which DISSOLVES between islands (inter-frame diffs spike to 42/34) rather than flying. Scrubbing
+is position-based and never plays past the end, so end-of-clip motion is irrelevant -- and a fast
+push-in legitimately moves most at the end. Reported, not enforced.
+
+On (1): this metric is only meaningful when the plate's background is flat and the island does
+not touch the frame edges. See check-plate-flat.py -- a gradient plate made this read ~1.0x on a
+genuine zoom and cost three wasted rerolls.
 """
 import sys, subprocess, tempfile, glob, os
 import numpy as np
@@ -44,8 +55,8 @@ for mp4 in sorted(sys.argv[1:]):
     bgd  = max(max(abs(c-bgs[0][i]) for i,c in enumerate(b)) for b in bgs)
     ep   = endpoint(mp4)
     sz   = os.path.getsize(mp4); mbps = sz*8/8.04/1e6
-    ok = zoom > 1.15 and mono and bgd <= 8 and 0 <= ep < 9.0
+    ok = zoom > 1.15 and mono and bgd <= 8   # endpoint reported, not gated (see docstring)
     if not ok: fails += 1
     print(f"  {name:10} {zoom:5.2f}x {str(mono):>5} {bgd:8}  {ep:8.2f} {mbps:6.1f}  {'PASS' if ok else 'FAIL'}")
-print(f"\n  {'ALL PASS' if fails==0 else str(fails)+' FAILED'}   gates: zoom>1.15 monotonic, bg drift<=8, endpoint<9.0")
+print(f"\n  {'ALL PASS' if fails==0 else str(fails)+' FAILED'}   gates: zoom>1.15, monotonic, bg drift<=8   (endpoint informational)")
 sys.exit(1 if fails else 0)

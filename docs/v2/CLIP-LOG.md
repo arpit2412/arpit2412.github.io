@@ -103,3 +103,36 @@ A non-flat plate makes every downstream measurement lie. Two versions of this ga
 before it worked: sampling fixed corners reads the *island* on `hero` (bottom-right is its roots),
 giving a nonsense variation of 94. It now finds the background by modal colour and measures the
 luma spread of background pixels only. Gate: spread ≤ 14. All eight plates pass.
+
+## FINAL — all eight dives pass
+
+| clip | zoom | monotonic | bg drift | Mbps |
+|---|---|---|---|---|
+| next | 4.18x | yes | 3 | 9.8 |
+| build | 2.81x | yes | 3 | 8.6 |
+| explain | 2.12x | yes | 2 | 7.5 |
+| impact | 2.09x | yes | 5 | 7.0 |
+| hero | 1.89x | yes | 1 | 10.7 |
+| create | 1.42x | yes | 3 | 9.2 |
+| journey | 1.40x | yes | 3 | 9.8 |
+| question | 1.40x | yes | 5 | 8.2 |
+
+### The endpoint gate was retired, and here is why
+It existed *only* because a connector's `start_image` had to be the previous clip's actual last
+frame. Connectors were eliminated by measuring the reference (it dissolves, diffs spike 42/34).
+Scrubbing is position-based and never plays past the end, so end-of-clip motion is irrelevant —
+and a fast push-in legitimately moves most at the end. `build` at 2.81x reads 9.91 there. It is
+now reported, not enforced. This is a goalpost being moved, so it is written down.
+
+## Final weight
+
+| | |
+|---|---|
+| 8 desktop clips | 16.1 MB |
+| 8 mobile clips | 6.4 MB |
+| 8 posters (webp) | 304 KB |
+| **total** | **22.8 MB** |
+
+The compression trap that shadowed this design from the first ffmpeg placeholder run (273 MB) and
+through the dark-chamber probe (projected 190 MB) is dead. It was never the film grain. Higgsfield
+simply returns a fat delivery encode; `1600/crf22/g8` takes a clip from ~10 MB to ~2 MB.
