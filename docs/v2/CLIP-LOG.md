@@ -35,3 +35,34 @@ alcove lights glow and nothing else moves at all.
 
 ## Remaining
 `next` dive, then 7 connectors (`start_image` = island N, `end_image` = island N+1).
+
+## Wave 1 gated — 4 PASS, 3 FAIL
+
+`scripts/world/check-dive.py` checks the three things that would sink the set:
+the zoom is real and monotonic; the cream background never wavers (the model must not
+invent sky); the final frames are calm, because that frame becomes a connector's `start_image`.
+
+| clip | zoom | monotonic | bg drift | endpoint | Mbps | |
+|---|---|---|---|---|---|---|
+| explain | 2.12x | yes | 2 | 1.66 | 7.5 | PASS |
+| impact | 2.09x | yes | 5 | 0.97 | 7.0 | PASS |
+| hero | 1.89x | yes | 1 | 4.40 | 10.7 | PASS |
+| create | 1.42x | yes | 3 | 2.29 | 9.2 | PASS |
+| question | 1.13x | **no** | 1 | 0.64 | 6.8 | FAIL |
+| journey | 1.12x | yes | 3 | 1.08 | 8.1 | FAIL |
+| build | **0.97x** | **no** | 5 | 1.90 | 9.4 | FAIL |
+
+**`build` scored 0.97x — the camera pulled BACK.** Not a weak push-in; the wrong direction
+entirely. `question` and `journey` crept forward at ~1.1x and would have read as a static image.
+
+The failure mode: "moves slowly and steadily forward" is a *description*, and the model treats
+it as a suggestion. The reroll states a **measurable target** — "by the final frame the island
+must fill roughly TWICE the frame area it filled in the first" — plus an explicit prohibition:
+"must NEVER pull back, retreat, dolly out, zoom out"; "strictly monotonic: every frame is closer
+than the one before."
+
+Bitrates all 6.8–10.7 Mbps, below the dark-chamber probe's 13.2. The encode ladder takes these
+to ~3 MB each.
+
+## Wave 2
+build `885443f7` · journey `f575d8a4` · question `8b24430b` (rerolls) · next `fbae1df5` (new)
