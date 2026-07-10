@@ -42,7 +42,7 @@
 <p class="sub">A branching, scroll-scrubbed portfolio. Design &amp; build specification.</p>
 <p class="meta">
   arpit2412.github.io &nbsp;·&nbsp; worktree <code>~/Desktop/Resume/site-world</code> &nbsp;·&nbsp; branch <code>world/v2</code><br>
-  Drafted 2026-07-10 &nbsp;·&nbsp; Status: <b>blocked on assets</b> (photos + Higgsfield credits)
+  Drafted 2026-07-10 &nbsp;·&nbsp; Status: <b>blocked on credits only</b> (photos no longer required — see §8.1)
 </p>
 
 <h2>1. The concept</h2>
@@ -317,6 +317,91 @@ Closing: <b>THE NEXT WORLD DOES NOT EXIST YET. Let's build it.</b></p>
   <b>~80 credits</b>, still inside Starter's 270 with rerolls — subject to the
   <code>cinematic_studio_video_v2</code> access test.
 </p>
+
+
+<div class="pb"></div>
+<h2>9. Decisions taken</h2>
+<p>Arpit delegated the two open calls with the direction: <i>make it premium, don't worry about credits.</i></p>
+
+<h3>9.1 The hub is ranked, not symmetric</h3>
+<p>
+  Five equal doors read as a menu. Hierarchy is carried by <b>composition, not by labels</b> — it is baked into the
+  hub still, which is why this had to be settled first.
+</p>
+<ul>
+  <li><b>QUESTION</b> (Research) and <b>BUILD</b> (Engineering) — two large apertures flanking the core, near, at eye
+      level, warm key light. These are the primary identity.</li>
+  <li><b>CREATE</b> (Film) and <b>EXPLAIN</b> (Writing) — offset, further back, cooler, smaller. Differentiators.</li>
+  <li><b>IMPACT</b> — set behind and below the core, the deepest aperture. It is evidence; you reach it last and it
+      feels earned.</li>
+</ul>
+
+<h3>9.2 The career timeline is the descent, not a door</h3>
+<div class="ok">
+  <b>This resolves both open conflicts at once.</b> <code>Timeline.tsx</code> is the tallest component on the site and
+  drives its own scroll-linked spine. It cannot be an ornamental orbit. But it should not be a sixth door either —
+  the career is not one of the five expressions, it is <i>how the mind was built</i>.
+  <br><br>
+  So the timeline <b>is the corridor</b>. After the silhouette dissolves, the camera descends through the career —
+  DRDO/WESEE → Rising Sun Pictures → TikTok → AIML/CSIRO — and arrives at the hub. The descent already needs scroll
+  length; a tall scroll-driven spine is exactly what belongs there.
+  <br><br>
+  Narratively it earns its place: <i>you did not jump between industries at random; you moved repeatedly toward
+  harder, higher-impact intelligent systems.</i> The visitor understands that <b>before</b> they choose a door.
+</div>
+
+<h3>9.3 “Build What's Next” is the core</h3>
+<p>
+  Not a hidden sixth destination, and never gated behind exploring two worlds. The glowing core at the centre of the
+  hub <b>is</b> the contact path. It is the most prominent object in the chamber from the first second — it simply
+  does not announce itself as a call to action until the visitor has been somewhere. Prominence grows; presence is
+  constant. The one-room visitor still sees it.
+</p>
+
+<h3>9.4 Premium production settings</h3>
+<table>
+  <thead><tr><th>Asset</th><th>Setting</th><th class="n">Unit</th><th class="n">Qty</th><th class="n">Credits</th></tr></thead>
+  <tbody>
+    <tr><td>Silhouette opening</td><td>in-browser <code>ParticleField</code></td><td class="n">0</td><td class="n">1</td><td class="n">0</td></tr>
+    <tr><td>Stills</td><td><code>nano_banana_pro</code>, <b>4K</b>, 16:9</td><td class="n">4</td><td class="n">8</td><td class="n">32</td></tr>
+    <tr><td>Dive clips</td><td><code>cinematic_studio_video_v2</code>, <b>pro</b>, <b>8s</b>, silent</td><td class="n">12</td><td class="n">8</td><td class="n">96</td></tr>
+    <tr><td>Hub → room edges</td><td>same, <code>start_image</code> + <code>end_image</code></td><td class="n">12</td><td class="n">5</td><td class="n">60</td></tr>
+    <tr><td>Room → hub edges</td><td>reverse-scrub</td><td class="n">0</td><td class="n">5</td><td class="n">0</td></tr>
+    <tr><td><b>Premium base</b></td><td></td><td class="n"></td><td class="n"></td><td class="n"><b>188</b></td></tr>
+    <tr><td>With 2× rerolls</td><td></td><td class="n"></td><td class="n"></td><td class="n">376</td></tr>
+  </tbody>
+</table>
+<p>
+  8-second clips over 5-second ones buy longer scroll travel per room and a slower, less frantic camera —
+  the single biggest lever on whether this reads as premium or as a gimmick. <code>pro</code> mode and 4K stills
+  are the rest.
+</p>
+
+<div class="flag">
+  <b>Plan decision: Starter is now ruled out.</b> Premium base is 188 cr — it fits inside 270, but 2× rerolls
+  (376 cr) do not, and connectors are precisely the shots that need rerolling.
+  <b>Plus (1,200 cr) is the floor</b>; via the MCP checkout that is $49/mo, or $29/mo billed annually.
+  Ultra (3,000 cr) buys 3× reroll headroom. Starter would also still carry the unresolved risk that
+  <code>cinematic_studio_video_v2</code> is not among its “selected models”.
+</div>
+
+<div class="flag">
+  <b>Still blocked. The account holds 0 credits.</b> Re-checked at time of writing:
+  <code>{"credits": 0, "subscription_plan_type": "free"}</code>. Every figure above is a measured
+  <code>get_cost</code> preflight, which costs nothing and submits no job. Not a single asset can be generated
+  until a plan is purchased.
+  <br><br>
+  Photographs are <b>no longer required</b> — the silhouette opening removed that blocker (§8.1).
+</div>
+
+<h3>9.5 First spend, in order</h3>
+<ol>
+  <li><b>4 cr</b> — the hub still, at 4K. It encodes the ranked composition. Approve it before anything else exists.</li>
+  <li><b>12 cr</b> — one <code>pro</code> 8s clip from that still. Proves model access <i>and</i> that the camera
+      reads as cinematic rather than as an AI pan.</li>
+  <li>Remaining ~172 cr — the other seven stills, then the dives, then the five edges.</li>
+</ol>
+<p>Stills reroll at 4 cr, clips at 12. Every still is approved before any motion is generated from it.</p>
 
 <footer>
   Mind World spec · generated 2026-07-10 · all work confined to ~/Desktop/Resume/site-world
