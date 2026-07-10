@@ -21,3 +21,4 @@ next-env.d.ts
 /public/world/vid/*probe*.mp4
 /.work/
 /public/world/v2/*.png
+/public/world/v3/*.png

@@ -1,71 +1,82 @@
-import numpy as np
+#!/usr/bin/env python3
+"""
+Set-level variety gate for the island world.
+
+Per-image checks (background hue, left-third luma) CANNOT see set-level redundancy --
+worse, they pass *because* every island is the same object in the same light. This is the
+check that would have caught "you used same image set".
+
+Threshold each island against its own corner sample -> silhouette mask -> normalise the
+mask's bbox to 256x256 -> pairwise IoU.
+
+GATE: fail if any pair > 0.60, or median > 0.55.
+Also reports normalised area spread (scale hierarchy) and aspect-ratio spread.
+"""
+import sys, glob, itertools, statistics
 from PIL import Image
-import os, itertools
+import numpy as np
 
-D = "/home/arpit/Desktop/Resume/site-world/public/world/v2/"
-names = ["hero","journey","question","build","create","explain","impact","next"]
-files = {n: D+f"island-{n}-r1.png" for n in names}
+def mask(path, n=256):
+    """
+    Silhouette, centred on an n x n canvas, scaled by its LONGEST side.
 
-masks = {}
-stats = {}
+    An earlier version normalised each bbox to a square. That destroyed aspect ratio --
+    the very thing distinguishing a wide server strip from a stepped wedge -- so two
+    obviously different shapes both became "filled quadrilateral" and scored ~0.6 IoU.
+    The metric was rewarding the redundancy it existed to catch, which is exactly the
+    mistake that let the v2 set through. Scale by the longest side instead: aspect and
+    relative proportion survive.
+    """
+    im = Image.open(path).convert("RGB").resize((512, 288))
+    a = np.asarray(im).astype(int)
+    bg = a[4, 4]                                   # its own cream corner
+    d = np.abs(a - bg).sum(axis=2)
+    m = d > 42                                     # island = anything unlike the background
+    ys, xs = np.nonzero(m)
+    if len(xs) == 0:
+        return None, 0.0, 1.0
+    area = m.sum() / m.size
+    w = xs.max() - xs.min() + 1
+    h = ys.max() - ys.min() + 1
+    aspect = w / max(1, h)
+    crop = Image.fromarray((m[ys.min():ys.max()+1, xs.min():xs.max()+1] * 255).astype("uint8"))
+    k = n / max(w, h)                              # longest side -> n, aspect preserved
+    crop = crop.resize((max(1, int(w * k)), max(1, int(h * k))))
+    canvas = Image.new("L", (n, n), 0)
+    canvas.paste(crop, ((n - crop.width) // 2, (n - crop.height) // 2))
+    return np.asarray(canvas) > 127, area, aspect
+
+def iou(a, b):
+    return (a & b).sum() / max(1, (a | b).sum())
+
+args = sys.argv[1:]
+paths = sorted(args) if args else sorted(glob.glob("public/world/v3/island-*.png"))
+names = [p.split("island-")[-1].replace(".png", "") for p in paths]
+masks, areas, aspects = {}, {}, {}
+for p, n in zip(paths, names):
+    m, ar, asp = mask(p)
+    masks[n], areas[n], aspects[n] = m, ar, asp
+
+pairs = []
+for a, b in itertools.combinations(names, 2):
+    pairs.append((iou(masks[a], masks[b]), a, b))
+pairs.sort(reverse=True)
+
+print("  worst silhouette pairs (IoU):")
+for v, a, b in pairs[:5]:
+    flag = "  <-- FAIL" if v > 0.60 else ""
+    print(f"    {a:9} <-> {b:9}  {v:.3f}{flag}")
+med = statistics.median(v for v, _, _ in pairs)
+worst = pairs[0][0]
+print(f"\n  median IoU {med:.3f} (gate <= 0.55)   worst {worst:.3f} (gate <= 0.60)")
+
+amax = max(areas.values())
+print("\n  normalised island area (scale hierarchy):")
 for n in names:
-    im = Image.open(files[n]).convert("RGB")
-    a = np.asarray(im).astype(np.int16)
-    h,w,_ = a.shape
-    # cream background sample from top-left corner region
-    corner = a[0:60,0:60].reshape(-1,3).mean(0)
-    # distance from cream
-    dist = np.sqrt(((a-corner)**2).sum(2))
-    mask = dist > 22   # foreground = island
-    # clean: keep, compute bbox
-    ys,xs = np.where(mask)
-    y0,y1,x0,x1 = ys.min(),ys.max(),xs.min(),xs.max()
-    bw,bh = x1-x0+1, y1-y0+1
-    fill = mask.sum()/(bw*bh)               # how much of bbox is filled
-    frac = mask.sum()/(w*h)                 # island area / whole frame
-    aspect = bw/bh
-    masks[n] = mask
-    stats[n] = dict(corner=corner.round(0), bbox=(bw,bh), aspect=round(aspect,3),
-                    fill=round(fill,3), frac=round(frac,4), area=int(mask.sum()),
-                    cx=round((x0+x1)/2/w,3), W=w,H=h)
+    print(f"    {n:9} {areas[n]/amax:.2f}   aspect {aspects[n]:.2f}")
+spread = max(areas.values()) / max(1e-6, min(areas.values()))
+print(f"\n  area spread (max/min) {spread:.2f}x  (want >= 2.0: the vault must read as smallest)")
 
-print("=== per-island silhouette stats ===")
-print(f"{'name':9} {'bboxW':>6}{'bboxH':>6} {'aspect':>7} {'fill':>6} {'area%frame':>10}")
-for n in names:
-    s=stats[n]
-    print(f"{n:9} {s['bbox'][0]:6}{s['bbox'][1]:6} {s['aspect']:7} {s['fill']:6} {100*s['frac']:10.2f}")
-
-# scale: island area relative to largest
-maxarea = max(stats[n]['area'] for n in names)
-print("\n=== relative scale (island pixel area, normalized to largest) ===")
-for n in sorted(names, key=lambda k:-stats[k]['area']):
-    print(f"{n:9} {stats[n]['area']/maxarea:5.2f}   bboxH={stats[n]['bbox'][1]}")
-
-# Silhouette IoU pairwise. Resize each mask to common canvas by centering bbox scaled.
-def norm_mask(m):
-    ys,xs=np.where(m); y0,y1,x0,x1=ys.min(),ys.max(),xs.min(),xs.max()
-    crop=m[y0:y1+1,x0:x1+1]
-    im=Image.fromarray((crop*255).astype(np.uint8)).resize((256,256),Image.NEAREST)
-    return np.asarray(im)>127
-nm={n:norm_mask(masks[n]) for n in names}
-print("\n=== pairwise silhouette IoU (bbox-normalized to 256x256) ===")
-print("     "+ " ".join(f"{n[:4]:>5}" for n in names))
-ious={}
-for a in names:
-    row=[]
-    for b in names:
-        inter=(nm[a]&nm[b]).sum(); uni=(nm[a]|nm[b]).sum()
-        iou=inter/uni; ious[(a,b)]=iou; row.append(f"{iou:5.2f}")
-    print(f"{a[:4]:>4} "+" ".join(row))
-
-pairs=[(a,b) for a,b in itertools.combinations(names,2)]
-vals=sorted(((ious[(a,b)],a,b) for a,b in pairs),reverse=True)
-print("\n=== most similar silhouettes ===")
-for v,a,b in vals[:8]:
-    print(f"{a:9} vs {b:9}  IoU={v:.3f}")
-print("mean pairwise IoU:",round(np.mean([ious[(a,b)] for a,b in pairs]),3))
-
-# base-shape: bottom-row width profile symmetry. Also 'dome vs elongated': aspect
-print("\n=== aspect grouping (round dome ~1.0-1.4, elongated >1.6) ===")
-for n in sorted(names,key=lambda k:stats[k]['aspect']):
-    print(f"{n:9} aspect={stats[n]['aspect']}")
+ok = worst <= 0.60 and med <= 0.55
+print(f"\n  VERDICT: {'PASS' if ok else 'FAIL'}")
+sys.exit(0 if ok else 1)

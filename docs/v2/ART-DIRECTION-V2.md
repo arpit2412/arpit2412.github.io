@@ -80,3 +80,53 @@ Decisions taken (Arpit delegated design calls):
 - **A new island per chapter**, as the reference does. Not one world flown around.
 - **The figure stays an anonymous clay person.** Making it read as Arpit drags the likeness
   problem back in; unnamed, it reads as *a mind* rather than a portrait.
+
+---
+
+# v3 — eight distinguishable worlds (24 cr)
+
+## What changed
+Stopped generating each island i2i from the finished hero. **The consistency source was also the
+geometry source**, which is why the dome, funnel, trees, figure and gold core propagated as literal
+assets. Style now travels through a *text style-token*; silhouette, camera, scale and content are
+driven from text, per island.
+
+Kept: `hero` (the establishing hub) and `journey` (the one island that already varied).
+Regenerated six with distinct silhouette / camera / scale. `build` needed one reroll — it came
+back at aspect 1.20 when 1.7+ was asked for.
+
+| island | silhouette | area | aspect |
+|---|---|---|---|
+| build | wide thin server runway, flat underside | 1.00 | 1.78 |
+| hero | the dome (reference disc) | 0.53 | 1.14 |
+| create | asymmetric amphitheatre wedge, giant tilted screen | 0.52 | 1.26 |
+| explain | open-book island, two sloping page-planes | 0.34 | 1.37 |
+| journey | long thin winding road | 0.32 | 1.02 |
+| next | torn fragment, jagged broken edge | 0.30 | 0.90 |
+| question | tall thin observatory spire on a spike | 0.20 | 0.85 |
+| impact | tight hexagonal vault on a slim pedestal | 0.20 | 0.64 |
+
+## The gate (`scripts/world/check-island-variety.py`)
+
+Pairwise silhouette IoU across the whole set. Per-image checks cannot see set-level redundancy —
+they pass *because* everything is the same object in the same light.
+
+| | median IoU | worst pair | area spread |
+|---|---|---|---|
+| v2 (rejected by Arpit) | **0.677** | 0.824 explain↔question | 1.77x |
+| v3 | **0.316** | 0.560 create↔next | **5.13x** |
+| gate | ≤ 0.55 | ≤ 0.60 | ≥ 2.0 |
+
+v3 **PASSES**. v2 **FAILS hard** under the same metric — which is the validation the gate needed:
+it rejects the set the human rejected.
+
+### I had to fix the gate before trusting it
+The first version normalised each silhouette's bbox to a square, destroying the aspect ratio that
+distinguishes a wide server strip from a stepped wedge. Both became "filled quadrilateral" and
+scored ~0.6. **The metric was rewarding the redundancy it existed to catch** — the same failure mode
+as the background-hue check. Now it scales by the longest side, so aspect and proportion survive.
+
+## Verification
+Rendered via `--print-to-pdf` (the fragment-screenshot method is provably artifactual, see BROKEN.md):
+25 pages, hero page mean RGB (28,31,37) dark and 8,920 distinct pixels; world pages mean (205,198,187)
+cream. All 8 islands serve 200. Web weight 356 KB.
