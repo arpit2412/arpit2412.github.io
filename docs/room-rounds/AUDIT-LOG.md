@@ -44,3 +44,14 @@ landscape, a forest, a sunset").
 r2: one human face, hard vertical seam at screen centre — triangulated wireframe with visible
 control vertices on the left, photoreal skin with pores on the right. Gaze, identity,
 reconstruction, in a single frame.
+
+## THE NEXT WORLD (the core / contact) — `8093f7d2` — r1 accepted
+
+Inside the filament core, after the camera flies into it. Dense lattice massed right; filaments
+thin, reach, and stop; then pure void.
+
+Measured: **0 blue / 14,953 lit.** Luma L/C/R = **10.1 / 42.7 / 115.9** — the right side is
+**11.5x** brighter than the left. The built/unbuilt asymmetry the ending depends on is in the data.
+
+This is the frame under "THE NEXT WORLD DOES NOT EXIST YET. Let's build it." (spec §8.4).
+It is the only plate that is deliberately *unfinished*.
