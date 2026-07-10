@@ -66,3 +66,40 @@ to ~3 MB each.
 
 ## Wave 2
 build `885443f7` · journey `f575d8a4` · question `8b24430b` (rerolls) · next `fbae1df5` (new)
+
+## No connectors — the reference dissolves, it doesn't fly
+
+Measured across an island change in `reference-scroll-world.mp4` (3.0s → 4.0s, 8fps):
+inter-frame diffs spike to **42.0** and **34.1**. A continuous camera flight between worlds would
+show smooth small diffs throughout. That is a dissolve signature.
+
+**Seven connectors were therefore never generated. 84 credits saved**, and the hardest shot type
+(each connector's `start_image` must be the previous clip's actual last frame) is eliminated. The
+engine's crossfade is exactly what the reference does.
+
+## `build` — three clip rerolls chased a symptom; the defect was in the PLATE
+
+| attempt | zoom | mono | endpoint | Mbps | |
+|---|---|---|---|---|---|
+| v1 | 0.97x | no | 1.90 | 9.4 | camera pulled BACK |
+| v2 (measurable target) | 1.19x | no | 20.21 | 12.7 | wild endpoint |
+| v3 (steady lights) | 0.98x | no | 8.25 | 10.0 | still backwards |
+
+Steady lights fixed the endpoint (20.21 → 8.25) and the bitrate (12.7 → 10.0) — the "travelling
+wave" of blinking lights I asked for was a large inter-frame change.
+
+But the zoom kept reading ~1.0x. **The plate's background was a gradient** (background luma spread
+**13.7**, and the strip covered 59% of the frame), so "anything unlike the background" matched most
+of the frame and the area-based zoom metric was meaningless. Regenerated the plate with a flat
+background and a strip clear of the frame edges: spread **13.7 → 2.0**, background fraction
+0.41 → 0.84.
+
+Also: Higgsfield twice tried to substitute presets — **"IN THE DARK"**, and once **"Earth zoom
+out"**, which is literally the opposite of a push-in. Both declined explicitly. This is a plausible
+contributor to the backwards camera.
+
+## New gate: `scripts/world/check-plate-flat.py`
+A non-flat plate makes every downstream measurement lie. Two versions of this gate were wrong
+before it worked: sampling fixed corners reads the *island* on `hero` (bottom-right is its roots),
+giving a nonsense variation of 94. It now finds the background by modal colour and measures the
+luma spread of background pixels only. Gate: spread ≤ 14. All eight plates pass.

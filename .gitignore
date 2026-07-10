@@ -22,4 +22,5 @@ next-env.d.ts
 /.work/
 /public/world/v2/*.png
 /public/world/v3/*.png
-/public/world/v3vid/*.mp4
+/public/world/v3vid/dive-*.mp4
+/public/world/v3vid/enc/

@@ -444,3 +444,15 @@ html { overflow-x: clip; }
   background: rgba(239, 231, 218, 0.72) !important;
   backdrop-filter: blur(14px);
 }
+
+/* v3: the zoom lives inside the clip now, not in a CSS transform. */
+.mw-scene { transform: none !important; will-change: opacity; }
+.mw-scene__video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain; object-position: center;
+  z-index: 1;
+}
+/* Poster stays until a real frame paints (iOS shows nothing before the first seek). */
+.mw-scene.has-clip .mw-scene__img { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .mw-scene__video { display: none; } }
