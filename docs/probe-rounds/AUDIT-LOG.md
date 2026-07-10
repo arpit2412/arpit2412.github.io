@@ -41,3 +41,42 @@ haze "barely drifts". `cfg_scale` 0.65 → 0.75 to tighten prompt adherence.
 
 Also: declined Higgsfield's "IN THE DARK" preset substitution on both runs — a canned preset would
 override the exact controlled dolly the probe exists to test.
+
+## v2 — `d8e001f5` — ACCEPTED as probe
+
+Core-only delta. Camera clauses untouched. `cfg_scale` 0.65 → 0.75.
+
+| | v1 | v2 |
+|---|---|---|
+| endpoint motion (mean abs diff, last frames) | 9.32 | **3.09** |
+| packet swing (excl. keyframe) | 2.9x | 2.4x |
+| source bitrate | 14.6 Mbps | 13.2 Mbps |
+
+Endpoint is 3x calmer — that is what a connector's start frame needs. Core is contained through
+most of the clip, though a few tendrils still escape in the final frames. Accepted: this is a probe,
+not a shipped asset. The real hub dive is regenerated during the build.
+
+## BOTH bitrate predictions were wrong — corrected by measurement
+
+The auditor predicted (a) calming the core would collapse the bitrate, and (b) re-encoding would buy
+only 15-25%. **Both were backwards.**
+
+- Calming the core: 14.6 → 13.2 Mbps. **Only ~10%.**
+- Re-encoding, measured ladder from the v2 source (12.6 MB):
+
+| variant | size | Mbps |
+|---|---|---|
+| 1920 crf20 g8 slower | 5.3 MB | 5.6 |
+| **1600 crf22 g8 slower** | **2.9 MB** | **3.1** |
+| 1440 crf23 g8 slower | 2.2 MB | 2.3 |
+| 854 crf26 g4 slower (mobile) | 0.9 MB | 1.0 |
+
+**~58% reduction**, not 15-25%. The weight was never the filaments — Higgsfield simply returns a fat
+delivery encode. `-g 8` costs bits but is what makes scroll-seeking cheap (pipeline.md).
+
+Ship settings: **1600/crf22/g8** desktop, **854/crf26/g4** mobile.
+13 clips project to ~38 MB desktop + ~12 MB mobile, not the feared ~190 MB.
+
+## Probe verdict
+Camera: **PASS.** Settings: **validated.** Encode budget: **solved.**
+Cleared to commit the remaining generation.
