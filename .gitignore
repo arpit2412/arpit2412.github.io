@@ -12,3 +12,11 @@ next-env.d.ts
 # misc
 .DS_Store
 *.log
+
+# Mind World assets.
+# Raw 4K plates and probe renders are SOURCE, not web assets — they stay local.
+# Only the derived web assets are committed: hub.webp (46K), hub-dive*.mp4 (~4M).
+# Regenerate/redownload via docs/hub-rounds/AUDIT-LOG.md (Higgsfield job ids).
+/public/world/img/*.png
+/public/world/vid/*probe*.mp4
+/.work/
