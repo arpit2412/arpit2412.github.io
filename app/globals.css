@@ -406,3 +406,41 @@
   .mw-scene { will-change: auto; transform: none !important; }
   .mw-lede { transform: translateY(-50%) !important; }
 }
+
+/* ============================================================================
+   v2 fixes — found by screenshotting the local build, not by eye.
+   ========================================================================== */
+
+/* `overflow-x-clip` on <main> was clipping the fixed stage: it painted cream over
+   the hero at the top, then vanished entirely further down (leaving the dark body).
+   Clip on the root instead, where fixed descendants stay viewport-relative. */
+html { overflow-x: clip; }
+
+/* The world owns its own cream. The stage must NOT paint a full-viewport background,
+   or it washes out the hero above it. */
+.mind-world { background: #EFE7DA; }
+.mw-stage { background: transparent; }
+
+/* Beat two: dense content needs an opaque surface. The islands leave the LEFT THIRD
+   empty, which is enough for a one-line lede — it is nowhere near enough for a
+   publication list. So the content beat rides on a cream panel that covers the island. */
+.mw-chapter__content {
+  position: relative;
+  background: #EFE7DA;
+  border-top: 1px solid rgba(35, 29, 22, 0.08);
+}
+/* Soften the arrival: the panel fades up out of the island rather than cutting. */
+.mw-chapter__content::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -14vh;
+  height: 14vh;
+  background: linear-gradient(180deg, rgba(239,231,218,0) 0%, rgba(239,231,218,.72) 55%, #EFE7DA 100%);
+  pointer-events: none;
+}
+
+/* The site's fixed nav is themed dark; over cream it reads as a black slab. */
+.mind-world ~ * .nav, body:has(.mind-world) header {
+  background: rgba(239, 231, 218, 0.72) !important;
+  backdrop-filter: blur(14px);
+}

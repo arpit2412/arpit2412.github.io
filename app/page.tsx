@@ -20,7 +20,7 @@ import MindWorld from "@/components/world/MindWorld";
  */
 export default function Home() {
   return (
-    <main className="overflow-x-clip">
+    <main>
       <Hero />
       <MindWorld
         sections={[
