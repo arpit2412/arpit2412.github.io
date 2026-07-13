@@ -3,7 +3,6 @@ import Reveal from "@/components/Reveal";
 import SectionHeading from "@/components/SectionHeading";
 import SpotlightCard from "@/components/SpotlightCard";
 import { projects } from "@/data/projects";
-import FilmStrip from "@/components/FilmStrip";
 
 export default function Projects() {
   return (
@@ -59,7 +58,6 @@ export default function Projects() {
         </div>
       </div>
 
-      <FilmStrip />
     </section>
   );
 }

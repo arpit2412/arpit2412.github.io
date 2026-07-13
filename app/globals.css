@@ -146,3 +146,429 @@
     background-size: 100% 1.5px;
   }
 }
+
+/* ============================================================================
+   Mind World — fixed plate stage behind the real content.
+   Only `opacity` is animated here; nothing in this block touches layout on scroll.
+   ========================================================================== */
+
+.mw-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0a0805;
+}
+.mw-scene { position: absolute; inset: 0; opacity: 0; will-change: opacity; }
+.mw-scene__still {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 45%;
+}
+/* Keeps light body copy legible over an arbitrary generated frame. Every plate was
+   generated with a dark, empty left third precisely so this scrim can be gentle. */
+.mw-scrim {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(90deg, rgba(10,8,5,.94) 0%, rgba(10,8,5,.80) 42%, rgba(10,8,5,.42) 72%, rgba(10,8,5,.30) 100%),
+    linear-gradient(0deg, rgba(10,8,5,.92) 0%, transparent 30%, transparent 70%, rgba(10,8,5,.75) 100%);
+}
+.mw-track { position: relative; z-index: 10; }
+.mw-chapter { position: relative; display: flex; align-items: center; }
+.mw-chapter > * { width: 100%; }
+
+/* The stage is behind everything, so the page and its opaque bands must let it through.
+   On origin/master, Research / Timeline / Writing are `bg-surface` and Writing / Contact
+   carry `bg-card`. Left alone they paint over the plates. Scoped to .mind-world so the
+   rest of the site is untouched. */
+.mind-world { --mw-ink: #f2ece1; }
+.mind-world :is(section, div).bg-surface { background: transparent !important; }
+.mind-world .bg-base { background: transparent !important; }
+.mind-world .bg-card {
+  background: color-mix(in srgb, #17140f 62%, transparent) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(217,164,65,.18) !important;
+}
+.mind-world :is(h1,h2,h3,.font-display) { color: var(--mw-ink); }
+
+/* ---- route rail ---------------------------------------------------------- */
+.mw-route {
+  position: fixed; right: clamp(10px,2vw,26px); top: 50%;
+  transform: translateY(-50%); z-index: 40;
+  display: flex; flex-direction: column; gap: 18px; padding: 14px 8px;
+}
+.mw-route::before {
+  content: ""; position: absolute; left: 50%; top: 14px; bottom: 14px;
+  width: 1px; transform: translateX(-50%); background: rgba(217,164,65,.26);
+}
+.mw-route__dot {
+  position: relative; display: grid; place-items: center;
+  width: 16px; height: 16px; border: 0; background: transparent; cursor: pointer;
+}
+.mw-route__dot i {
+  width: 7px; height: 7px; border-radius: 50%; background: rgba(217,164,65,.38);
+  transition: transform 200ms cubic-bezier(.23,1,.32,1), background 200ms cubic-bezier(.23,1,.32,1);
+}
+.mw-route__dot.is-active i {
+  background: #d9a441; transform: scale(1.35);
+  box-shadow: 0 0 0 4px rgba(217,164,65,.18);
+}
+.mw-route__dot:active i { transform: scale(.9); transition-duration: 120ms; }
+.mw-route__label {
+  position: absolute; right: 24px; top: 50%;
+  transform: translateY(-50%) translateX(6px); white-space: nowrap;
+  font-size: .68rem; letter-spacing: .16em; text-transform: uppercase;
+  color: #f2ece1; background: rgba(23,20,15,.9); backdrop-filter: blur(10px);
+  border: 1px solid rgba(217,164,65,.16); padding: 5px 11px; border-radius: 999px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 200ms cubic-bezier(.23,1,.32,1), transform 200ms cubic-bezier(.23,1,.32,1);
+}
+.mw-route__dot.is-active .mw-route__label { opacity: 1; transform: translateY(-50%) translateX(0); }
+@media (hover:hover) and (pointer:fine) {
+  .mw-route__dot:hover i { transform: scale(1.15); background: #d9a441; }
+  .mw-route__dot:hover .mw-route__label { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+/* ---- the five doors ------------------------------------------------------ */
+.mw-doors {
+  position: fixed; left: 50%; bottom: 6vh; z-index: 35;
+  transform: translateX(-50%) translateY(12px);
+  opacity: 0; pointer-events: none;
+  transition: opacity 400ms cubic-bezier(.23,1,.32,1), transform 400ms cubic-bezier(.23,1,.32,1);
+  text-align: center; width: min(92vw, 900px);
+}
+.mw-doors.is-open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.mw-doors__lead {
+  font-size: .68rem; letter-spacing: .28em; text-transform: uppercase;
+  color: rgba(242,236,225,.55); margin-bottom: 14px;
+}
+.mw-doors ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.mw-doors button {
+  display: flex; flex-direction: column; gap: 2px; align-items: center;
+  padding: 10px 18px; border-radius: 12px; cursor: pointer;
+  background: rgba(23,20,15,.72); backdrop-filter: blur(14px);
+  border: 1px solid rgba(217,164,65,.18);
+  transition: transform 200ms cubic-bezier(.23,1,.32,1), border-color 200ms;
+}
+.mw-doors button:active { transform: scale(.97); }
+@media (hover:hover) and (pointer:fine) {
+  .mw-doors button:hover { transform: translateY(-2px); border-color: rgba(217,164,65,.5); }
+}
+.mw-doors__verb { font-size: .95rem; font-weight: 600; color: #d9a441; letter-spacing: .02em; }
+.mw-doors__noun { font-size: .64rem; letter-spacing: .18em; text-transform: uppercase; color: rgba(242,236,225,.55); }
+
+@media (max-width: 860px) {
+  .mw-route { gap: 12px; right: 4px; }
+  .mw-route__dot { width: 28px; height: 28px; }
+  .mw-route__label { display: none; }
+  .mw-doors { bottom: calc(3vh + env(safe-area-inset-bottom)); }
+  .mw-doors button { padding: 8px 12px; }
+  .mw-scrim {
+    background: linear-gradient(0deg, rgba(10,8,5,.95) 10%, rgba(10,8,5,.78) 55%, rgba(10,8,5,.55) 100%);
+  }
+}
+
+/* Reduced motion: plates hard-cut instead of crossfading; no scale, no rail bounce.
+   Everything stays reachable. */
+@media (prefers-reduced-motion: reduce) {
+  .mw-scene { will-change: auto; }
+  .mw-route__dot i, .mw-route__dot.is-active i { transform: none; }
+  .mw-doors { transition: opacity 200ms linear; transform: translateX(-50%); }
+  .mw-doors.is-open { transform: translateX(-50%); }
+}
+
+/* ============================================================================
+   Mind World v2 — miniature islands on flat cream. Overrides the v1 dark stage
+   above (later rules win). Scroll drives a zoom, not a crossfade.
+   ========================================================================== */
+
+/* The world is cream. Force the light token set inside it, so a visitor in dark
+   mode does not get light text on a cream island. */
+.mind-world {
+  --bg: #EFE7DA;
+  --surface: transparent;
+  --card: rgba(255, 252, 246, 0.66);
+  --ink: #231d16;
+  --muted: #6b5f52;
+  --faint: #9a8c7c;
+  --edge: rgba(35, 29, 22, 0.12);
+  --edge-2: rgba(35, 29, 22, 0.07);
+  --accent: #B07C2A;
+  --accent-soft: rgba(176, 124, 42, 0.10);
+  color: var(--ink);
+  position: relative;
+}
+.mind-world :is(section, div).bg-surface { background: transparent !important; }
+.mind-world .bg-base { background: transparent !important; }
+.mind-world .bg-card {
+  background: var(--card) !important;
+  backdrop-filter: blur(12px);
+  border-color: var(--edge) !important;
+}
+.mind-world :is(h1, h2, h3, .font-display) { color: var(--ink); }
+
+.mw-stage {
+  position: fixed; inset: 0; z-index: 0;
+  overflow: hidden; pointer-events: none;
+  background: #EFE7DA;
+}
+.mw-scene {
+  position: absolute; inset: 0; opacity: 0;
+  will-change: transform, opacity;
+  /* transform-origin is set inline to the island's real position in frame */
+}
+.mw-scene__img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  /* contain, not cover: the whole island must stay in the lens as it grows, and the
+     cream letterbox is the same cream as the stage, so the seam is invisible. */
+  object-fit: contain;
+  object-position: center;
+}
+/* v1's scrim is not needed: every island was generated with an empty left third. */
+.mw-scrim { display: none; }
+
+/* ---- sparse copy, beat one ---------------------------------------------- */
+.mw-ledes { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
+.mw-lede {
+  position: absolute;
+  left: clamp(20px, 6vw, 90px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(30vw, 380px);
+  opacity: 0;
+  will-change: opacity, transform;
+}
+.mw-lede__verb {
+  display: block;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--ink, #231d16);
+  margin-bottom: 12px;
+}
+.mw-lede p {
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  line-height: 1.6;
+  color: #6b5f52;
+  max-width: 34ch;
+}
+
+.mw-track { position: relative; z-index: 10; }
+.mw-chapter { position: relative; display: block; }
+/* Beat one: one clear viewport where the island is small and only the lede shows. */
+.mw-chapter__spacer { height: 100vh; }
+.mw-chapter__content { position: relative; }
+
+/* ---- rail + doors, restyled for cream ------------------------------------ */
+.mw-route::before { background: rgba(176, 124, 42, 0.3); }
+.mw-route__dot i { background: rgba(176, 124, 42, 0.35); }
+.mw-route__dot.is-active i {
+  background: #B07C2A;
+  box-shadow: 0 0 0 4px rgba(176, 124, 42, 0.16);
+}
+.mw-route__label {
+  color: #231d16;
+  background: rgba(255, 252, 246, 0.92);
+  border-color: rgba(176, 124, 42, 0.2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mw-route__dot:hover i { background: #B07C2A; }
+}
+.mw-doors__lead { color: rgba(35, 29, 22, 0.5); }
+.mw-doors button {
+  background: rgba(255, 252, 246, 0.78);
+  border-color: rgba(176, 124, 42, 0.22);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mw-doors button:hover { border-color: rgba(176, 124, 42, 0.55); }
+}
+.mw-doors__verb { color: #8a5f1c; }
+.mw-doors__noun { color: rgba(35, 29, 22, 0.5); }
+
+@media (max-width: 860px) {
+  /* On a phone the island is small; give the lede the bottom, not the left third. */
+  .mw-lede {
+    left: clamp(18px, 5vw, 40px);
+    right: clamp(18px, 5vw, 40px);
+    top: auto;
+    bottom: calc(12vh + env(safe-area-inset-bottom));
+    transform: none;
+    width: auto;
+  }
+  .mw-scene__img { object-position: center 42%; }
+}
+
+/* Reduced motion: no zoom. The island appears, the copy appears. Nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .mw-scene { will-change: auto; transform: none !important; }
+  .mw-lede { transform: translateY(-50%) !important; }
+}
+
+/* ============================================================================
+   v2 fixes — found by screenshotting the local build, not by eye.
+   ========================================================================== */
+
+/* `overflow-x-clip` on <main> was clipping the fixed stage: it painted cream over
+   the hero at the top, then vanished entirely further down (leaving the dark body).
+   Clip on the root instead, where fixed descendants stay viewport-relative. */
+html { overflow-x: clip; }
+
+/* The world owns its own cream. The stage must NOT paint a full-viewport background,
+   or it washes out the hero above it. */
+.mind-world { background: #EFE7DA; }
+.mw-stage { background: transparent; }
+
+/* Beat two: dense content needs an opaque surface. The islands leave the LEFT THIRD
+   empty, which is enough for a one-line lede — it is nowhere near enough for a
+   publication list. So the content beat rides on a cream panel that covers the island. */
+.mw-chapter__content {
+  position: relative;
+  background: #EFE7DA;
+  border-top: 1px solid rgba(35, 29, 22, 0.08);
+}
+/* Soften the arrival: the panel fades up out of the island rather than cutting. */
+.mw-chapter__content::before {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; top: -14vh;
+  height: 14vh;
+  background: linear-gradient(180deg, rgba(239,231,218,0) 0%, rgba(239,231,218,.72) 55%, #EFE7DA 100%);
+  pointer-events: none;
+}
+
+/* The site's fixed nav is themed dark; over cream it reads as a black slab. */
+.mind-world ~ * .nav, body:has(.mind-world) header {
+  background: rgba(239, 231, 218, 0.72) !important;
+  backdrop-filter: blur(14px);
+}
+
+/* v3: the zoom lives inside the clip now, not in a CSS transform. */
+.mw-scene { transform: none !important; will-change: opacity; }
+.mw-scene__video {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain; object-position: center;
+  z-index: 1;
+}
+/* Poster stays until a real frame paints (iOS shows nothing before the first seek). */
+.mw-scene.has-clip .mw-scene__img { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .mw-scene__video { display: none; } }
+
+/* ============================================================================
+   Audit fixes — found by RENDERING the page, not by reading the markup.
+   ========================================================================== */
+
+/* CRITICAL: the ledes sat at z-index 20, above the content track (10), so the opaque
+   cream content panel could never cover them. On a phone, where the lede is
+   bottom-anchored in the same band as the cards, a partly-faded verb painted straight
+   over the section ("Question" at 69% opacity across the PEFT card). This is the exact
+   "text not visible" failure the previous two attempts were rejected for.
+   The ledes belong ABOVE the island stage and BELOW the content. */
+.mw-ledes { z-index: 5; }
+
+/* Belt and braces: the lede is fully gone before the content panel can reach it,
+   rather than relying on the panel to occlude a still-fading element. */
+.mw-lede { pointer-events: none; }
+
+/* The nav wordmark kept its themed light colour when the nav bar went cream,
+   washing "Arpit Garg." out to illegible grey. */
+body:has(.mind-world) header :is(a, span, .font-display) { color: #231d16; }
+body:has(.mind-world) header a:hover { color: #8a5f1c; }
+
+/* ============================================================================
+   Hero — the title card for the miniature world.
+
+   It used to be cool near-black with a digital grid and a particle field, introducing
+   a world of warm clay dioramas on flat cream. Opposite temperature, opposite texture:
+   the page read as two sites bolted together. The hero now speaks the world's language.
+   ========================================================================== */
+
+.hero-world {
+  /* Same token set as .mind-world, so the two halves are literally the same palette. */
+  --bg: #EFE7DA;
+  --surface: transparent;
+  --card: rgba(255, 252, 246, 0.72);
+  --ink: #231d16;
+  --muted: #6b5f52;
+  --faint: #9a8c7c;
+  --edge: rgba(35, 29, 22, 0.12);
+  --edge-2: rgba(35, 29, 22, 0.08);
+  --accent: #B07C2A;
+  --accent-soft: rgba(176, 124, 42, 0.10);
+  background: #EFE7DA;
+  color: var(--ink);
+}
+.hero-world :is(h1, .font-display) { color: var(--ink); }
+.hero-world .text-muted { color: var(--muted); }
+.hero-world .text-accent { color: var(--accent); }
+/* Kill the dark-only decorations: no glow, no digital grid. The world has neither. */
+.hero-world .hero-glow,
+.hero-world .grid-texture,
+.hero-world .cta-glow { display: none; }
+
+/* The portrait is staged as the world's first island: a physical object resting in the
+   same cream void, lit the same way, casting the same soft ground shadow. */
+/* No frame, no border, no card. He stands in the cream void, exactly as the islands do.
+   drop-shadow (not box-shadow) so the shade follows his silhouette rather than a rectangle.
+
+   The photo is a head-and-shoulders crop, so his torso runs straight off the bottom of the
+   file and reads as a hard chopped edge. Mask the lower band to transparent and he dissolves
+   into the cream instead of standing on an invisible shelf. */
+.hero-portrait {
+  filter: drop-shadow(0 14px 22px rgba(70, 52, 30, 0.18));
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,0.55) 88%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,0.55) 88%, transparent 100%);
+}
+/* No ground ellipse: a figure that dissolves into the cream cannot also cast a contact
+   shadow on a floor that does not exist. */
+.hero-portrait__shadow { display: none; }
+
+/* Warm glass, the same treatment as the world's hub doors. */
+.hero-chip {
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: #4a3f33;
+  background: rgba(255, 252, 246, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(176, 124, 42, 0.22);
+  box-shadow: 0 6px 18px -8px rgba(70, 52, 30, 0.30);
+  white-space: nowrap;
+}
+
+.hero-cta {
+  color: #FBF7F0;
+  background: #2A2119;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), background 260ms;
+}
+.hero-cta--ghost {
+  color: var(--ink);
+  border: 1px solid rgba(35, 29, 22, 0.18);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), border-color 260ms, color 260ms;
+}
+.hero-social { color: var(--muted); }
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta:hover { background: #B07C2A; }
+  .hero-cta--ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .hero-social:hover { color: var(--accent); }
+}
+
+.hero-stats {
+  border-top: 1px solid rgba(35, 29, 22, 0.10);
+  color: var(--ink);
+}
+.hero-stats .font-mono { color: var(--faint); }
+
+/* The nav sits over cream now on BOTH halves, so it is one bar, not two. */
+body:has(.hero-world) header,
+body:has(.mind-world) header {
+  background: rgba(239, 231, 218, 0.78) !important;
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(35, 29, 22, 0.08);
+}
+body:has(.hero-world) header :is(a, span, .font-display) { color: #231d16; }
+body:has(.hero-world) header a:hover { color: #8a5f1c; }
