@@ -62,7 +62,7 @@ export default function Nav() {
       />
       <nav className="mx-auto flex h-16 max-w-shell items-center justify-between px-6">
         <a href="#top" className="font-display text-sm font-semibold tracking-tight">
-          Arpit Garg<span className="text-accent">.</span>
+          Dr Arpit Garg<span className="text-accent">.</span>
         </a>
 
         <div className="hidden items-center gap-7 md:flex">

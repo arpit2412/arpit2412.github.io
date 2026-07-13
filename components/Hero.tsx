@@ -89,24 +89,29 @@ function RotatingChip({ items, className, delay = 0 }: { items: string[]; classN
 function KineticName({ text }: { text: string }) {
   const reduce = useReducedMotion();
   return (
-    <span aria-label={text} className="inline-block">
-      {text.split("").map((ch, i) =>
-        ch === " " ? (
-          <span key={i} className="inline-block w-[0.28em]" />
-        ) : (
-          <span key={i} className="inline-block overflow-hidden pb-[0.08em] align-bottom">
-            <motion.span
-              aria-hidden
-              className="inline-block"
-              initial={reduce ? false : { y: "110%" }}
-              animate={{ y: 0 }}
-              transition={{ duration: 0.9, delay: 0.1 + i * 0.045, ease: EASE }}
-            >
-              {ch}
-            </motion.span>
+    <span aria-label={text}>
+      {text.split(" ").map((word, w, words) => {
+        // Offset so the per-letter stagger still runs continuously across the whole name.
+        const before = words.slice(0, w).reduce((n, x) => n + x.length + 1, 0);
+        return (
+          <span key={w} className="inline-block whitespace-nowrap">
+            {word.split("").map((ch, i) => (
+              <span key={i} className="inline-block overflow-hidden pb-[0.08em] align-bottom">
+                <motion.span
+                  aria-hidden
+                  className="inline-block"
+                  initial={reduce ? false : { y: "110%" }}
+                  animate={{ y: 0 }}
+                  transition={{ duration: 0.9, delay: 0.1 + (before + i) * 0.045, ease: EASE }}
+                >
+                  {ch}
+                </motion.span>
+              </span>
+            ))}
+            {w < words.length - 1 && <span className="inline-block w-[0.28em]" />}
           </span>
-        )
-      )}
+        );
+      })}
     </span>
   );
 }
@@ -204,7 +209,7 @@ function Portrait() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/arpit-cutout.webp"
-            alt="Arpit Garg"
+            alt="Dr Arpit Garg"
             width={700}
             height={653}
             fetchPriority="high"
@@ -240,13 +245,25 @@ export default function Hero() {
     <section id="top" className="hero-world relative flex min-h-[100svh] flex-col overflow-hidden">
       <HeroBackdrop />
 
+      {/* The pipeline strip, between the nav and his name: plain data cubes travel right,
+          pass through the machine, and emerge as papers and a finished gold sphere. It is his
+          actual work rendered as a toy production line -- data in, model, result out. */}
+      <motion.div
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.9, duration: 1.2, ease: EASE }}
+        className="hero-belt-wrap"
+      >
+        <HeroBackdrop src="/hero-belt.mp4" poster="/hero-belt.webp" className="hero-belt" />
+      </motion.div>
+
       <motion.div
         style={{ y, opacity: fade }}
-        className="relative z-10 mx-auto grid w-full max-w-shell flex-1 items-center gap-14 px-6 pb-20 pt-28 lg:grid-cols-[1.15fr,0.85fr] lg:gap-8"
+        className="relative z-10 mx-auto grid w-full max-w-shell flex-1 items-center gap-14 px-6 pb-20 pt-10 lg:grid-cols-[1.15fr,0.85fr] lg:gap-8"
       >
         <div>
           <h1 className="font-display text-d-xl font-semibold">
-            <KineticName text="Arpit Garg" />
+            <KineticName text="Dr Arpit Garg" />
             <motion.span
               className="inline-block text-accent"
               initial={reduce ? false : { opacity: 0, scale: 0.6 }}

@@ -713,3 +713,54 @@ body:has(.hero-world) header a:hover { color: #8a5f1c; }
 @media (prefers-reduced-motion: reduce) {
   .hero-bg__video { opacity: 0.55; }
 }
+
+/* ============================================================================
+   The pipeline strip — between the nav and his name.
+
+   Plain clay data cubes travel right along a toy conveyor, pass through a little machine, and
+   emerge as neat papers and a finished gold sphere. It is his work as a production line: data
+   in, model, result out. Minimal on purpose — a band, not a scene.
+
+   The source plate is 16:9 with the belt in a narrow band through the middle (measured: the
+   content occupies only 15% of the frame height), so the strip crops hard to that band and
+   throws away the empty cream above and below.
+   ========================================================================== */
+
+.hero-belt-wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-top: 4.5rem;   /* clears the fixed nav */
+  pointer-events: none;
+}
+.hero-belt {
+  position: relative;
+  width: 100%;
+  height: 96px;
+  overflow: hidden;
+}
+.hero-belt .hero-bg__video {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* The belt is large relative to a thin strip: at full width its objects are taller than the
+     band itself, so it read as a zoomed-in close-up. Rendering it BELOW full width scales the
+     whole miniature down until it reads as the small, delicate thing it is meant to be. The
+     ends are feathered, so the belt fading away at both edges looks deliberate rather than cut.
+     (`object-fit: cover` was the original mistake -- it blew the clip up to fill a container far
+     wider, relative to its height, than the clip.) */
+  width: 62%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  opacity: 0.75;
+  /* Feather both ends so the belt runs off the page rather than stopping at a hard edge. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+}
+.hero-belt .hero-bg__veil { display: none; }
+
+@media (max-width: 860px) {
+  .hero-belt { height: 64px; }
+  .hero-belt .hero-bg__video { opacity: 0.6; }
+  .hero-belt-wrap { margin-top: 3.5rem; }
+}

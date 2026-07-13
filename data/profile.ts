@@ -1,5 +1,5 @@
 export const profile = {
-  name: "Arpit Garg",
+  name: "Dr Arpit Garg",
   title: "Senior ML / Research Engineer",
   pronoun: "PhD",
   subtitle: "LLMs · Multimodal AI · Computer Vision · Efficient Training",

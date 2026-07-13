@@ -9,11 +9,11 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", displ
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://arpit2412.github.io"),
-  title: "Arpit Garg · AI Researcher & Engineer",
+  title: "Dr Arpit Garg · AI Researcher & Engineer",
   description:
     "Senior ML engineer and published researcher (CVPR, ECCV, WACV, TPAMI). LLMs, multimodal AI, machine unlearning, efficient training on 256× H200 GPUs, and ML for film VFX. Co-founder of A2.AI.",
   openGraph: {
-    title: "Arpit Garg",
+    title: "Dr Arpit Garg",
     description:
       "LLMs · Multimodal AI · Machine Unlearning · Efficient Training · VFX ML. Research fellow at AIML/CSIRO, senior MLE at TikTok, co-founder of A2.AI.",
     type: "website",

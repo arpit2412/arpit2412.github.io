@@ -63,7 +63,7 @@ export default function Contact() {
 
       <footer className="relative mx-auto mt-28 max-w-shell border-t border-edge px-6 pt-8">
         <div className="flex flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
-          <p className="font-mono text-2xs text-faint">© {new Date().getFullYear()} Arpit Garg</p>
+          <p className="font-mono text-2xs text-faint">© {new Date().getFullYear()} Dr Arpit Garg</p>
           <p className="font-mono text-2xs text-faint">Adelaide, Australia</p>
         </div>
       </footer>

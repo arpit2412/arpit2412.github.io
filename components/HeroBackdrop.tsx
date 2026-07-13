@@ -20,7 +20,15 @@ import { useEffect, useRef } from "react";
  *
  * The poster is the clip's own first frame, so there is no flash on load and no layout shift.
  */
-export default function HeroBackdrop() {
+export default function HeroBackdrop({
+  src = "/hero-bg.mp4",
+  poster = "/hero-bg.webp",
+  className = "hero-bg",
+}: {
+  src?: string;
+  poster?: string;
+  className?: string;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -28,7 +36,7 @@ export default function HeroBackdrop() {
     if (!v) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    v.src = "/hero-bg.mp4";
+    v.src = src;
     v.load();
     const play = () => { v.play().catch(() => {}); };
 
@@ -48,14 +56,14 @@ export default function HeroBackdrop() {
       v.removeAttribute("src");
       v.load();
     };
-  }, []);
+  }, [src]);
 
   return (
-    <div className="hero-bg" aria-hidden>
+    <div className={className} aria-hidden>
       <video
         ref={ref}
         className="hero-bg__video"
-        poster="/hero-bg.webp"
+        poster={poster}
         muted
         loop
         playsInline
