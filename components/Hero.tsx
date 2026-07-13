@@ -13,6 +13,7 @@ import {
 import { ArrowDown, ArrowUpRight, Github, Linkedin, GraduationCap, Mail } from "lucide-react";
 import { profile } from "@/data/profile";
 import Magnetic from "@/components/Magnetic";
+import HeroBackdrop from "@/components/HeroBackdrop";
 
 /**
  * The title card for the miniature world.
@@ -237,6 +238,8 @@ export default function Hero() {
 
   return (
     <section id="top" className="hero-world relative flex min-h-[100svh] flex-col overflow-hidden">
+      <HeroBackdrop />
+
       <motion.div
         style={{ y, opacity: fade }}
         className="relative z-10 mx-auto grid w-full max-w-shell flex-1 items-center gap-14 px-6 pb-20 pt-28 lg:grid-cols-[1.15fr,0.85fr] lg:gap-8"

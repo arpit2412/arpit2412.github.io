@@ -649,3 +649,67 @@ body:has(.hero-world) header a:hover { color: #8a5f1c; }
   .hero-scanline { display: none; }
   .hero-layer--photo { -webkit-mask-image: none; mask-image: none; }
 }
+
+/* ============================================================================
+   The ambient clay workshop behind the hero.
+
+   It sits at the very bottom of the stack and is deliberately quiet: the workshop lives in the
+   lower half of the frame (the generated plate leaves the upper half empty cream, measured at
+   std 20.5), and a cream veil sits over it so the headline and the face reveal always win.
+   ========================================================================== */
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #EFE7DA;   /* the clip's own cream, so there is no flash before it paints */
+}
+/* The workshop is a MINIATURE. At full-bleed it came out the same size as his head, so he read
+   as a man sitting on a giant workbench instead of a person with a tiny world behind him.
+   It is now a low strip along the bottom, small, with its top edge dissolved into the cream so
+   there is no hard bench line cutting across the composition. */
+.hero-bg__video {
+  position: absolute;
+  left: 54%;
+  bottom: 2%;
+  width: 88%;
+  height: 58%;
+  max-width: none;
+  transform: translateX(-50%);
+  /* `contain`, NOT `cover`: cover cropped into the bench and cut the little figures out of frame
+     entirely. The whole diorama must be visible — it is just smaller than he is, which is the
+     point. He is a person; it is a miniature of the work. */
+  object-fit: contain;
+  object-position: center bottom;
+  opacity: 0.62;
+  /* Dissolve BOTH edges: the top so the bench never draws a hard line across the composition,
+     and the bottom so its legs sink into the stats bar instead of being guillotined by it. */
+  -webkit-mask-image: linear-gradient(180deg,
+      transparent 0%, rgba(0,0,0,0.4) 18%, #000 46%, #000 82%, rgba(0,0,0,0.45) 94%, transparent 100%);
+          mask-image: linear-gradient(180deg,
+      transparent 0%, rgba(0,0,0,0.4) 18%, #000 46%, #000 82%, rgba(0,0,0,0.45) 94%, transparent 100%);
+}
+/* A cream veil over it: strongest where the copy lives, clearing toward the bottom-right so the
+   little figures still read. The headline and the face reveal must always win. */
+.hero-bg__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, #EFE7DA 0%, rgba(239,231,218,0.62) 40%, rgba(239,231,218,0.06) 100%),
+    linear-gradient(90deg, rgba(239,231,218,0.72) 0%, rgba(239,231,218,0.22) 42%, transparent 76%);
+}
+
+@media (max-width: 860px) {
+  /* On a phone the copy is bottom-anchored, right where the workshop would sit. Shrink and fade it. */
+  .hero-bg__video { height: 34%; width: 100%; opacity: 0.34; bottom: 0; }
+  .hero-bg__veil {
+    background: linear-gradient(180deg, #EFE7DA 0%, rgba(239,231,218,0.9) 52%, rgba(239,231,218,0.66) 100%);
+  }
+}
+
+/* Reduced motion: the component never fetches the clip, so only the poster shows. Nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-bg__video { opacity: 0.55; }
+}
