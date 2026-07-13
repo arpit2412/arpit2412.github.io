@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  AnimatePresence,
   motion,
   useMotionValue,
   useReducedMotion,
@@ -34,6 +35,54 @@ const socials = [
 ];
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+
+/**
+ * The credential chips. "256x H200 cluster" was a hardware brag — the cluster is not his
+ * achievement, the work on it is. These are the things a recruiter actually stops on.
+ */
+const CHIPS_LEFT = [
+  "CVPR 2026 · first author",
+  "US patent · attention mechanism",
+  "10+ peer-reviewed papers",
+];
+const CHIPS_RIGHT = [
+  "9 films shipped",
+  "A$1.2M grant · co-investigator",
+  "Pretraining → unlearning",
+];
+
+/** Cycles a list of strings, cross-fading. Pauses under reduced motion. */
+function RotatingChip({ items, className, delay = 0 }: { items: string[]; className: string; delay?: number }) {
+  const reduce = useReducedMotion();
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (reduce) return;
+    const t = setInterval(() => setI((n) => (n + 1) % items.length), 3600);
+    return () => clearInterval(t);
+  }, [items.length, reduce]);
+  return (
+    <motion.div
+      animate={reduce ? {} : { y: [0, -6, 0] }}
+      transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay }}
+      className={className}
+      style={{ transform: "translateZ(40px)" }}
+    >
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={i}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduce ? undefined : { opacity: 0, y: -6 }}
+          transition={{ duration: 0.35, ease: EASE }}
+          className="block whitespace-nowrap"
+        >
+          {items[i]}
+        </motion.span>
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 /** Per-letter masked rise: each glyph slides up out of a clipped line. */
 function KineticName({ text }: { text: string }) {
@@ -66,6 +115,23 @@ function KineticName({ text }: { text: string }) {
  * as a physical object floating in the same cream void the dioramas float in. Pointer tilt is
  * kept but softened — a miniature on a table has weight.
  */
+/**
+ * The portrait, and the thing that makes someone stop scrolling.
+ *
+ * Two pixel-registered layers: the photograph, and a VFX facial-reconstruction mesh of the same
+ * face (triangulated topology, control vertices, gold solve lines). A gold scan line sweeps
+ * across, and everything BEHIND the line is the mesh — the solve resolving into a real face,
+ * which is literally the work he did on Furiosa and Mickey 17.
+ *
+ * The pointer drives the line on a fine pointer. On touch, and before the first move, it runs a
+ * slow autonomous sweep so the effect is seen without any interaction at all.
+ *
+ * Registration is the whole trick: the two layers were aligned to a silhouette IoU of 0.894. A
+ * few pixels of drift and this reads as a glitch instead of a reveal.
+ *
+ * Cost is one CSS custom property per frame driving a mask — no re-render, no layout, and the
+ * browser composites it. Under reduced motion the sweep never runs and the photo simply shows.
+ */
 function Portrait() {
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
@@ -73,6 +139,34 @@ function Portrait() {
   const ry = useMotionValue(0);
   const srx = useSpring(rx, { stiffness: 120, damping: 18 });
   const sry = useSpring(ry, { stiffness: 120, damping: 18 });
+
+  // 0 = fully photo, 1 = fully mesh. Spring-smoothed so the line has weight.
+  const wipe = useMotionValue(0.22);
+  const swipe = useSpring(wipe, { stiffness: 90, damping: 20, mass: 0.6 });
+  const stageRef = useRef<HTMLDivElement>(null);
+  const engaged = useRef(false);
+
+  useEffect(() => {
+    if (reduce) return;
+    const el = stageRef.current;
+    if (!el) return;
+    // Write the wipe straight into a CSS variable: no React re-render, no layout, compositor only.
+    const unsub = swipe.on("change", (v) => {
+      el.style.setProperty("--wipe", String(v));
+    });
+    // Autonomous sweep until the visitor takes over, so the effect is never missed.
+    let raf = 0;
+    const t0 = performance.now();
+    const drift = (t: number) => {
+      if (!engaged.current) {
+        const s = (t - t0) / 1000;
+        wipe.set(0.5 + 0.34 * Math.sin(s * 0.55));
+      }
+      raf = requestAnimationFrame(drift);
+    };
+    raf = requestAnimationFrame(drift);
+    return () => { unsub(); cancelAnimationFrame(raf); };
+  }, [reduce, swipe, wipe]);
 
   return (
     <motion.div
@@ -89,47 +183,39 @@ function Portrait() {
           const r = ref.current!.getBoundingClientRect();
           ry.set(((e.clientX - r.left) / r.width - 0.5) * 8);
           rx.set(((e.clientY - r.top) / r.height - 0.5) * -8);
+          if (e.pointerType !== "touch" && !reduce) {
+            engaged.current = true;
+            wipe.set(clamp01((e.clientX - r.left) / r.width));
+          }
         }}
         onPointerLeave={() => {
           rx.set(0);
           ry.set(0);
+          engaged.current = false;   // hand it back to the autonomous sweep
         }}
         className="relative"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {/* Cut out of its studio backdrop, so he stands in the same cream void the islands
-            float in. The original photo's cool teal background (12,63,82) was the single
-            biggest clash with the warm world below. */}
-        <img
-          src="/arpit-cutout.webp"
-          alt="Arpit Garg"
-          width={700}
-          height={653}
-          fetchPriority="high"
-          className="hero-portrait relative w-full object-contain"
-        />
+        <div ref={stageRef} className="hero-stage relative">
+          {/* Layer 1: the VFX mesh — the unresolved solve. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/arpit-wire.webp" alt="" aria-hidden className="hero-layer hero-layer--wire" />
+          {/* Layer 2: the finished face. The wipe erases it to reveal the mesh behind. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/arpit-cutout.webp"
+            alt="Arpit Garg"
+            width={700}
+            height={653}
+            fetchPriority="high"
+            className="hero-layer hero-layer--photo"
+          />
+          {/* The solve line itself. */}
+          <div className="hero-scanline" aria-hidden />
+        </div>
 
-        {/* Floating credential chips — real facts, warm-glass, same treatment as the world's doors. */}
-        <motion.div
-          animate={reduce ? {} : { y: [0, -7, 0] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          className="hero-chip absolute -left-5 top-8"
-          style={{ transform: "translateZ(40px)" }}
-        >
-          CVPR 2026 · first author
-        </motion.div>
-        <motion.div
-          animate={reduce ? {} : { y: [0, 8, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-          className="hero-chip absolute -right-4 bottom-10"
-          style={{ transform: "translateZ(40px)" }}
-        >
-          256× H200 cluster
-        </motion.div>
+        <RotatingChip items={CHIPS_LEFT} className="hero-chip absolute -left-5 top-8" />
+        <RotatingChip items={CHIPS_RIGHT} className="hero-chip absolute -right-4 bottom-10" delay={0.8} />
       </motion.div>
-
-      {/* The ground shadow that makes it float, exactly as the islands do. */}
-      <div className="hero-portrait__shadow" aria-hidden />
     </motion.div>
   );
 }

@@ -572,3 +572,80 @@ body:has(.mind-world) header {
 }
 body:has(.hero-world) header :is(a, span, .font-display) { color: #231d16; }
 body:has(.hero-world) header a:hover { color: #8a5f1c; }
+
+/* ============================================================================
+   The hero reveal: a VFX solve line sweeping across his face.
+
+   Two pixel-registered layers — the photograph, and a facial-reconstruction mesh of the same
+   face. A gold scan line sweeps; everything BEHIND it is still mesh, everything ahead is the
+   finished face. It is the digital-double work he actually did, performed on his own face.
+
+   Driven entirely by one custom property, --wipe (0 = all photo, 1 = all mesh), written from a
+   spring. No React re-render, no layout, no paint of the images themselves — the mask is a
+   compositor operation.
+   ========================================================================== */
+
+.hero-stage {
+  --wipe: 0.22;
+  position: relative;
+  isolation: isolate;
+  /* The bottom fade lives on the PARENT so it applies to both layers with a single mask.
+     Stacking two mask-images on one element and compositing them (mask-composite) is not
+     reliably supported across engines -- it silently no-ops and the wipe never appears. One
+     mask per element, always. */
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,0.55) 88%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,0.55) 88%, transparent 100%);
+}
+.hero-layer {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.hero-layer--wire {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  filter: drop-shadow(0 14px 22px rgba(70, 52, 30, 0.14));
+}
+/* The photo sits on top and is erased from the LEFT up to the wipe, exposing the mesh behind.
+   A soft 7% dissolve edge so the boundary reads as a solve resolving, not a hard cut. */
+.hero-layer--photo {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 14px 22px rgba(70, 52, 30, 0.18));
+  -webkit-mask-image: linear-gradient(90deg,
+      transparent calc(var(--wipe) * 100% - 7%),
+      #000 calc(var(--wipe) * 100% + 7%));
+          mask-image: linear-gradient(90deg,
+      transparent calc(var(--wipe) * 100% - 7%),
+      #000 calc(var(--wipe) * 100% + 7%));
+}
+
+/* The solve line: a thin gold seam exactly at the wipe, with a soft bloom. */
+.hero-scanline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--wipe) * 100%);
+  width: 2px;
+  z-index: 3;
+  transform: translateX(-1px);
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(217, 164, 65, 0.85) 12%,
+    rgba(217, 164, 65, 0.95) 55%,
+    rgba(217, 164, 65, 0.30) 82%,
+    transparent 96%);
+  box-shadow:
+    0 0 10px rgba(217, 164, 65, 0.55),
+    0 0 34px rgba(217, 164, 65, 0.28);
+}
+
+/* Reduced motion: no sweep, no scan line. Just the photograph. The mesh is decorative. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage { --wipe: 0; }
+  .hero-layer--wire,
+  .hero-scanline { display: none; }
+  .hero-layer--photo { -webkit-mask-image: none; mask-image: none; }
+}

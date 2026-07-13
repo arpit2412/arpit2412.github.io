@@ -56,6 +56,19 @@ type Scene = {
  */
 const KEEP_RADIUS = 1;
 
+/**
+ * One frame of the scrub clips, as a fraction of their duration.
+ *
+ * The clips are encoded ALL-INTRA at 12fps (97 keyframes over 8s). All-intra matters most:
+ * with a GOP of 8, every currentTime write forced the decoder to walk up to 8 frames from the
+ * nearest keyframe — at 60fps of scrolling that is ~480 frame decodes per second at 1600px,
+ * which is the stutter. Every frame being a keyframe makes a seek cost exactly one decode.
+ *
+ * 12fps costs nothing here: scroll position drives time, so temporal resolution beyond the
+ * eye's ability to distinguish adjacent scrub frames is wasted bytes and wasted decodes.
+ */
+const FRAME_STEP = 1 / 97;
+
 export default function MindWorld({ sections }: { sections: ReactNode[] }) {
   const trackRefs = useRef<(HTMLElement | null)[]>([]);
   const sceneRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -183,7 +196,10 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
       const dt = last ? Math.min(now - last, 64) : 16.667;
       last = now;
       const k = 1 - Math.pow(1 - K60, dt / 16.667);   // solve the 60fps constant for real dt
-      const eps = isMobile() ? 0.02 : 0.008;
+      // Don't ask for a frame the decoder is already showing. The clips are 12fps, so any two
+      // targets closer than one frame (1/12 s) resolve to the SAME picture — seeking for them
+      // is pure decode work for zero visible change. Half a frame is the useful threshold.
+      const eps = isMobile() ? FRAME_STEP : FRAME_STEP * 0.5;
 
       for (const s of scenes) {
         const v = s.video;
