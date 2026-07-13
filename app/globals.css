@@ -736,31 +736,31 @@ body:has(.hero-world) header a:hover { color: #8a5f1c; }
 .hero-belt {
   position: relative;
   width: 100%;
-  height: 96px;
-  overflow: hidden;
+  /* NO fixed height, and no overflow clip. The container sizes itself to the clip.
+     Fixing it at 96px while the clip rendered 167px tall meant the container was chopping the
+     belt's top and bottom off — right at the nav edge, which read as the strip being hidden
+     behind the nav. The nav was never the problem: it ends at 65px and the strip starts at 72. */
 }
 .hero-belt .hero-bg__video {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  /* The belt is large relative to a thin strip: at full width its objects are taller than the
-     band itself, so it read as a zoomed-in close-up. Rendering it BELOW full width scales the
-     whole miniature down until it reads as the small, delicate thing it is meant to be. The
-     ends are feathered, so the belt fading away at both edges looks deliberate rather than cut.
-     (`object-fit: cover` was the original mistake -- it blew the clip up to fill a container far
-     wider, relative to its height, than the clip.) */
-  width: 62%;
+  /* In normal flow, not absolute — so the parent takes its height and nothing can clip it.
+     `inset: auto` matters: the base .hero-bg__video rule sets `left: 50%` for the backdrop, and
+     that offset still applies to a position:relative element — it was shoving the belt half a
+     viewport to the right. */
+  position: relative;
+  inset: auto;
+  display: block;
+  width: 58%;
   height: auto;
-  transform: translate(-50%, -50%);
+  margin: 0 auto;
+  transform: none;
   opacity: 0.75;
-  /* Feather both ends so the belt runs off the page rather than stopping at a hard edge. */
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
-          mask-image: linear-gradient(90deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  /* Feather the ends so the belt runs off into the cream rather than stopping at a hard edge. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 14%, #000 86%, transparent 100%);
 }
 .hero-belt .hero-bg__veil { display: none; }
 
 @media (max-width: 860px) {
-  .hero-belt { height: 64px; }
-  .hero-belt .hero-bg__video { opacity: 0.6; }
-  .hero-belt-wrap { margin-top: 3.5rem; }
+  .hero-belt .hero-bg__video { width: 88%; opacity: 0.6; }
+  .hero-belt-wrap { margin-top: 3.75rem; }
 }
