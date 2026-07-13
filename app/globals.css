@@ -477,3 +477,98 @@ html { overflow-x: clip; }
    washing "Arpit Garg." out to illegible grey. */
 body:has(.mind-world) header :is(a, span, .font-display) { color: #231d16; }
 body:has(.mind-world) header a:hover { color: #8a5f1c; }
+
+/* ============================================================================
+   Hero — the title card for the miniature world.
+
+   It used to be cool near-black with a digital grid and a particle field, introducing
+   a world of warm clay dioramas on flat cream. Opposite temperature, opposite texture:
+   the page read as two sites bolted together. The hero now speaks the world's language.
+   ========================================================================== */
+
+.hero-world {
+  /* Same token set as .mind-world, so the two halves are literally the same palette. */
+  --bg: #EFE7DA;
+  --surface: transparent;
+  --card: rgba(255, 252, 246, 0.72);
+  --ink: #231d16;
+  --muted: #6b5f52;
+  --faint: #9a8c7c;
+  --edge: rgba(35, 29, 22, 0.12);
+  --edge-2: rgba(35, 29, 22, 0.08);
+  --accent: #B07C2A;
+  --accent-soft: rgba(176, 124, 42, 0.10);
+  background: #EFE7DA;
+  color: var(--ink);
+}
+.hero-world :is(h1, .font-display) { color: var(--ink); }
+.hero-world .text-muted { color: var(--muted); }
+.hero-world .text-accent { color: var(--accent); }
+/* Kill the dark-only decorations: no glow, no digital grid. The world has neither. */
+.hero-world .hero-glow,
+.hero-world .grid-texture,
+.hero-world .cta-glow { display: none; }
+
+/* The portrait is staged as the world's first island: a physical object resting in the
+   same cream void, lit the same way, casting the same soft ground shadow. */
+/* No frame, no border, no card. He stands in the cream void, exactly as the islands do.
+   drop-shadow (not box-shadow) so the shade follows his silhouette rather than a rectangle.
+
+   The photo is a head-and-shoulders crop, so his torso runs straight off the bottom of the
+   file and reads as a hard chopped edge. Mask the lower band to transparent and he dissolves
+   into the cream instead of standing on an invisible shelf. */
+.hero-portrait {
+  filter: drop-shadow(0 14px 22px rgba(70, 52, 30, 0.18));
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,0.55) 88%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,0.55) 88%, transparent 100%);
+}
+/* No ground ellipse: a figure that dissolves into the cream cannot also cast a contact
+   shadow on a floor that does not exist. */
+.hero-portrait__shadow { display: none; }
+
+/* Warm glass, the same treatment as the world's hub doors. */
+.hero-chip {
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: #4a3f33;
+  background: rgba(255, 252, 246, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(176, 124, 42, 0.22);
+  box-shadow: 0 6px 18px -8px rgba(70, 52, 30, 0.30);
+  white-space: nowrap;
+}
+
+.hero-cta {
+  color: #FBF7F0;
+  background: #2A2119;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), background 260ms;
+}
+.hero-cta--ghost {
+  color: var(--ink);
+  border: 1px solid rgba(35, 29, 22, 0.18);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), border-color 260ms, color 260ms;
+}
+.hero-social { color: var(--muted); }
+@media (hover: hover) and (pointer: fine) {
+  .hero-cta:hover { background: #B07C2A; }
+  .hero-cta--ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .hero-social:hover { color: var(--accent); }
+}
+
+.hero-stats {
+  border-top: 1px solid rgba(35, 29, 22, 0.10);
+  color: var(--ink);
+}
+.hero-stats .font-mono { color: var(--faint); }
+
+/* The nav sits over cream now on BOTH halves, so it is one bar, not two. */
+body:has(.hero-world) header,
+body:has(.mind-world) header {
+  background: rgba(239, 231, 218, 0.78) !important;
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(35, 29, 22, 0.08);
+}
+body:has(.hero-world) header :is(a, span, .font-display) { color: #231d16; }
+body:has(.hero-world) header a:hover { color: #8a5f1c; }

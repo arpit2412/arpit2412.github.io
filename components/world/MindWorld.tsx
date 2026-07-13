@@ -42,7 +42,19 @@ type Scene = {
   target: number;
   top: number;
   height: number;
+  /** Currently painting (opacity > 0). Only visible scenes are seeked. */
+  visible: boolean;
 };
+
+/**
+ * How many chapters either side of the current one keep a decoded <video> alive.
+ *
+ * This is the single most important number for smoothness. A browser has a small pool of
+ * hardware video decoders (commonly ~4); holding eight 1600px clips open and seeking all of
+ * them on every scroll frame saturates it and the page stutters. One chapter of lookahead is
+ * enough to have the next clip decoded before it is needed.
+ */
+const KEEP_RADIUS = 1;
 
 export default function MindWorld({ sections }: { sections: ReactNode[] }) {
   const trackRefs = useRef<(HTMLElement | null)[]>([]);
@@ -50,6 +62,11 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
   const ledeRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [active, setActive] = useState(0);
   const [atHub, setAtHub] = useState(false);
+  // The scroll handler runs on every frame. Reading React state from its closure would be stale,
+  // so it would call setState every frame and lean on React's bail-out. Track the last written
+  // values in refs and only call setState when they actually change.
+  const activeRef = useRef(0);
+  const atHubRef = useRef(false);
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -62,7 +79,7 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
       const el = sceneRefs.current[i];
       const track = trackRefs.current[i];
       if (el && track) {
-        scenes.push({ el, track, video: null, loading: false, ready: false, cur: 0, target: 0, top: 0, height: 1 });
+        scenes.push({ el, track, video: null, loading: false, ready: false, cur: 0, target: 0, top: 0, height: 1, visible: false });
       }
     });
     if (!scenes.length) return;
@@ -107,6 +124,22 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
         .catch(() => { s.loading = false; });   // a missing clip is not fatal: the poster stays
     };
 
+    /** Release a decoder. The poster is still in the DOM, so the scene keeps rendering. */
+    const unloadClip = (s: Scene) => {
+      const v = s.video;
+      if (!v) return;
+      s.el.classList.remove("has-clip");
+      try { v.pause(); } catch {}
+      URL.revokeObjectURL(v.src);
+      v.removeAttribute("src");
+      try { v.load(); } catch {}   // actually drops the decoder; removing the node alone does not
+      v.remove();
+      s.video = null;
+      s.loading = false;
+      s.ready = false;
+      s.cur = 0;
+    };
+
     const read = () => {
       const y = window.scrollY;
       const vh = window.innerHeight;
@@ -114,15 +147,22 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
       for (let i = 0; i < scenes.length; i++) if (y >= scenes[i].top - vh * 0.5) front = i;
 
       scenes.forEach((s, i) => {
-        if (y > s.top - 1.6 * vh && y < s.top + s.height + 1.6 * vh) loadClip(s, i);
+        // Keep a decoder open only for the current chapter and its immediate neighbours.
+        // Everything else is released, so at most 3 videos exist at once instead of 8.
+        if (Math.abs(i - front) <= KEEP_RADIUS) loadClip(s, i);
+        else if (s.video) unloadClip(s);
 
         // p: 0 at the chapter's start, 1 at its end. This is the camera's position on its dolly.
         const p = clamp((y - s.top + vh * 0.5) / s.height, 0, 1);
         s.target = p;
 
         const op = reduce ? (i === front ? 1 : 0) : Math.min(smooth(p / 0.12), smooth((1 - p) / 0.12));
+        s.visible = op > 0.01;
         s.el.style.opacity = String(op);
         s.el.style.zIndex = i === front ? "2" : "1";
+        // will-change on eight fixed full-viewport layers costs real compositor memory.
+        // Promote only what is actually painting.
+        s.el.style.willChange = s.visible ? "opacity" : "auto";
 
         // Copy is legible only while the island is still small; it leaves as the zoom bites.
         const lede = ledeRefs.current[i];
@@ -133,8 +173,9 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
         }
       });
 
-      if (front !== active) setActive(front);
-      setAtHub(CHAPTERS[front]?.id === HUB_ID);
+      if (front !== activeRef.current) { activeRef.current = front; setActive(front); }
+      const hub = CHAPTERS[front]?.id === HUB_ID;
+      if (hub !== atHubRef.current) { atHubRef.current = hub; setAtHub(hub); }
       ticking = false;
     };
 
@@ -146,7 +187,15 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
 
       for (const s of scenes) {
         const v = s.video;
-        if (!v || !s.ready || v.seeking) continue;     // never queue a seek mid-decode
+        if (!v || !s.ready) continue;
+        // THE fix for the jank: only the scene that is actually painting gets seeked. Previously
+        // every scene whose target had moved issued a currentTime write, so a single scroll made
+        // all eight decoders seek at once and the page stuttered.
+        if (!s.visible) {
+          s.cur = s.target;                           // snap, so it is already correct when revealed
+          continue;
+        }
+        if (v.seeking) continue;                      // never queue a seek mid-decode
         if (Math.abs(s.cur - s.target) < 0.0005) continue;
         s.cur += (s.target - s.cur) * k;
         const t = clamp(s.cur, 0, 0.999) * (v.duration || 1);
@@ -186,7 +235,7 @@ export default function MindWorld({ sections }: { sections: ReactNode[] }) {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("orientationchange", measure);
-      scenes.forEach((s) => { if (s.video) { URL.revokeObjectURL(s.video.src); s.video.remove(); } });
+      scenes.forEach((s) => unloadClip(s));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

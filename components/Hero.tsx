@@ -11,8 +11,20 @@ import {
 } from "framer-motion";
 import { ArrowDown, ArrowUpRight, Github, Linkedin, GraduationCap, Mail } from "lucide-react";
 import { profile } from "@/data/profile";
-import ParticleField from "@/components/ParticleField";
 import Magnetic from "@/components/Magnetic";
+
+/**
+ * The title card for the miniature world.
+ *
+ * It shares the world's language deliberately: the same flat warm cream, the same ink and gold,
+ * and a portrait that FLOATS on a soft ground shadow exactly the way the islands below float.
+ * The previous hero was cool near-black with a digital grid and a particle field — the opposite
+ * temperature and the opposite texture to the clay dioramas it introduced, so the page read as
+ * two different sites bolted together.
+ *
+ * Dropping ParticleField also removes a second always-on canvas rAF loop, which was competing
+ * with the world's video-scrub loop for frame budget.
+ */
 
 const socials = [
   { icon: Github, href: profile.links.github, label: "GitHub" },
@@ -49,18 +61,22 @@ function KineticName({ text }: { text: string }) {
   );
 }
 
-/** Portrait with pointer-tracked 3D tilt, spring-smoothed. Motion values only. */
+/**
+ * The portrait, staged as the world's first island: it sits on a soft cast shadow, so it reads
+ * as a physical object floating in the same cream void the dioramas float in. Pointer tilt is
+ * kept but softened — a miniature on a table has weight.
+ */
 function Portrait() {
   const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const rx = useMotionValue(0);
   const ry = useMotionValue(0);
-  const srx = useSpring(rx, { stiffness: 120, damping: 16 });
-  const sry = useSpring(ry, { stiffness: 120, damping: 16 });
+  const srx = useSpring(rx, { stiffness: 120, damping: 18 });
+  const sry = useSpring(ry, { stiffness: 120, damping: 18 });
 
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, scale: 0.92, y: 24 }}
+      initial={reduce ? false : { opacity: 0, scale: 0.94, y: 24 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 1, delay: 0.5, ease: EASE }}
       className="relative mx-auto w-64 sm:w-80 lg:w-full lg:max-w-sm"
@@ -71,8 +87,8 @@ function Portrait() {
         style={reduce ? {} : { rotateX: srx, rotateY: sry, transformStyle: "preserve-3d" }}
         onPointerMove={(e) => {
           const r = ref.current!.getBoundingClientRect();
-          ry.set(((e.clientX - r.left) / r.width - 0.5) * 10);
-          rx.set(((e.clientY - r.top) / r.height - 0.5) * -10);
+          ry.set(((e.clientX - r.left) / r.width - 0.5) * 8);
+          rx.set(((e.clientY - r.top) / r.height - 0.5) * -8);
         }}
         onPointerLeave={() => {
           rx.set(0);
@@ -80,35 +96,40 @@ function Portrait() {
         }}
         className="relative"
       >
-        {/* ambient backing */}
-        <div className="cta-glow absolute -inset-8 rounded-[2.5rem]" aria-hidden />
         {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Cut out of its studio backdrop, so he stands in the same cream void the islands
+            float in. The original photo's cool teal background (12,63,82) was the single
+            biggest clash with the warm world below. */}
         <img
-          src="/arpit.png"
+          src="/arpit-cutout.png"
           alt="Arpit Garg"
-          width={640}
-          height={618}
+          width={700}
+          height={653}
           fetchPriority="high"
-          className="relative aspect-square w-full rounded-3xl border border-edge-2 object-cover shadow-2xl"
+          className="hero-portrait relative w-full object-contain"
         />
-        {/* floating credential chips, real facts */}
+
+        {/* Floating credential chips — real facts, warm-glass, same treatment as the world's doors. */}
         <motion.div
-          animate={reduce ? {} : { y: [0, -8, 0] }}
+          animate={reduce ? {} : { y: [0, -7, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -left-6 top-8 rounded-full border border-edge bg-card px-4 py-2 font-mono text-2xs shadow-lg"
+          className="hero-chip absolute -left-5 top-8"
           style={{ transform: "translateZ(40px)" }}
         >
           CVPR 2026 · first author
         </motion.div>
         <motion.div
-          animate={reduce ? {} : { y: [0, 9, 0] }}
+          animate={reduce ? {} : { y: [0, 8, 0] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-          className="absolute -right-4 bottom-10 rounded-full border border-edge bg-card px-4 py-2 font-mono text-2xs shadow-lg"
+          className="hero-chip absolute -right-4 bottom-10"
           style={{ transform: "translateZ(40px)" }}
         >
           256× H200 cluster
         </motion.div>
       </motion.div>
+
+      {/* The ground shadow that makes it float, exactly as the islands do. */}
+      <div className="hero-portrait__shadow" aria-hidden />
     </motion.div>
   );
 }
@@ -116,24 +137,20 @@ function Portrait() {
 export default function Hero() {
   const reduce = useReducedMotion();
   const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 600], [0, reduce ? 0 : 140]);
+  const y = useTransform(scrollY, [0, 600], [0, reduce ? 0 : 120]);
   const fade = useTransform(scrollY, [0, 500], [1, 0]);
 
   const rise = (delay: number) =>
     reduce
       ? {}
       : {
-          initial: { opacity: 0, y: 36 },
+          initial: { opacity: 0, y: 32 },
           animate: { opacity: 1, y: 0 },
           transition: { duration: 0.9, delay, ease: EASE },
         };
 
   return (
-    <section id="top" className="relative flex min-h-[100svh] flex-col overflow-hidden">
-      <div className="hero-glow absolute inset-0" />
-      <div className="grid-texture absolute inset-0 opacity-60" />
-      <ParticleField />
-
+    <section id="top" className="hero-world relative flex min-h-[100svh] flex-col overflow-hidden">
       <motion.div
         style={{ y, opacity: fade }}
         className="relative z-10 mx-auto grid w-full max-w-shell flex-1 items-center gap-14 px-6 pb-20 pt-28 lg:grid-cols-[1.15fr,0.85fr] lg:gap-8"
@@ -163,17 +180,17 @@ export default function Hero() {
           <motion.div {...rise(0.8)} className="mt-10 flex flex-wrap items-center gap-4">
             <Magnetic>
               <a
-                href="#research"
-                className="group inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium text-base transition-transform duration-300 ease-spring active:scale-[0.98]"
+                href="#journey"
+                className="hero-cta group inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium active:scale-[0.98]"
               >
-                Explore my research
+                Enter the world
                 <ArrowDown size={15} className="transition-transform duration-300 group-hover:translate-y-0.5" />
               </a>
             </Magnetic>
             <Magnetic>
               <a
                 href="#contact"
-                className="inline-flex items-center gap-2 rounded-full border border-edge-2 px-6 py-3 text-sm font-medium transition-colors hover:border-accent hover:text-accent active:scale-[0.98]"
+                className="hero-cta--ghost inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium active:scale-[0.98]"
               >
                 Get in touch
                 <ArrowUpRight size={15} />
@@ -187,7 +204,7 @@ export default function Hero() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-all duration-300 hover:-translate-y-0.5 hover:text-accent"
+                  className="hero-social flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 hover:-translate-y-0.5"
                 >
                   <Icon size={17} />
                 </a>
@@ -204,13 +221,13 @@ export default function Hero() {
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.1, duration: 1 }}
-        className="relative z-10 border-t border-edge"
+        className="hero-stats relative z-10"
       >
         <div className="mx-auto grid max-w-shell grid-cols-2 gap-px px-6 py-6 sm:grid-cols-3 md:grid-cols-6">
           {profile.stats.map((s) => (
             <div key={s.label} className="py-2 text-center md:text-left">
               <div className="font-display text-xl font-semibold tracking-tight">{s.value}</div>
-              <div className="mt-0.5 font-mono text-2xs uppercase tracking-wider text-faint">{s.label}</div>
+              <div className="mt-0.5 font-mono text-2xs uppercase tracking-wider">{s.label}</div>
             </div>
           ))}
         </div>
