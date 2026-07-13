@@ -101,7 +101,7 @@ function Portrait() {
             float in. The original photo's cool teal background (12,63,82) was the single
             biggest clash with the warm world below. */}
         <img
-          src="/arpit-cutout.png"
+          src="/arpit-cutout.webp"
           alt="Arpit Garg"
           width={700}
           height={653}
