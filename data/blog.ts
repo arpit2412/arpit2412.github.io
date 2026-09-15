@@ -11,6 +11,18 @@ export type BlogPost = {
 
 export const posts: BlogPost[] = [
   {
+    slug: "cuda-sgemm",
+    file: "/blog/cuda-sgemm.html",
+    title: "From 1% to 94% of cuBLAS — CUDA SGEMM, Kernel by Kernel",
+    blurb:
+      "A visual walkthrough of Simon Boehm's CUDA matrix-multiplication worklog. Ten kernels, each fixing one bottleneck: coalescing, shared-memory tiling, 2D blocktiling, vectorised loads, bank conflicts, autotuning and warptiling. Starts from zero — threads, warps, the memory hierarchy and the roofline are all explained before the first kernel.",
+    readTime: "~ 37 min",
+    topic: "CUDA",
+    date: "September 2026",
+    cover:
+      "https://images.unsplash.com/photo-1591488320449-011701bb6704?auto=format&fit=crop&w=1600&q=80",
+  },
+  {
     slug: "vllm-inside-out",
     file: "/blog/vllm-inside-out.html",
     title: "vLLM From the Inside Out: The Linear Attention Question",

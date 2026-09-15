@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>From 1% to 94% of cuBLAS: every kernel in the CUDA SGEMM worklog, explained visually</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F5F8; --paper:#FFFFFF; --ink:#16202B; --muted:#5B6B7B; --rule:#D9E0E8; --soft:#E9EEF3; --soft2:#F7F9FB;
+  --A:#2563EB; --B:#D98E1F; --C:#1F9D6B; --hot:#C8226A; --smem:#7C4DFF; --gmem:#6B7C8C; --reg:#0F8B8D; --warn:#B4261E;
+  --Al:#DBE7FD; --Bl:#FBEBD0; --Cl:#D4F0E3; --hotl:#F9DCE9; --smeml:#E7DEFF; --regl:#D3EFEF; --gmeml:#E1E6EA;
+  --sans:"IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono:"IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --radius:6px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{transition:none !important; animation:none !important} }
+body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.6;}
+a{color:var(--A); text-decoration:none; border-bottom:1px solid rgba(37,99,235,.35)}
+a:hover{border-bottom-color:var(--A)}
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{outline:2px solid var(--hot); outline-offset:2px}
+code{font-family:var(--mono); font-size:.88em; background:var(--soft); padding:.08em .35em; border-radius:4px}
+pre{font-family:var(--mono); font-size:.82rem; line-height:1.55; background:#1B2430; color:#E6EDF3; padding:14px 16px; border-radius:var(--radius); overflow:auto; margin:14px 0}
+pre code{background:none; padding:0; color:inherit; font-size:inherit}
+pre .cm{color:#8FA3B5} pre .kw{color:#7FD1F7} pre .ty{color:#F2C46D} pre .fn{color:#B8E986} pre .hl{background:rgba(200,34,106,.28); border-radius:3px}
+h1,h2,h3,h4{font-weight:600; line-height:1.2; margin:0}
+h2{font-size:1.75rem; letter-spacing:-.01em}
+h3{font-size:1.2rem; margin-top:34px}
+h4{font-size:1rem; margin-top:22px}
+p{margin:12px 0}
+ul{padding-left:22px; margin:10px 0} li{margin:5px 0}
+ul{list-style:disc}
+strong{font-weight:600}
+table{border-collapse:collapse; width:100%; font-size:.92rem; margin:14px 0}
+th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--rule); vertical-align:top}
+th{font-weight:600; background:var(--soft2)}
+td.num, th.num{text-align:right; font-family:var(--mono); font-size:.86rem}
+.wrap{display:grid; grid-template-columns:250px minmax(0,1fr); gap:0; max-width:1240px; margin:0 auto}
+nav.rail{position:sticky; top:0; align-self:start; height:100vh; overflow:auto; padding:28px 18px 28px 22px; border-right:1px solid var(--rule); background:var(--bg)}
+nav.rail .brand{font-weight:600; font-size:.95rem; margin-bottom:14px}
+nav.rail ol{list-style:none; padding:0; margin:0}
+nav.rail li a{display:block; padding:5px 8px; border-radius:4px; border:0; color:var(--ink); font-size:.9rem}
+nav.rail li a:hover{background:var(--soft)}
+nav.rail li a.active{background:var(--ink); color:#fff}
+nav.rail li.sub a{padding-left:20px; color:var(--muted); font-size:.85rem}
+nav.rail .group{margin:14px 0 4px; font-size:.78rem; color:var(--muted)}
+main{padding:0 40px 120px 48px; min-width:0}
+.hero{padding:56px 0 24px}
+.hero h1{font-size:2.5rem; letter-spacing:-.02em; max-width:18ch}
+.hero .lede{max-width:64ch; font-size:1.08rem; color:var(--muted); margin-top:14px}
+.hero .src{font-size:.88rem; color:var(--muted); margin-top:10px}
+.prose{max-width:74ch}
+section{padding-top:56px; border-top:1px solid var(--rule); margin-top:56px}
+section:first-of-type{border-top:0; margin-top:0}
+.khead{display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:end; margin-bottom:10px}
+.khead .n{font-family:var(--mono); font-size:3rem; line-height:1; color:var(--muted); font-weight:500}
+.khead .stat{text-align:right; font-family:var(--mono); font-size:.85rem; color:var(--muted); line-height:1.5}
+.khead .stat b{display:block; font-size:1.3rem; color:var(--ink); font-weight:500}
+.tagline{font-size:1.08rem; color:var(--muted); margin:0 0 14px}
+.fig{margin:22px 0 26px; padding:0}
+.fig .canvas{background:var(--paper); border:1px solid var(--rule); border-radius:var(--radius); padding:14px; overflow:hidden}
+.fig .canvas svg{display:block; width:100%; height:auto; font-family:var(--sans)}
+.fig figcaption{font-size:.88rem; color:var(--muted); margin-top:8px; max-width:80ch}
+.fig .ctl{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:0 0 12px; font-size:.88rem}
+.fig .ctl label{display:inline-flex; gap:6px; align-items:center}
+.fig .ctl input[type=range]{width:120px}
+.fig .ctl select, .fig .ctl input[type=number]{font:inherit; font-size:.86rem; padding:3px 6px; border:1px solid var(--rule); border-radius:4px; background:#fff; width:78px}
+.fig .ctl button, .seg button{font:inherit; font-size:.86rem; padding:5px 12px; border:1px solid var(--rule); background:#fff; border-radius:4px; cursor:pointer}
+.fig .ctl button:hover{background:var(--soft)}
+.seg{display:inline-flex; border-radius:4px; overflow:hidden}
+.seg button{border-radius:0; margin-left:-1px}
+.seg button.on{background:var(--ink); color:#fff; border-color:var(--ink)}
+.readout{font-family:var(--mono); font-size:.82rem; background:var(--soft2); border:1px solid var(--rule); border-radius:4px; padding:10px 12px; margin-top:10px; line-height:1.6}
+.readout b{font-weight:500; color:var(--hot)}
+.glossary{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; margin:18px 0}
+.term{background:var(--paper); border:1px solid var(--rule); border-radius:var(--radius); padding:14px 16px}
+.term h4{margin:0 0 6px; font-size:1rem}
+.term p{margin:0; font-size:.92rem}
+.term .w{font-family:var(--mono); font-size:.8rem; color:var(--muted); margin-bottom:6px}
+.callout{border-left:4px solid var(--hot); background:var(--paper); padding:12px 16px; border-radius:0 var(--radius) var(--radius) 0; margin:18px 0}
+.callout.note{border-color:var(--smem)}
+.callout.next{border-color:var(--C)}
+.legend{display:flex; flex-wrap:wrap; gap:8px 16px; font-size:.84rem; color:var(--muted); margin-top:8px}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.legend i{display:inline-block; width:12px; height:12px; border-radius:2px; border:1px solid rgba(0,0,0,.15)}
+.sw-A{background:var(--A)} .sw-B{background:var(--B)} .sw-C{background:var(--C)} .sw-hot{background:var(--hot)} .sw-smem{background:var(--smem)} .sw-reg{background:var(--reg)} .sw-gmem{background:var(--gmem)}
+.sw-Al{background:var(--Al)} .sw-Bl{background:var(--Bl)} .sw-Cl{background:var(--Cl)} .sw-hotl{background:var(--hotl)}
+.kv{display:grid; grid-template-columns:max-content 1fr; gap:4px 16px; font-size:.92rem; margin:10px 0}
+.kv div:nth-child(odd){font-family:var(--mono); font-size:.82rem; color:var(--muted); padding-top:3px}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+@media (max-width:1000px){
+  .wrap{grid-template-columns:1fr}
+  nav.rail{position:static; height:auto; border-right:0; border-bottom:1px solid var(--rule); padding:14px 20px}
+  nav.rail ol{display:flex; flex-wrap:wrap; gap:4px}
+  nav.rail .group{display:none}
+  nav.rail li.sub a{padding-left:8px}
+  main{padding:0 20px 80px}
+  .hero h1{font-size:1.9rem}
+  .two{grid-template-columns:1fr}
+  .khead{grid-template-columns:auto 1fr; }
+  .khead .stat{grid-column:1 / -1; text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="rail" aria-label="Contents">
+  <div class="brand">CUDA SGEMM, kernel by kernel</div>
+  <ol>
+    <li><a href="#top">Overview</a></li>
+    <li><a href="#primer">Primer: the vocabulary</a></li>
+    <li class="sub"><a href="#p-hier">Thread, block, grid</a></li>
+    <li class="sub"><a href="#p-warp">Warp</a></li>
+    <li class="sub"><a href="#p-sm">SM and schedulers</a></li>
+    <li class="sub"><a href="#p-mem">Memory hierarchy</a></li>
+    <li class="sub"><a href="#p-layout">Row-major indexing</a></li>
+    <li class="sub"><a href="#p-perf">FLOPs, intensity, roofline</a></li>
+    <li><a href="#problem">The problem: SGEMM</a></li>
+    <li class="group">Kernels</li>
+    <li><a href="#k1">1. Naive</a></li>
+    <li><a href="#k2">2. GMEM coalescing</a></li>
+    <li><a href="#k3">3. SMEM caching</a></li>
+    <li><a href="#k4">4. 1D blocktiling</a></li>
+    <li><a href="#k5">5. 2D blocktiling</a></li>
+    <li><a href="#k6">6. Vectorised access</a></li>
+    <li><a href="#k78">7 and 8. Bank conflicts</a></li>
+    <li><a href="#k9">9. Autotuning</a></li>
+    <li><a href="#k10">10. Warptiling</a></li>
+    <li><a href="#k0">0. cuBLAS reference</a></li>
+    <li><a href="#k11">11. What is left</a></li>
+    <li><a href="#triton">Where Triton and FLA sit</a></li>
+    <li><a href="#cheat">Cheat sheet</a></li>
+  </ol>
+</nav>
+<main>
+<a id="top"></a>
+<div class="hero">
+  <h1>From 1% to 94% of cuBLAS, one kernel at a time</h1>
+  <p class="lede">A visual walkthrough of Simon Boehm's CUDA matrix multiplication worklog. Each kernel fixes one specific bottleneck. This page explains what that bottleneck is, what the fix looks like on the hardware, and why the number moves. It starts from zero: threads, warps, blocks, grids, and the memory hierarchy are all explained before the first kernel.</p>
+  <p class="src">Source article: <a href="https://siboehm.com/articles/22/CUDA-MMM">siboehm.com/articles/22/CUDA-MMM</a> (December 2022). Code: <a href="https://github.com/siboehm/SGEMM_CUDA">github.com/siboehm/SGEMM_CUDA</a>. All throughput numbers are the article's measurements on an NVIDIA RTX A6000 multiplying two 4092 x 4092 fp32 matrices. Diagrams and text on this page are original; code sketches are simplified rewrites, not the repository's code.</p>
+</div>
+
+<figure class="fig" id="ladder-fig">
+  <div class="canvas" data-fig="ladder"></div>
+  <figcaption>The whole story in one chart. GFLOP/s achieved by each kernel, as a fraction of cuBLAS. Click a bar to jump to that kernel. Kernels 7 and 8 are missing because the article dropped them (they fixed shared memory bank conflicts but ran slower overall).</figcaption>
+</figure>
+
+<div class="prose">
+<p>The shape of the climb is the lesson. The first three kernels are about <strong>not wasting memory bandwidth</strong>: reading global memory in the pattern the hardware wants, then caching in shared memory. Kernels 4 to 6 are about <strong>arithmetic intensity</strong>: doing more multiply-adds per byte loaded, by giving each thread a tile of outputs and keeping operands in registers. Kernels 9 and 10 are about <strong>matching the hardware's real structure</strong>: tuning tile sizes per GPU and organising work around warps, the unit the scheduler actually sees.</p>
+<p>If you already know what a warp is and how shared memory differs from global memory, skip to <a href="#problem">the problem</a>. Otherwise the primer below defines every term used later. The <a href="#triton">final section</a> maps every level of this hierarchy onto what Triton does for you, and shows where the flash-linear-attention (FLA) kernels sit on top of it.</p>
+</div>
+
+<section id="primer">
+<h2>Primer: the vocabulary</h2>
+<div class="prose">
+<p>CUDA describes a computation in a hierarchy that exists for <strong>correctness</strong> (grid, block, thread) and a hardware hierarchy that exists for <strong>performance</strong> (SM, warp scheduler, warp, lane). The two overlap but are not the same thing. Most of the optimisations later come from understanding where they differ.</p>
+</div>
+
+<h3 id="p-hier">Kernel, thread, block, grid</h3>
+<div class="glossary">
+  <div class="term"><h4>Kernel</h4><div class="w">__global__ void f(...)</div><p>A function that runs on the GPU (the <em>device</em>). The CPU (the <em>host</em>) launches it with <code>f&lt;&lt;&lt;gridDim, blockDim&gt;&gt;&gt;(args)</code>. The launch returns immediately; the GPU executes it asynchronously. One launch creates one grid.</p></div>
+  <div class="term"><h4>Thread</h4><div class="w">threadIdx.x/y/z</div><p>The smallest unit. Every thread runs the same kernel code but with its own values of <code>threadIdx</code> and <code>blockIdx</code>, its own registers and its own program counter. Kernel code is written from the point of view of a single thread.</p></div>
+  <div class="term"><h4>Block (thread block)</h4><div class="w">blockIdx, blockDim, up to 1024 threads</div><p>A group of threads that are guaranteed to run on the same SM at the same time. Threads in one block can share data through shared memory and can synchronise with <code>__syncthreads()</code>. Threads in different blocks cannot cheaply talk to each other.</p></div>
+  <div class="term"><h4>Grid</h4><div class="w">gridDim</div><p>All the blocks of one launch. Blocks are independent and the hardware may run them in any order, on any SM. Both <code>gridDim</code> and <code>blockDim</code> are 3D vectors (x, y, z), though most kernels use one or two dimensions.</p></div>
+</div>
+
+<figure class="fig">
+  <div class="ctl">
+    <label>blockDim.x <select id="h-bx"><option>8</option><option>16</option><option selected>32</option><option>64</option><option>128</option></select></label>
+    <label>blockDim.y <select id="h-by"><option>1</option><option>2</option><option>4</option><option selected>8</option><option>16</option><option>32</option></select></label>
+    <label>Matrix side M = N <input id="h-m" type="range" min="64" max="160" step="16" value="96"> <span id="h-mv">96</span></label>
+  </div>
+  <div class="canvas" data-fig="hierarchy"></div>
+  <figcaption>Left: one block, each square is a thread, colour is the warp it belongs to (consecutive linear thread ids in groups of 32). Right: the grid of blocks needed to cover an M x N matrix with 32 x 32 tiles. Blocks that hang over the edge still launch all their threads; the ones outside the matrix do nothing. That waste is called tile quantisation.</figcaption>
+</figure>
+<div class="readout" id="h-readout"></div>
+
+<div class="prose">
+<p>Inside a kernel, a thread computes its global position from the built-ins. For a 2D layout the usual formula is <code>x = blockIdx.x * blockDim.x + threadIdx.x</code> and likewise for y. The value of <code>threadIdx.x</code> ranges from 0 to <code>blockDim.x - 1</code>; <code>blockIdx.x</code> ranges from 0 to <code>gridDim.x - 1</code>.</p>
+</div>
+
+<h3 id="p-warp">Warp: the unit the hardware actually executes</h3>
+<div class="prose">
+<p>A warp is a group of <strong>32 threads</strong> that the hardware executes together, in lockstep, one instruction at a time (this is the SIMT model, single instruction multiple threads). Warps do not appear anywhere in CUDA source code. They are formed by taking the threads of a block in order of their <strong>linear thread id</strong> and cutting every 32:</p>
+<pre><code>linearId = threadIdx.x + blockDim.x * (threadIdx.y + blockDim.y * threadIdx.z)
+warpId   = linearId / 32      <span class="cm">// which warp in the block</span>
+laneId   = linearId % 32      <span class="cm">// position inside the warp, 0..31</span></code></pre>
+<p>Because <code>threadIdx.x</code> is the fastest-varying dimension, threads with consecutive <code>threadIdx.x</code> land in the same warp. This one fact decides which memory accesses get combined (kernel 2) and which shared memory accesses collide (kernels 7 and 8).</p>
+<p>Three consequences of the warp being the execution unit:</p>
+<ul>
+  <li>A memory instruction issued by a warp produces 32 addresses at once. The memory system services them as a set, and how many transactions it needs depends on how those 32 addresses are laid out. This is <strong>coalescing</strong>.</li>
+  <li>If threads in a warp take different branches, the warp executes both paths with some lanes masked off. This is <strong>divergence</strong>, and it wastes issue slots.</li>
+  <li>Scheduling, register allocation and latency hiding all happen per warp, not per thread.</li>
+</ul>
+</div>
+
+<h3 id="p-sm">Streaming multiprocessor (SM) and warp schedulers</h3>
+<div class="prose">
+<p>The GPU is a collection of SMs. The RTX A6000 has 84 of them. Each SM holds a register file, an on-chip data store split between L1 cache and shared memory, and four <strong>warp schedulers</strong>. Every cycle each scheduler looks at the warps assigned to it, picks one that is ready (its operands have arrived), and issues that warp's next instruction to the execution units. When a warp is waiting on memory, the scheduler simply picks another warp. This is how GPUs hide latency: not with big caches and out-of-order execution like a CPU, but by keeping many warps in flight and switching between them for free.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="sm"></div>
+  <figcaption>One SM, simplified. Blocks are assigned to an SM as a whole; their warps are distributed across the four schedulers. Resident warps share the register file and the shared memory. If any of those three resources is exhausted, no more blocks fit and the scheduler has fewer warps to choose from.</figcaption>
+</figure>
+<div class="prose">
+<p>Relevant limits on the A6000 (compute capability 8.6), used in the calculations later:</p>
+<div class="kv">
+  <div>SMs</div><div>84</div>
+  <div>threads per block, max</div><div>1024</div>
+  <div>threads per SM, max</div><div>1536 (48 warps)</div>
+  <div>32-bit registers per SM</div><div>65536, allocated in units of 256 per warp</div>
+  <div>shared memory per SM</div><div>up to 100 KB (of a 128 KB L1/shared pool), 48 KB per block by default</div>
+  <div>global memory</div><div>48 GB GDDR6, about 768 GB/s</div>
+  <div>fp32 peak</div><div>the article budgets about 30 TFLOP/s (the datasheet number is 38.7)</div>
+</div>
+<p><strong>Occupancy</strong> is the number of warps resident on an SM divided by the maximum (48). It is limited by whichever of registers, shared memory or thread count runs out first. Higher occupancy gives the scheduler more warps to switch between, which helps hide latency, but it is not the only way to hide latency: a single warp with lots of independent instructions (instruction-level parallelism, ILP) also keeps the pipeline busy. The later kernels deliberately trade occupancy for ILP and register reuse.</p>
+</div>
+
+<h3 id="p-mem">Memory hierarchy</h3>
+<figure class="fig">
+  <div class="canvas" data-fig="mem"></div>
+  <figcaption>Bandwidth and capacity move in opposite directions. Every kernel after the first is an attempt to serve as many multiply-adds as possible from the fast, small levels and to touch global memory as rarely as possible.</figcaption>
+</figure>
+<div class="glossary">
+  <div class="term"><h4>Registers</h4><div class="w">per thread, fastest</div><p>Scalar variables in kernel code live here. Fixed-size arrays with compile-time indices can too (<code>float acc[8]</code> becomes 8 registers). A thread can use up to 255. More registers per thread means fewer warps fit on the SM.</p></div>
+  <div class="term"><h4>Shared memory (SMEM)</h4><div class="w">per block, on the SM, __shared__</div><p>Programmer-managed scratchpad. Roughly 16x the bandwidth of global memory and far lower latency. Physically the same silicon as L1, split by configuration. Divided into 32 banks of 4-byte words; a warp instruction that hits the same bank at different addresses is serialised (a bank conflict).</p></div>
+  <div class="term"><h4>L1 and L2 cache</h4><div class="w">hardware managed</div><p>L1 sits in each SM next to shared memory. L2 is shared by the whole chip (6 MB on the A6000). Both cache global memory transparently. The naive kernel already gets most of its data from L1, which is why the gain from shared memory alone (kernel 3) is smaller than you might expect.</p></div>
+  <div class="term"><h4>Global memory (GMEM)</h4><div class="w">device DRAM, cudaMalloc</div><p>The 48 GB on the card. Highest latency (hundreds of cycles) and lowest bandwidth. Accessed in 32-byte sectors; a 128-byte line is four sectors. All inputs start here and the output must end here.</p></div>
+</div>
+
+<h3 id="p-layout">Row-major layout and strides</h3>
+<div class="prose">
+<p>Matrices are stored as one flat array. Row-major means element (row, col) of an M x N matrix is at index <code>row * N + col</code>: consecutive columns in a row are neighbours in memory, consecutive rows are N floats apart. That gap (the stride) is why reading down a column is expensive and reading along a row is cheap.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="rowmajor"></div>
+  <figcaption>Hover a cell to see where it lives in the flat array. A 4 x 6 matrix: moving one column right moves 1 float (4 bytes); moving one row down moves 6 floats (24 bytes). For the article's 4092-wide matrices, one row down is 16368 bytes.</figcaption>
+</figure>
+
+<h3 id="p-perf">FLOPs, arithmetic intensity and the roofline</h3>
+<div class="glossary">
+  <div class="term"><h4>FLOP and FMA</h4><p>One floating point operation. A fused multiply-add <code>d = a*b + c</code> is one instruction (FFMA in SASS) but counts as two FLOPs. A matmul of size M x N x K does 2MNK FLOPs.</p></div>
+  <div class="term"><h4>Arithmetic intensity (AI)</h4><p>FLOPs performed per byte moved across some memory boundary. Raising it is the theme of kernels 3 to 6: do more math per byte loaded from global memory, then per byte loaded from shared memory.</p></div>
+  <div class="term"><h4>Roofline</h4><p>Attainable FLOP/s is at most the smaller of peak compute and (AI x memory bandwidth). At low AI the kernel is memory-bound and sits on the sloped part; at high AI it is compute-bound and sits under the flat roof.</p></div>
+  <div class="term"><h4>PTX and SASS</h4><p>PTX is NVIDIA's virtual assembly; SASS is the real machine code for one GPU generation. Instruction names used later: LDG (load global), STG (store global), LDS (load shared), FFMA (fp32 fused multiply-add). A .128 suffix means one instruction moves 128 bits (four floats).</p></div>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="roofline"></div>
+  <figcaption>Roofline for the A6000. Horizontal marks show each kernel's achieved throughput. Only kernels 1, 2 and cuBLAS are placed on the x axis, using their measured global memory traffic; the rest are shown against the compute roof only. Kernels 1 and 2 sit far below the memory slope because their accesses waste most of each transaction; from kernel 5 onward the gap to the roof is instruction overhead, latency and scheduling rather than bandwidth.</figcaption>
+</figure>
+</section>
+
+<section id="problem">
+<h2>The problem: SGEMM</h2>
+<div class="prose">
+<p>SGEMM computes <code>C = alpha * A @ B + beta * C</code> in single precision, with A of size M x K, B of size K x N and C of size M x N. Each output element is a dot product of one row of A with one column of B, of length K. The article benchmarks M = N = K = 4092.</p>
+<h4>Napkin math for 4092 x 4092</h4>
+<div class="kv">
+  <div>FLOPs</div><div>2 x 4092^3 + 4092^2 = about 137 GFLOP</div>
+  <div>minimum bytes read</div><div>3 matrices x 4092^2 x 4 B = 201 MB</div>
+  <div>minimum bytes written</div><div>4092^2 x 4 B = 67 MB</div>
+  <div>time at 30 TFLOP/s</div><div>4.5 ms</div>
+  <div>time to move 268 MB at 768 GB/s</div><div>0.35 ms</div>
+</div>
+<p>So if a kernel moved only the minimum data it would be <strong>compute-bound by a factor of 13</strong>. Put differently: a kernel can afford to read global memory up to about 13 times more than the minimum and still be compute-bound. That is the budget the whole worklog is spent inside. cuBLAS reads about 500 MB, less than twice the minimum. The naive kernel, with zero caching, would read 548 GB.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="gemm"></div>
+  <figcaption>One output of C needs a full row of A and a full column of B. There are M x N outputs and each pair of inputs is reused many times: row i of A contributes to all N outputs in row i of C. Every optimisation below is a way of exploiting that reuse at some level of the memory hierarchy.</figcaption>
+</figure>
+</section>
+
+<section id="k1">
+<div class="khead"><div class="n">1</div><div><h2>Naive kernel</h2><p class="tagline">One thread per output element, straight from global memory.</p></div><div class="stat"><b>309 GFLOP/s</b>1.3% of cuBLAS</div></div>
+<div class="prose">
+<p>The most direct mapping of the problem onto the thread hierarchy: launch a grid of 32 x 32 blocks, one block per 32 x 32 tile of C, one thread per element. Each thread runs the K-long dot product on its own and writes one value. Nothing is shared, so no synchronisation is needed.</p>
+<pre><code><span class="cm">// host side</span>
+dim3 grid(ceil_div(M, 32), ceil_div(N, 32));
+dim3 block(32, 32);           <span class="cm">// 1024 threads</span>
+k1_naive&lt;&lt;&lt;grid, block&gt;&gt;&gt;(M, N, K, alpha, A, B, beta, C);
+
+<span class="cm">// device side, from one thread's point of view</span>
+<span class="kw">__global__</span> <span class="ty">void</span> <span class="fn">k1_naive</span>(<span class="ty">int</span> M, <span class="ty">int</span> N, <span class="ty">int</span> K, <span class="ty">float</span> alpha,
+                         <span class="kw">const</span> <span class="ty">float</span> *A, <span class="kw">const</span> <span class="ty">float</span> *B, <span class="ty">float</span> beta, <span class="ty">float</span> *C) {
+  <span class="ty">int</span> row = <span class="hl">blockIdx.x * blockDim.x + threadIdx.x</span>;   <span class="cm">// note: x picks the row</span>
+  <span class="ty">int</span> col = blockIdx.y * blockDim.y + threadIdx.y;
+  <span class="kw">if</span> (row &lt; M &amp;&amp; col &lt; N) {
+    <span class="ty">float</span> acc = 0.f;
+    <span class="kw">for</span> (<span class="ty">int</span> k = 0; k &lt; K; ++k)
+      acc += A[row * K + k] * B[k * N + col];
+    C[row * N + col] = alpha * acc + beta * C[row * N + col];
+  }
+}</code></pre>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="naive"></div>
+  <figcaption>Hover an element of C. The thread that owns it walks the highlighted row of A and column of B, one pair per iteration of k. Shown with M = N = K = 8 and 4 x 4 blocks so that the grid structure is visible.</figcaption>
+</figure>
+<div class="prose">
+<h4>Why it is slow</h4>
+<p>Look at which threads form a warp. With <code>blockDim = (32, 32)</code>, a warp is 32 threads with the same <code>threadIdx.y</code> and <code>threadIdx.x = 0..31</code>. In this kernel <code>threadIdx.x</code> selects the <strong>row</strong>. So in a single iteration k, the 32 lanes of a warp read <code>A[row*K + k]</code> for 32 different rows: 32 floats that are each 4092 x 4 = 16368 bytes apart. The memory system has to fetch 32 separate 32-byte sectors to deliver 128 bytes of useful data. Meanwhile all 32 lanes read the same <code>B[k*N + col]</code>, which is at least cheap (one broadcast).</p>
+<p>The profiler shows the consequence: about 15 GB/s of global memory throughput on a card capable of 768 GB/s. The next kernel changes nothing except which thread owns which element.</p>
+</div>
+</section>
+
+<section id="k2">
+<div class="khead"><div class="n">2</div><div><h2>Global memory coalescing</h2><p class="tagline">Make the 32 lanes of a warp read 32 neighbouring floats.</p></div><div class="stat"><b>1986 GFLOP/s</b>8.5% of cuBLAS</div></div>
+<div class="prose">
+<p>When a warp issues a load, the hardware collects the 32 addresses and merges those that fall in the same 32-byte sector (or 128-byte line) into one transaction. If the 32 lanes read 32 consecutive, aligned floats, that is 128 bytes served by a single 128-byte request. If they read 32 floats scattered across 32 different lines, it is 32 requests for the same amount of useful data. This merging is called <strong>coalescing</strong> and it is done at run time by the hardware, not by the compiler: the two kernels compile to identical SASS.</p>
+<p>The fix is to flip which index the fast-varying thread id controls. Make the block one-dimensional (1024 threads) and derive row and column arithmetically so that consecutive threads get consecutive <strong>columns</strong>:</p>
+<pre><code>dim3 block(32 * 32);          <span class="cm">// same thread count, now 1D</span>
+
+<span class="ty">int</span> row = blockIdx.x * 32 + <span class="hl">threadIdx.x / 32</span>;   <span class="cm">// changes every 32 threads</span>
+<span class="ty">int</span> col = blockIdx.y * 32 + <span class="hl">threadIdx.x % 32</span>;   <span class="cm">// changes every thread</span>
+<span class="cm">// dot product loop is unchanged</span></code></pre>
+<p>Now a warp is 32 threads with the same row and 32 consecutive columns. Per iteration k: every lane reads the same <code>A[row*K + k]</code> (one broadcast), and the lanes read <code>B[k*N + col .. col+31]</code>, 128 contiguous bytes, one transaction.</p>
+</div>
+<figure class="fig">
+  <div class="ctl"><span class="seg" id="co-seg"><button class="on" data-m="naive">Kernel 1 mapping</button><button data-m="coal">Kernel 2 mapping</button></span><span id="co-note"></span></div>
+  <div class="canvas" data-fig="coalesce"></div>
+  <figcaption>The 32 lanes of one warp, at one iteration k. Top: which elements of A and B each lane reads. Bottom: the flat memory of A and B in 32-byte sectors, with touched sectors filled. Kernel 1 touches 32 sectors of A to get 32 floats; kernel 2 touches 1 sector of A and 4 sectors of B for the same work.</figcaption>
+</figure>
+<div class="prose">
+<p>Global memory throughput rises from 15 GB/s to 110 GB/s and the kernel gets 6.4x faster. Note that alignment also matters: the 32 addresses must start on a sector boundary for the minimum transaction count. Also note that lanes do not have to access addresses in lane order; any permutation of the same 32 consecutive addresses coalesces just as well.</p>
+<div class="callout next"><strong>What is still wrong.</strong> Every thread still fetches all K elements of its A row and B column from global memory (or L1 if lucky). The same row of A is read by 4092 threads across the grid. There is no explicit reuse. Kernel 3 adds a programmer-controlled cache.</div>
+</div>
+</section>
+
+<section id="k3">
+<div class="khead"><div class="n">3</div><div><h2>Shared memory cache blocking</h2><p class="tagline">Load a chunk once per block, reuse it 32 times from on-chip memory.</p></div><div class="stat"><b>2980 GFLOP/s</b>12.8% of cuBLAS</div></div>
+<div class="prose">
+<p>A block computing a 32 x 32 tile of C needs a 32 x K slab of A and a K x 32 slab of B. Every element of that slab of A is used by 32 threads in the block (one per column of the tile). So instead of each thread reading from global memory independently, the block cooperates: it walks along K in chunks of <code>BK = 32</code>, and for each chunk all 1024 threads together copy a 32 x 32 piece of A and a 32 x 32 piece of B into shared memory, one element per thread. After a barrier, each thread does 32 multiply-adds against the shared copies, then the block moves to the next chunk.</p>
+<pre><code><span class="kw">__shared__</span> <span class="ty">float</span> As[32 * 32];
+<span class="kw">__shared__</span> <span class="ty">float</span> Bs[32 * 32];
+<span class="ty">int</span> tRow = threadIdx.x / 32, tCol = threadIdx.x % 32;   <span class="cm">// tCol is the fast index</span>
+
+<span class="cm">// move base pointers to this block's tile</span>
+A += blockIdx.x * 32 * K;  B += blockIdx.y * 32;  C += blockIdx.x * 32 * N + blockIdx.y * 32;
+
+<span class="ty">float</span> acc = 0.f;
+<span class="kw">for</span> (<span class="ty">int</span> k0 = 0; k0 &lt; K; k0 += 32) {
+  As[tRow * 32 + tCol] = A[tRow * K + tCol];   <span class="cm">// coalesced: tCol varies fastest</span>
+  Bs[tRow * 32 + tCol] = B[tRow * N + tCol];
+  <span class="hl">__syncthreads();</span>                             <span class="cm">// wait until the whole chunk is in SMEM</span>
+  A += 32;  B += 32 * N;                       <span class="cm">// advance to next chunk</span>
+  <span class="kw">for</span> (<span class="ty">int</span> k = 0; k &lt; 32; ++k)
+    acc += As[tRow * 32 + k] * Bs[k * 32 + tCol];
+  <span class="hl">__syncthreads();</span>                             <span class="cm">// nobody overwrites SMEM while others still read</span>
+}
+C[tRow * N + tCol] = alpha * acc + beta * C[tRow * N + tCol];</code></pre>
+</div>
+<figure class="fig">
+  <div class="ctl"><button id="sm-prev">Previous chunk</button><button id="sm-next">Next chunk</button><span id="sm-note"></span></div>
+  <div class="canvas" data-fig="smem"></div>
+  <figcaption>One block, one 32 x 32 tile of C (drawn at 8 x 8 for legibility, so BK = 8 here). Each step copies the next chunk of A and B into shared memory, then every thread accumulates its partial dot product from the copies. After K / BK steps the tile is complete.</figcaption>
+</figure>
+<div class="prose">
+<p>Two barriers per chunk are needed. The first guarantees the chunk is fully written before anyone reads it. The second guarantees everyone has finished reading before a fast thread starts overwriting the buffer with the next chunk.</p>
+<h4>Occupancy check for this kernel</h4>
+<p>This kernel uses 8 KB of shared memory per block (two 32 x 32 float arrays), 37 registers per thread and 1024 threads per block. Feeding that into the SM limits:</p>
+<ul>
+  <li>Shared memory: (8192 + 1024 bytes runtime overhead) per block into 102400 bytes per SM allows 11 blocks.</li>
+  <li>Threads: 1024 per block into 1536 per SM allows only 1 block.</li>
+  <li>Registers: 37 x 32 = 1184 per warp, rounded up to the 256 allocation unit gives 1280; x 32 warps = 40960 per block; 65536 / 40960 allows 1 block.</li>
+</ul>
+<p>One block per SM, 32 warps out of 48 possible: 67% occupancy. That is decent, so occupancy is not the bottleneck. You can check other configurations in the calculator below.</p>
+</div>
+<figure class="fig">
+  <div class="ctl">
+    <label>registers / thread <input id="oc-reg" type="number" min="1" max="255" value="37"></label>
+    <label>SMEM bytes / block <input id="oc-smem" type="number" min="0" max="102400" step="256" value="8192"></label>
+    <label>threads / block <input id="oc-thr" type="number" min="32" max="1024" step="32" value="1024"></label>
+  </div>
+  <div class="canvas" data-fig="occupancy"></div>
+  <figcaption>Occupancy calculator using the A6000 limits from the primer. Each bar is the number of blocks that would fit per SM if only that resource mattered; the smallest wins. Try 128 threads with 8 KB and 37 registers to see the later kernels' regime.</figcaption>
+</figure>
+<div class="prose">
+<h4>The real bottleneck: shared memory instruction pressure</h4>
+<p>The inner loop compiles to two shared loads and one FMA:</p>
+<pre><code>ld.shared.f32  %f1, [As + ...];
+ld.shared.f32  %f2, [Bs + ...];
+fma.rn.f32     %f3, %f2, %f1, %f3;</code></pre>
+<p>Two memory instructions per math instruction. The profiler's warp-state sampling shows warps stalled on <em>MIO throttle</em>: the queue that feeds shared memory instructions is full. The kernel is compute-bound on paper but in practice it is bound by how fast it can issue LDS instructions. The fix is not more caching; it is <strong>fewer loads per FMA</strong>, which means each thread must produce more than one output so that loaded values can be reused from registers.</p>
+<div class="callout next"><strong>Bookkeeping per output element</strong> (used to compare the next kernels): K/16 global loads and 2K shared loads. Every kernel from here on lowers both numbers.</div>
+</div>
+</section>
+
+<section id="k4">
+<div class="khead"><div class="n">4</div><div><h2>1D blocktiling</h2><p class="tagline">Each thread computes a column of 8 outputs and reuses one B value 8 times.</p></div><div class="stat"><b>8475 GFLOP/s</b>36.5% of cuBLAS</div></div>
+<div class="prose">
+<p>New tile shape: a block now owns a <code>BM x BN = 64 x 64</code> tile of C and walks K in chunks of <code>BK = 8</code>. Each thread computes <code>TM = 8</code> vertically adjacent outputs, so the block needs 64 x 64 / 8 = 512 threads. Shared memory holds a 64 x 8 chunk of A and an 8 x 64 chunk of B: 1024 floats, 4 KB.</p>
+<p>The important change is the inner loop. For each k in the chunk, the thread loads <strong>one</strong> value from Bs (its column) into a register and then reuses it for all 8 of its rows, loading one As value per row:</p>
+<pre><code><span class="ty">float</span> acc[TM] = {0};                          <span class="cm">// 8 accumulators, live in registers</span>
+<span class="kw">for</span> (<span class="ty">int</span> k0 = 0; k0 &lt; K; k0 += BK) {
+  <span class="cm">// cooperative GMEM -&gt; SMEM copy of the 64x8 and 8x64 chunks (one float each)</span>
+  As[aRow * BK + aCol] = A[aRow * K + aCol];
+  Bs[bRow * BN + bCol] = B[bRow * N + bCol];
+  __syncthreads();
+  A += BK;  B += BK * N;
+  <span class="kw">for</span> (<span class="ty">int</span> k = 0; k &lt; BK; ++k) {
+    <span class="ty">float</span> b = <span class="hl">Bs[k * BN + tCol]</span>;               <span class="cm">// loaded once ...</span>
+    <span class="kw">for</span> (<span class="ty">int</span> i = 0; i &lt; TM; ++i)
+      acc[i] += As[(tRow * TM + i) * BK + k] * <span class="hl">b</span>;   <span class="cm">// ... used 8 times</span>
+  }
+  __syncthreads();
+}
+<span class="kw">for</span> (<span class="ty">int</span> i = 0; i &lt; TM; ++i)
+  C[(tRow * TM + i) * N + tCol] = alpha * acc[i] + beta * C[(tRow * TM + i) * N + tCol];</code></pre>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="tile1d"></div>
+  <figcaption>Hover a thread (a column strip in the C tile). Its 8 outputs need 8 rows of the As chunk and 1 column of the Bs chunk. Drawn at BM = BN = 16, BK = 4, TM = 4 to keep it readable; the idea is identical at 64 / 8 / 8.</figcaption>
+</figure>
+<div class="prose">
+<h4>Counting loads per output</h4>
+<p>Per k in the chunk a thread issues 1 + TM = 9 shared loads and does TM = 8 FMAs. That is 1.125 loads per FMA instead of 2. Per output element over the full K: K/32 global loads and 9K/8 shared loads, versus K/16 and 2K in kernel 3. The warp-stall profile confirms far fewer cycles lost to the memory pipeline, and throughput almost triples.</p>
+<h4>Sidenote: the compiler would have done this anyway</h4>
+<p>If the two inner loops are written in the natural order (outputs outer, k inner) with no explicit <code>b</code> register, the generated code is just as fast. Both loop counts are compile-time constants, so nvcc fully unrolls them, notices that the same <code>Bs</code> element is loaded 8 times, and keeps it in a register. With this loop order it also emits 128-bit <code>LDS.128</code> for the As loads, because for one output row the eight k values sit side by side in memory. The Bs loads stay 32-bit, since consecutive k are BN floats apart. In kernel 5 the k loop moves outermost and the situation flips: the Bs slice a thread needs is contiguous and the As slice is strided, which is what kernel 6 fixes by transposing As.</p>
+<div class="callout next"><strong>What is still wrong.</strong> Still one shared load per FMA on the A side. A column of outputs shares B values but not A values. A <em>square</em> of outputs shares both.</div>
+</div>
+</section>
+
+<section id="k5">
+<div class="khead"><div class="n">5</div><div><h2>2D blocktiling</h2><p class="tagline">Each thread computes an 8 x 8 square as an outer product held entirely in registers.</p></div><div class="stat"><b>15972 GFLOP/s</b>68.7% of cuBLAS</div></div>
+<div class="prose">
+<p>Tile constants become <code>BM = BN = 128</code>, <code>BK = 8</code>, <code>TM = TN = 8</code>. A block of 128 x 128 / 64 = 256 threads owns a 128 x 128 tile of C; each thread owns an 8 x 8 square of it, 64 accumulators in registers.</p>
+<p>Loading the chunk into shared memory now takes several trips per thread: As is 128 x 8 = 1024 floats and Bs is 8 x 128 = 1024 floats, so each of the 256 threads copies 4 floats of each. The copy loop strides through the chunk so that, at every step, the 32 lanes of a warp still read 32 contiguous floats from global memory (coalesced).</p>
+<p>The inner loop is the interesting part. For each k in the chunk, a thread copies the 8 As values it needs (a column slice) and the 8 Bs values it needs (a row slice) into registers, then does a rank-1 update of its 8 x 8 accumulator block: 64 FMAs from 16 loads.</p>
+<pre><code><span class="ty">float</span> acc[TM * TN] = {0};   <span class="cm">// 64 accumulators</span>
+<span class="ty">float</span> regA[TM], regB[TN];    <span class="cm">// 16 operand registers</span>
+
+<span class="kw">for</span> (<span class="ty">int</span> k = 0; k &lt; BK; ++k) {
+  <span class="kw">for</span> (<span class="ty">int</span> i = 0; i &lt; TM; ++i) regA[i] = As[(tRow * TM + i) * BK + k];
+  <span class="kw">for</span> (<span class="ty">int</span> j = 0; j &lt; TN; ++j) regB[j] = Bs[k * BN + tCol * TN + j];
+  <span class="kw">for</span> (<span class="ty">int</span> i = 0; i &lt; TM; ++i)
+    <span class="kw">for</span> (<span class="ty">int</span> j = 0; j &lt; TN; ++j)
+      acc[i * TN + j] += <span class="hl">regA[i] * regB[j]</span>;     <span class="cm">// outer product, all in registers</span>
+}</code></pre>
+</div>
+<figure class="fig">
+  <div class="ctl"><label>k within chunk <input id="t2-k" type="range" min="0" max="3" value="0"> <span id="t2-kv">0</span></label></div>
+  <div class="canvas" data-fig="tile2d"></div>
+  <figcaption>Hover a thread (an outlined square in the C tile). For the chosen k, the highlighted As column slice and Bs row slice are copied into regA and regB; their outer product updates the thread's whole square. Drawn at BM = BN = 16, BK = 4, TM = TN = 4.</figcaption>
+</figure>
+<div class="prose">
+<h4>Why a square beats a column</h4>
+<p>A thread computing an r x c block of outputs needs r + c loads per k for r x c FMAs. For a column (c = 1) the ratio is (r+1)/r, which can never get below 1. For a square it is 2/r, which halves every time r doubles. That is the whole reason 2D tiling exists.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="intensity"></div>
+  <figcaption>Loads per FMA for different per-thread output shapes at one k. Filled cells are outputs, outlined strips are the operands that must be loaded to update them.</figcaption>
+</figure>
+<div class="prose">
+<h4>Counting again</h4>
+<p>Per output element over the full K: K/64 global loads and K/4 shared loads. Compared with kernel 4 that is another 2x fewer global loads and 4.5x fewer shared loads. Throughput doubles to 16 TFLOP/s. The block-level arithmetic intensity (FLOPs per byte moved from global memory into shared memory) is BM x BN / (2 (BM + BN)) = 32 FLOP per byte for a 128 x 128 tile, versus 8 for the 32 x 32 tile of kernel 3.</p>
+<div class="callout next"><strong>What is still wrong.</strong> The profiler still shows memory-pipeline stalls. Two remaining inefficiencies: the As loads into regA are eight separate 32-bit LDS instructions, and the global memory copy uses 32-bit loads and stores where 128-bit ones are possible.</div>
+</div>
+</section>
+
+<section id="k6">
+<div class="khead"><div class="n">6</div><div><h2>Vectorised memory access</h2><p class="tagline">Transpose As so both operand slices are contiguous, and move global data as float4.</p></div><div class="stat"><b>18237 GFLOP/s</b>78.4% of cuBLAS</div></div>
+<div class="prose">
+<h4>Part 1: transpose As in shared memory</h4>
+<p>In kernel 5, the 8 values a thread needs from As for one k are <code>As[(tRow*8 + i) * BK + k]</code> for i = 0..7: eight floats spaced BK apart. A single load instruction cannot fetch them. If As is stored <strong>transposed</strong>, as <code>As[k * BM + row]</code>, those eight values become <code>As[k * BM + tRow*8 .. tRow*8+7]</code>: contiguous, so two <code>LDS.128</code> instructions replace eight <code>LDS.32</code>. The transpose is free: it is done by writing each element to the swapped position during the global-to-shared copy, which happens anyway.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="transpose"></div>
+  <figcaption>Left: row-major As, the values one thread needs for k = 1 are scattered with stride BK. Right: the same chunk stored transposed, the values are adjacent and load as 128-bit vectors. The Bs slice was already contiguous in kernel 5.</figcaption>
+</figure>
+<div class="prose">
+<h4>Part 2: 128-bit global loads and stores</h4>
+<p>Each thread's share of the copy is four consecutive floats. Read them as one <code>float4</code>:</p>
+<pre><code><span class="ty">float4</span> a4 = <span class="kw">reinterpret_cast</span>&lt;<span class="kw">const</span> <span class="ty">float4</span>*&gt;(&amp;A[aRow * K + aCol * 4])[0];   <span class="cm">// LDG.E.128</span>
+As[(aCol * 4 + 0) * BM + aRow] = a4.x;   <span class="cm">// scatter into the transposed layout</span>
+As[(aCol * 4 + 1) * BM + aRow] = a4.y;
+As[(aCol * 4 + 2) * BM + aRow] = a4.z;
+As[(aCol * 4 + 3) * BM + aRow] = a4.w;
+
+<span class="kw">reinterpret_cast</span>&lt;<span class="ty">float4</span>*&gt;(&amp;Bs[bRow * BN + bCol * 4])[0] =
+    <span class="kw">reinterpret_cast</span>&lt;<span class="kw">const</span> <span class="ty">float4</span>*&gt;(&amp;B[bRow * N + bCol * 4])[0];        <span class="cm">// LDG.E.128 then STS.128</span></code></pre>
+<p>Why does the cast matter, when the compiler could have merged four adjacent 32-bit loads itself? Because a 128-bit load requires the address to be 16-byte aligned, and the compiler cannot prove that about a <code>float*</code> passed in as an argument. The <code>reinterpret_cast</code> to <code>float4*</code> is the programmer's promise that the pointer is aligned. Shared memory needs no such promise; the compiler owns its layout and vectorises those loads on its own.</p>
+<p>Together the two changes bring another 2.3 TFLOP/s. The profiler now lists three things: shared memory bank conflicts, occupancy higher than needed, and no overlap between loading the next chunk and computing on the current one.</p>
+</div>
+</section>
+
+<section id="k78">
+<div class="khead"><div class="n">7, 8</div><div><h2>Bank conflicts (the two kernels that were dropped)</h2><p class="tagline">They removed the conflicts and still ran slower, so the article skips them. The concept still matters.</p></div><div class="stat"><b>not reported</b>slower than kernel 6</div></div>
+<div class="prose">
+<p>Shared memory is built from 32 banks, each 4 bytes wide, interleaved: byte address a lives in bank <code>(a / 4) % 32</code>. In one cycle each bank can serve one 32-bit word. When a warp issues a shared load, the 32 lanes' addresses are grouped by bank. If two lanes want <em>different</em> words from the <em>same</em> bank, the hardware replays the instruction for the second one. This is an n-way bank conflict, and it multiplies the cost of that instruction by n. Lanes reading the <em>same</em> word are fine (broadcast).</p>
+<p>The outer-product kernels read As and Bs in patterns that depend on the tile sizes and on <code>TM</code>, <code>TN</code>, and those patterns produce conflicts. Kernels 7 and 8 rearranged the shared memory layout so that a warp's accesses land in 32 distinct banks. They succeeded at that but the extra index arithmetic and the changed access pattern cost more than the conflicts did, so the article moved on. cuBLAS does avoid conflicts, which is part of the remaining gap.</p>
+</div>
+<figure class="fig">
+  <div class="ctl"><label>lane stride (floats) <select id="bk-stride"><option>1</option><option selected>2</option><option>4</option><option>8</option><option>16</option><option>32</option><option>33</option></select></label><span id="bk-note"></span></div>
+  <div class="canvas" data-fig="banks"></div>
+  <figcaption>32 lanes each read the float at index lane x stride. Lines connect lanes to banks. Stride 1 is conflict-free. Stride 2 puts two lanes on every even bank (2-way). Stride 32 puts all 32 lanes on bank 0 (32-way, the pattern of reading a column of a 32-wide row-major array). Stride 33 is conflict-free again, which is why padding a row by one float is the classic fix.</figcaption>
+</figure>
+</section>
+
+<section id="k9">
+<div class="khead"><div class="n">9</div><div><h2>Autotuning</h2><p class="tagline">Same kernel, search the five tile parameters instead of guessing them.</p></div><div class="stat"><b>19721 GFLOP/s</b>84.8% of cuBLAS</div></div>
+<div class="prose">
+<p>By now the kernel has five template parameters. <code>BM</code>, <code>BN</code>, <code>BK</code> set how much of A and B is cached in shared memory per step. <code>TM</code>, <code>TN</code> set how much of that a thread pulls into registers. They interact with every hardware limit at once: shared memory capacity, register file size, occupancy, coalescing, the float4 copy loop, bank conflict patterns. Nobody can reason their way to the optimum, so the article does what every production library does: enumerate the sensible configurations and time them.</p>
+<h4>What "sensible" means</h4>
+<ul>
+  <li>The thread count is fixed by the tile: (BM / TM) x (BN / TN) threads, which must be a multiple of 32 and at most 1024.</li>
+  <li>Each thread copies one float4 per pass of the load loop, so BM x BK and BN x BK must be divisible by 4 x threads.</li>
+  <li>Shared memory (BM + BN) x BK x 4 bytes must fit, and registers per thread (TM x TN accumulators plus TM + TN operands plus addressing) must leave room for enough warps.</li>
+  <li>TM and TN should be multiples of 4 so the register slices load as 128-bit vectors.</li>
+</ul>
+<p>About 400 configurations survived those filters and were benchmarked with a script. On the A6000 the winner was <code>BM = BN = 128, BK = 16, TM = TN = 8</code>: only BK changed from kernel 6, for a gain of about 8% in the benchmark table. On an A100 the winner was <code>BM = BN = 64, BK = 16, TM = TN = 4</code>, and running the A6000's best configuration there would have left 6% on the table. The optimum is a property of the GPU, not of the algorithm, which is why compilers like Triton ship an autotuner and why cuBLAS ships hundreds of pre-tuned kernels.</p>
+</div>
+<figure class="fig">
+  <div class="ctl">
+    <label>BM <select id="tu-bm"><option>32</option><option>64</option><option selected>128</option><option>256</option></select></label>
+    <label>BN <select id="tu-bn"><option>32</option><option>64</option><option selected>128</option><option>256</option></select></label>
+    <label>BK <select id="tu-bk"><option>8</option><option selected>16</option><option>32</option></select></label>
+    <label>TM <select id="tu-tm"><option>1</option><option>4</option><option selected>8</option><option>16</option></select></label>
+    <label>TN <select id="tu-tn"><option>1</option><option>4</option><option selected>8</option><option>16</option></select></label>
+  </div>
+  <div class="canvas" data-fig="tuning"></div>
+  <figcaption>Tile parameter explorer. Presets: kernel 3 is 32 / 32 / 32 / 1 / 1 (BK equal to BM), kernel 4 is 64 / 64 / 8 / 8 / 1, kernel 5 is 128 / 128 / 8 / 8 / 8, kernel 9 is 128 / 128 / 16 / 8 / 8. The derived quantities are exact; the "fits" checks use the A6000 limits, and the float4 divisibility check only applies from kernel 6 onward (earlier kernels copied one float per thread).</figcaption>
+</figure>
+</section>
+
+<section id="k10">
+<div class="khead"><div class="n">10</div><div><h2>Warptiling</h2><p class="tagline">Insert the warp as an explicit tiling level between block and thread.</p></div><div class="stat"><b>21779 GFLOP/s</b>93.7% of cuBLAS</div></div>
+<div class="prose">
+<p>So far the loop structure has two tiling levels: the block owns BM x BN and each thread owns TM x TN, with threads laid out in a plain row-major grid over the block tile. That layout ignores the fact that the 32 threads of a warp are scheduled together, share a register cache, and conflict with each other (and only each other) in shared memory. Warptiling adds a level: the block tile is divided among warps, each warp tile is divided among its 32 lanes, and each lane still computes TM x TN squares.</p>
+<h4>The new parameters</h4>
+<div class="kv">
+  <div>WM, WN</div><div>size of the tile owned by one warp; BM / WM x BN / WN warps per block</div>
+  <div>WMITER, WNITER</div><div>how many times the warp iterates over its tile; each iteration covers a sub-tile of WSUBM x WSUBN = (WM / WMITER) x (WN / WNITER)</div>
+  <div>TM, TN</div><div>the per-thread square inside a sub-tile; 32 lanes x TM x TN = WSUBM x WSUBN</div>
+  <div>warpId, laneId</div><div><code>threadIdx.x / 32</code> and <code>threadIdx.x % 32</code>; the lane's row and column in the sub-tile are laneId / (WSUBN / TN) and laneId % (WSUBN / TN)</div>
+</div>
+<p>Each thread therefore accumulates WMITER x WNITER squares of TM x TN. For each k in the chunk it loads WMITER x TM values from As and WNITER x TN values from Bs into registers, then updates all its squares with outer products. The k loop is kept outermost inside the chunk, so everything inside it is independent work the scheduler can overlap.</p>
+<pre><code><span class="kw">for</span> (<span class="ty">int</span> k = 0; k &lt; BK; ++k) {
+  <span class="kw">for</span> (<span class="ty">int</span> wm = 0; wm &lt; WMITER; ++wm)                 <span class="cm">// A slices for each sub-tile row</span>
+    <span class="kw">for</span> (<span class="ty">int</span> i = 0; i &lt; TM; ++i)
+      regA[wm * TM + i] = As[k * BM + warpRow * WM + wm * WSUBM + laneRow * TM + i];
+  <span class="kw">for</span> (<span class="ty">int</span> wn = 0; wn &lt; WNITER; ++wn)                 <span class="cm">// B slices for each sub-tile column</span>
+    <span class="kw">for</span> (<span class="ty">int</span> j = 0; j &lt; TN; ++j)
+      regB[wn * TN + j] = Bs[k * BN + warpCol * WN + wn * WSUBN + laneCol * TN + j];
+  <span class="kw">for</span> (<span class="ty">int</span> wm = 0; wm &lt; WMITER; ++wm)                 <span class="cm">// warp-level matmul</span>
+    <span class="kw">for</span> (<span class="ty">int</span> wn = 0; wn &lt; WNITER; ++wn)
+      <span class="kw">for</span> (<span class="ty">int</span> i = 0; i &lt; TM; ++i)
+        <span class="kw">for</span> (<span class="ty">int</span> j = 0; j &lt; TN; ++j)
+          acc[(wm * TM + i) * (WNITER * TN) + wn * TN + j] += regA[wm * TM + i] * regB[wn * TN + j];
+}</code></pre>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="warptile"></div>
+  <figcaption>Three levels of tiling in one 128 x 128 block tile, using BM = BN = 128, four warps of WM = WN = 64, WMITER = 1, WNITER = 4 (so WSUBM x WSUBN = 64 x 16), TM = 8, TN = 4. Hover a warp tile to see its four sub-tiles, or a lane's square to see all four squares that lane accumulates. Every lane in a warp reads the same rows of As (bounded by the warp tile), which is the locality the warp-level register cache rewards.</figcaption>
+</figure>
+<div class="prose">
+<h4>Why it is faster</h4>
+<ul>
+  <li><strong>Explicit parallelism at each hardware level.</strong> Blocks run in parallel on different SMs; warps run in parallel on the four schedulers of an SM (and interleave on one scheduler); the independent FMAs inside a thread overlap in the pipeline (ILP). Warptiling makes the middle level a deliberate choice instead of an accident of thread numbering.</li>
+  <li><strong>Register cache locality.</strong> Recent NVIDIA GPUs have a small operand cache in front of the register file. Tighter per-warp tiles mean the same As and Bs registers are reused in consecutive instructions.</li>
+  <li><strong>Bank conflicts are a per-warp phenomenon</strong>, so controlling which addresses a warp touches together is the lever for reducing them.</li>
+  <li><strong>It is the shape tensor cores want.</strong> A warp-level matrix multiply on a WSUBM x WSUBN sub-tile maps directly onto the warp-wide <code>mma</code> instructions that tensor cores execute. This kernel is one step from that.</li>
+</ul>
+<p>After re-tuning the enlarged parameter space, throughput reaches 21.8 TFLOP/s, within 6% of cuBLAS. Something that did <em>not</em> help: thread block swizzling (remapping <code>blockIdx</code> to C tiles so that concurrently running blocks share rows of A in L2). L2 hit rate was already about 80%, and the swizzle produced no measurable gain, so it was removed.</p>
+</div>
+</section>
+
+<section id="k0">
+<div class="khead"><div class="n">0</div><div><h2>The cuBLAS reference</h2><p class="tagline">Not one kernel but a library of hundreds, chosen at run time by shape.</p></div><div class="stat"><b>23250 GFLOP/s</b>100%</div></div>
+<div class="prose">
+<p>Comparing kernel 10 with cuBLAS across matrix sizes shows two regimes. At 2048 and 4096 the hand-written kernel is within a few percent. At small sizes it loses badly. The reason is that cuBLAS is a dispatcher: it contains many SGEMM implementations (the article counted 16 distinct ones for square sizes up to 4096, out of a 500 MB binary) and picks one per call based on M, N, K, data type and GPU.</p>
+<p>The trace at size 256 is instructive: cuBLAS launched a matmul kernel <em>and</em> a reduction kernel. That is <strong>split-K</strong>. A 256 x 256 output with 128 x 128 tiles is only 4 blocks, which cannot occupy 84 SMs. Splitting the K dimension across several blocks gives each SM something to do; each block produces a partial sum for its slice of K, and a second kernel adds the partials.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="splitk"></div>
+  <figcaption>Split-K. Without it, a small output matrix means few blocks and idle SMs. With it, several blocks compute partial products for the same C tile over different ranges of k, write them to scratch memory, and a reduce kernel sums them. It costs an extra pass over the partials but multiplies the available parallelism.</figcaption>
+</figure>
+</section>
+
+<section id="k11">
+<div class="khead"><div class="n">11</div><div><h2>What is left (work in progress in the article)</h2><p class="tagline">The remaining 6%, and what a tensor core kernel would add.</p></div><div class="stat"><b>no number</b>work in progress</div></div>
+<div class="prose">
+<ul>
+  <li><strong>Double buffering.</strong> Right now each chunk is a strict sequence: copy from global memory, barrier, compute, barrier. With two shared memory buffers, the copy of chunk i + 1 can be issued before the compute on chunk i starts, so memory latency overlaps math. CUTLASS does this at both levels: global to shared, and shared to registers.</li>
+  <li><strong>Conflict-free shared memory layouts.</strong> Swizzled layouts that keep vectorised loads while spreading a warp's accesses over all 32 banks. Kernels 7 and 8 were the first attempt.</li>
+  <li><strong>Hardware copy paths.</strong> On Ampere, <code>cp.async</code> moves data from global memory straight into shared memory without passing through registers. On Hopper, TMA and warp specialisation (some warps only load, others only compute, with different register budgets) go further.</li>
+  <li><strong>Tensor cores.</strong> Everything above is fp32 on CUDA cores. With TF32 or BF16 inputs, warp-level <code>mma</code> instructions raise peak throughput by roughly 3x on this card and turn the problem back into a memory-bound one, where the loading machinery above becomes the entire game.</li>
+</ul>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="pipeline"></div>
+  <figcaption>Timeline of one block. Top: the current kernels serialise load and compute for each chunk. Bottom: with two buffers, the load for the next chunk runs while the current one is being computed, and the barrier only has to wait for the data that is needed next.</figcaption>
+</figure>
+</section>
+
+<section id="triton">
+<h2>Where Triton and the FLA kernels sit</h2>
+<div class="prose">
+<p>The kernels above are written one level at a time: you decide which thread owns which element, you declare shared memory, you choose the register tile, you transpose by hand, you pipeline by hand. Triton flips the contract. You write a program at the <strong>block tile</strong> level (roughly kernel 3's viewpoint: one program owns a BM x BN tile and loops over K), and the compiler fills in kernels 2, 4 to 8, 10 and 11 from a handful of knobs. The flash-linear-attention library (fla-org/flash-linear-attention, the kernels behind the fla-hub models) is written entirely in Triton, so understanding what Triton takes off your hands is also understanding what FLA can and cannot control.</p>
+<h4>Vocabulary translation</h4>
+<div class="kv">
+  <div>program</div><div>a Triton kernel instance, launched over a grid exactly like a CUDA block; <code>tl.program_id(axis)</code> is <code>blockIdx</code></div>
+  <div>num_warps</div><div>threads per program, in warps (default 4, so 128 threads); there is no <code>threadIdx</code> anywhere in Triton source</div>
+  <div>tl.constexpr</div><div>compile-time constants such as BT, BK, BV: the template parameters of kernels 4 to 10</div>
+  <div>tl.load / tl.store</div><div>a whole tile of pointers at once; the compiler decides which lane loads which element (coalescing) and whether to vectorise</div>
+  <div>tl.dot(a, b, acc)</div><div>a block-tile matmul: operands are staged into shared memory, accumulated in registers, executed on tensor cores where the dtype allows</div>
+  <div>num_stages</div><div>depth of the software pipeline for the K loop; 2 is double buffering, 3 or 4 is deeper</div>
+  <div>@triton.autotune</div><div>kernel 9 as a decorator: a list of configs (block sizes, num_warps, num_stages) benchmarked once per value of the key arguments and cached</div>
+  <div>@triton.heuristics</div><div>constexpr flags derived from the arguments at launch (is this a variable-length batch, is there an initial state), so each variant is compiled separately with dead branches removed</div>
+</div>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="tritonmap"></div>
+  <figcaption>Every kernel in the worklog, and what does the same job in Triton. Hover a row. Green rows are handled by the compiler from a knob or automatically; amber rows are still your decision in Triton source. The split is the whole point: Triton keeps the decisions that change the algorithm (tile shapes, what to fuse, what to materialise) and automates the ones that only change the machine code.</figcaption>
+</figure>
+<div class="prose">
+<h4>What you still own in Triton</h4>
+<ul>
+  <li>The grid decomposition: which program computes which tile, and in which order. This is kernel 1's decision and it still determines L2 locality and load balance.</li>
+  <li>Block tile sizes and the number of warps. Too large a tile per warp and the compiler spills accumulators to local memory, which shows up as <code>LDL</code> and <code>STL</code> instructions and a cliff in throughput. That is kernel 9's register budget, now enforced by the compiler instead of the occupancy calculator.</li>
+  <li>Dtypes at each boundary: FLA loads bf16, accumulates in fp32, and casts back before the next <code>tl.dot</code>. With fp32 inputs Triton uses TF32 on tensor cores unless told otherwise.</li>
+  <li>Fusion and materialisation: which intermediate tiles go back to global memory and which stay in registers. The kernels above never had this choice because a GEMM has no intermediates; a linear attention chunk kernel has several.</li>
+  <li>Masks for ragged edges (the tile quantisation problem from the primer) and variable-length batches.</li>
+</ul>
+<h4>What FLA builds on top of this</h4>
+<p>A causal linear attention layer with a decay (GLA, gated delta rule, KDA and their relatives) can be written as a recurrence over tokens with a state matrix S of size K x V per head. Computing it token by token is sequential and slow; computing it as one T x T attention matrix is quadratic. FLA's chunk kernels take the middle path: split the sequence into chunks of BT tokens (typically 64), handle everything <em>inside</em> a chunk as a small dense attention (a BT x BT matrix, causally masked), and pass everything <em>between</em> chunks through S.</p>
+</div>
+<figure class="fig">
+  <div class="canvas" data-fig="fla"></div>
+  <figcaption>Anatomy of an FLA chunk forward pass, simplified (gates and decays omitted). Two Triton kernels: the state pass walks the chunks in order and materialises S after each chunk; the output pass is then embarrassingly parallel over chunks. Every box marked with a dot is a block-tile matmul, the object this whole page is about, but with K equal to the chunk length or the head dimension rather than 4092.</figcaption>
+</figure>
+<div class="prose">
+<p>Read the grid axes on that figure against the primer. <code>program_id(2)</code> runs over batch x heads: the outermost independent dimension, so it maps to different SMs. <code>program_id(1)</code> runs over chunks in the output kernel, or over tiles of the state in the state kernel. <code>program_id(0)</code> runs over tiles of the head dimension (BK or BV), which is what keeps the register tile of one program small enough. Each program is still a block of <code>num_warps x 32</code> threads; the warp and thread tiling inside a <code>tl.dot</code> is chosen by the compiler.</p>
+<h4>Why FLA sits somewhere else on the roofline</h4>
+<ul>
+  <li>The matmuls are small. With BT = 64 and head dimension 128, each <code>tl.dot</code> is a 64 x 64 x 128 or 64 x 128 x 64 product: about 1 MFLOP, versus 137 GFLOP for the article's GEMM. Block-level arithmetic intensity is bounded by the tile, so these kernels sit far to the left of the ridge point and are bound by memory traffic and latency, not FMA throughput.</li>
+  <li>The state pass is a scan. One program advances S through all T / BT chunks in order, so parallelism comes from batch x heads x state tiles, not from the sequence. For a small batch at long context this is the part that leaves SMs idle, the same shape of problem as cuBLAS's split-K case.</li>
+  <li>S gets materialised. Writing the per-chunk state to global memory (T / BT x K x V floats per head) so the output kernel can read it back is exactly the kind of traffic kernels 3 to 6 spent all their effort avoiding. Fusing the two passes trades that traffic for a longer serial chain; FLA offers both fused and chunked paths for a reason.</li>
+  <li>Delta-rule variants add a triangular solve inside each chunk (the <code>solve_tril</code> kernels), which is why those kernels carry a sub-chunk size BC and autotune over it separately.</li>
+</ul>
+<p>So the levers that matter for FLA are the ones Triton leaves in your hands: chunk size, which tensors are materialised, how the grid is cut so that batch x heads x tiles fills the GPU, bf16 operands with fp32 accumulation, and the autotune space over num_warps and num_stages. The thread-level work the article spends kernels 2 to 8 on is done by the compiler, and done about as well as a careful hand-written kernel for these tile shapes. Serving stacks such as vLLM vendor FLA's Triton ops for their gated delta rule models, so the same trade-offs carry over to inference.</p>
+<div class="callout note"><strong>One-line summary.</strong> The article climbs the hierarchy from thread to warp to block. Triton starts you at the block and hides the two levels below it. FLA stacks a fourth level, the chunk, on top of the block, and its performance problems live there.</div>
+</div>
+</section>
+
+<section id="cheat">
+<h2>Cheat sheet</h2>
+<div class="prose">
+<table>
+<thead><tr><th>Kernel</th><th>Change</th><th>Tile (BM, BN, BK, TM, TN)</th><th class="num">GMEM loads / output</th><th class="num">SMEM loads / output</th><th class="num">GFLOP/s</th><th class="num">of cuBLAS</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>one thread per output, strided warp reads of A</td><td>32, 32, K, 1, 1</td><td class="num">2K</td><td class="num">0</td><td class="num">309</td><td class="num">1.3%</td></tr>
+<tr><td>2</td><td>consecutive lanes read consecutive columns</td><td>32, 32, K, 1, 1</td><td class="num">2K (coalesced)</td><td class="num">0</td><td class="num">1987</td><td class="num">8.5%</td></tr>
+<tr><td>3</td><td>block caches chunks of A and B in SMEM</td><td>32, 32, 32, 1, 1</td><td class="num">K/16</td><td class="num">2K</td><td class="num">2980</td><td class="num">12.8%</td></tr>
+<tr><td>4</td><td>thread owns a column of 8 outputs</td><td>64, 64, 8, 8, 1</td><td class="num">K/32</td><td class="num">9K/8</td><td class="num">8475</td><td class="num">36.5%</td></tr>
+<tr><td>5</td><td>thread owns an 8 x 8 square, outer product in registers</td><td>128, 128, 8, 8, 8</td><td class="num">K/64</td><td class="num">K/4</td><td class="num">15972</td><td class="num">68.7%</td></tr>
+<tr><td>6</td><td>As transposed for LDS.128; float4 GMEM loads</td><td>128, 128, 8, 8, 8</td><td class="num">K/64 (128-bit)</td><td class="num">K/4 (128-bit)</td><td class="num">18237</td><td class="num">78.4%</td></tr>
+<tr><td>9</td><td>parameters searched by benchmark</td><td>128, 128, 16, 8, 8</td><td class="num">K/64</td><td class="num">K/4</td><td class="num">19721</td><td class="num">84.8%</td></tr>
+<tr><td>10</td><td>warp tile level between block and thread</td><td>+ WM, WN, WMITER, WNITER</td><td class="num">K/64</td><td class="num">below K/4</td><td class="num">21779</td><td class="num">93.7%</td></tr>
+<tr><td>0</td><td>cuBLAS, shape-dependent dispatch</td><td>varies</td><td class="num"></td><td class="num"></td><td class="num">23250</td><td class="num">100%</td></tr>
+</tbody>
+</table>
+<p>Loads per output are counted for the full K loop, per thread, divided by the number of outputs the thread produces. For kernel 10 the shared loads per output depend on WMITER and WNITER: per k a thread loads (WMITER x TM + WNITER x TN) values for WMITER x WNITER x TM x TN FMAs.</p>
+<h4>The five rules the worklog teaches</h4>
+<ul>
+  <li>Make the 32 lanes of a warp touch 32 consecutive, aligned words. Everything else about global memory is secondary.</li>
+  <li>Move data up the hierarchy once, then reuse it as many times as possible before moving more. Block tiles reuse through shared memory; thread tiles reuse through registers.</li>
+  <li>Count instructions, not just bytes. Two shared loads per FMA is a bottleneck even when the bytes are on-chip.</li>
+  <li>Give the compiler the information it cannot infer: compile-time loop bounds so it can unroll, and aligned vector types so it can emit 128-bit accesses.</li>
+  <li>Organise around warps. They are the unit of scheduling, of coalescing, of bank conflicts and of tensor core instructions.</li>
+</ul>
+</div>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const COL = {A:'#2563EB', B:'#D98E1F', C:'#1F9D6B', hot:'#C8226A', smem:'#7C4DFF', gmem:'#6B7C8C', reg:'#0F8B8D', ink:'#16202B', muted:'#5B6B7B', rule:'#D9E0E8', soft:'#E9EEF3',
+  Al:'#DBE7FD', Bl:'#FBEBD0', Cl:'#D4F0E3', hotl:'#F9DCE9', smeml:'#E7DEFF', regl:'#D3EFEF', gmeml:'#E1E6EA', warn:'#B4261E'};
+const WARP_COLORS = ['#2563EB','#D98E1F','#1F9D6B','#C8226A','#7C4DFF','#0F8B8D','#B4261E','#5B6B7B','#9CB3FF','#F0C47A','#7ED6B0','#F09CC2','#C2B0FF','#7FD0D2','#E58C86','#AAB7C2'];
+
+function el(tag, attrs, parent){
+  const e = document.createElementNS(NS, tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function txt(parent, x, y, s, attrs){
+  const t = el('text', Object.assign({x, y, 'font-size': 12, fill: COL.ink}, attrs || {}), parent);
+  t.textContent = s; return t;
+}
+function svgIn(container, w, h){
+  container.innerHTML = '';
+  return el('svg', {viewBox: `0 0 ${w} ${h}`, width: '100%', role: 'img'}, container);
+}
+function rect(parent, x, y, w, h, attrs){ return el('rect', Object.assign({x, y, width: w, height: h}, attrs || {}), parent); }
+function line(parent, x1, y1, x2, y2, attrs){ return el('line', Object.assign({x1, y1, x2, y2, stroke: COL.muted, 'stroke-width': 1}, attrs || {}), parent); }
+function grid(parent, o){
+  const g = el('g', {transform: `translate(${o.x},${o.y})`}, parent);
+  const cells = [];
+  for (let r = 0; r < o.rows; r++){
+    const row = [];
+    for (let c = 0; c < o.cols; c++){
+      const a = {x: c * o.cell, y: r * o.cell, width: o.cell, height: o.cell, fill: o.fill || '#fff', stroke: o.stroke || COL.rule, 'stroke-width': o.sw || 1};
+      if (o.attr) Object.assign(a, o.attr(r, c));
+      row.push(el('rect', a, g));
+    }
+    cells.push(row);
+  }
+  if (o.label) txt(g, 0, -6, o.label, {'font-size': 12, fill: COL.muted, 'font-weight': 600});
+  return {g, cells};
+}
+function bracket(parent, x, y, w, label, color){
+  const g = el('g', {}, parent);
+  line(g, x, y, x + w, y, {stroke: color, 'stroke-width': 1.5});
+  line(g, x, y, x, y + 5, {stroke: color, 'stroke-width': 1.5});
+  line(g, x + w, y, x + w, y + 5, {stroke: color, 'stroke-width': 1.5});
+  if (label) txt(g, x + w / 2, y - 5, label, {'text-anchor': 'middle', 'font-size': 11, fill: color});
+  return g;
+}
+function fmt(n){ return n.toLocaleString('en-US'); }
+
+const FIG = {};
+
+/* ---------- ladder ---------- */
+FIG.ladder = function(c){
+  const rows = [
+    {k:'1', name:'Naive', g:309, id:'k1'},
+    {k:'2', name:'GMEM coalescing', g:1986.5, id:'k2'},
+    {k:'3', name:'SMEM caching', g:2980.3, id:'k3'},
+    {k:'4', name:'1D blocktiling', g:8474.7, id:'k4'},
+    {k:'5', name:'2D blocktiling', g:15971.7, id:'k5'},
+    {k:'6', name:'Vectorised access', g:18237.3, id:'k6'},
+    {k:'9', name:'Autotuning', g:19721.0, id:'k9'},
+    {k:'10', name:'Warptiling', g:21779.3, id:'k10'},
+    {k:'0', name:'cuBLAS', g:23249.6, id:'k0'}
+  ];
+  const W = 940, rowH = 36, left = 200, right = 130, H = rows.length * rowH + 40;
+  const s = svgIn(c, W, H);
+  const max = 23249.6, barW = W - left - right;
+  rows.forEach((r, i) => {
+    const y = 10 + i * rowH;
+    const g = el('g', {style: 'cursor:pointer', tabindex: 0, role: 'link'}, s);
+    const go = () => { const t = document.getElementById(r.id); if (t) t.scrollIntoView({behavior: 'smooth', block: 'start'}); };
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    rect(g, 0, y, W, rowH - 6, {fill: 'transparent'});
+    txt(g, 28, y + 20, r.k, {'font-size': 13, 'font-family': 'IBM Plex Mono, monospace', fill: COL.muted, 'text-anchor': 'end'});
+    txt(g, 40, y + 20, r.name, {'font-size': 14, 'font-weight': 500});
+    const w = Math.max(3, barW * r.g / max);
+    const isRef = r.id === 'k0';
+    rect(g, left, y + 6, barW, rowH - 18, {fill: '#F3F6F9'});
+    rect(g, left, y + 6, w, rowH - 18, {fill: isRef ? COL.ink : COL.C, rx: 2});
+    txt(g, left + barW + 10, y + 20, `${fmt(Math.round(r.g))} GFLOP/s`, {'font-size': 12, 'font-family': 'IBM Plex Mono, monospace', fill: COL.ink});
+    const pct = (100 * r.g / max).toFixed(1) + '%';
+    txt(g, left + w - 6, y + 20, pct, {'font-size': 11, fill: w > 60 ? '#fff' : COL.ink, 'text-anchor': w > 60 ? 'end' : 'start', x: w > 60 ? left + w - 6 : left + w + 6});
+  });
+  txt(s, left, H - 6, 'bar length is proportional to GFLOP/s; click a row to jump to that kernel', {'font-size': 11, fill: COL.muted});
+};
+
+/* ---------- thread hierarchy ---------- */
+FIG.hierarchy = function(c){
+  const bxSel = $('#h-bx'), bySel = $('#h-by'), mIn = $('#h-m'), mv = $('#h-mv'), ro = $('#h-readout');
+  function draw(){
+    let bx = +bxSel.value, by = +bySel.value;
+    if (bx * by > 1024){ by = Math.max(1, 1024 / bx); bySel.value = by; }
+    const M = +mIn.value; mv.textContent = M;
+    const maxW = 420, maxH = 260;
+    const cell = Math.max(3, Math.min(Math.floor(maxW / bx), Math.floor(maxH / by), 14));
+    const gx = 20, gy = 40;
+    const W = 940, H = Math.max(330, gy + by * cell + 34 + 48);
+    const s = svgIn(c, W, H);
+    txt(s, gx, 24, `one block: blockDim = (${bx}, ${by}), ${bx * by} threads, ${Math.ceil(bx * by / 32)} warps`, {'font-size': 13, 'font-weight': 600});
+    grid(s, {x: gx, y: gy, rows: by, cols: bx, cell, stroke: '#fff', sw: 0.5, attr: (r, cc) => {
+      const lin = cc + bx * r; const w = Math.floor(lin / 32);
+      return {fill: WARP_COLORS[w % WARP_COLORS.length], 'data-lin': lin};
+    }});
+    // axes labels
+    txt(s, gx + bx * cell / 2, gy + by * cell + 16, 'threadIdx.x (fastest, 0 to ' + (bx - 1) + ')', {'text-anchor': 'middle', 'font-size': 11, fill: COL.muted});
+    txt(s, gx - 6, gy + by * cell / 2, 'threadIdx.y', {'text-anchor': 'end', 'font-size': 11, fill: COL.muted, transform: `rotate(-90 ${gx - 6} ${gy + by * cell / 2})`});
+    // warp legend
+    const nW = Math.ceil(bx * by / 32);
+    const lgy = gy + by * cell + 34;
+    let lx = gx;
+    for (let w = 0; w < Math.min(nW, 8); w++){
+      rect(s, lx, lgy, 10, 10, {fill: WARP_COLORS[w % WARP_COLORS.length]});
+      txt(s, lx + 14, lgy + 9, `warp ${w}`, {'font-size': 11, fill: COL.muted});
+      lx += 64;
+    }
+    if (nW > 8) txt(s, lx, lgy + 9, `... ${nW} warps`, {'font-size': 11, fill: COL.muted});
+    if (bx < 32) txt(s, gx, lgy + 28, `blockDim.x = ${bx}: one warp spans ${32 / bx} rows of the block (linear id wraps).`, {'font-size': 11, fill: COL.hot});
+    // right: grid over matrix
+    const ox = 520, oy = 40, sc = 1.6;
+    const nb = Math.ceil(M / 32);
+    txt(s, ox, 24, `grid over C (${M} x ${M}): gridDim = (${nb}, ${nb}), tile 32 x 32`, {'font-size': 13, 'font-weight': 600});
+    for (let i = 0; i < nb; i++) for (let j = 0; j < nb; j++){
+      const full = (i + 1) * 32 <= M && (j + 1) * 32 <= M;
+      rect(s, ox + j * 32 * sc, oy + i * 32 * sc, 32 * sc, 32 * sc, {fill: full ? COL.Cl : '#FBE9E7', stroke: '#fff'});
+      txt(s, ox + j * 32 * sc + 4, oy + i * 32 * sc + 14, `(${i},${j})`, {'font-size': 10, fill: COL.muted});
+    }
+    rect(s, ox, oy, M * sc, M * sc, {fill: 'none', stroke: COL.ink, 'stroke-width': 1.5});
+    txt(s, ox + M * sc + 8, oy + 12, 'matrix edge', {'font-size': 11});
+    txt(s, ox, oy + nb * 32 * sc + 18, 'green blocks are fully inside C; red blocks launch 1024 threads but only some do work', {'font-size': 11, fill: COL.muted});
+    txt(s, ox, oy + nb * 32 * sc + 34, 'labelled (blockIdx.x, blockIdx.y); the kernels below use x for the row tile and y for the column tile', {'font-size': 11, fill: COL.muted});
+    const total = nb * nb * 1024, useful = M * M;
+    ro.innerHTML = `linearId = threadIdx.x + ${bx} * threadIdx.y &nbsp; warpId = linearId / 32 &nbsp; laneId = linearId % 32<br>` +
+      `blocks launched: ${nb * nb} &nbsp; threads launched: ${fmt(total)} &nbsp; outputs to compute: ${fmt(useful)} &nbsp; wasted threads: <b>${(100 * (1 - useful / total)).toFixed(1)}%</b> (tile quantisation)`;
+  }
+  [bxSel, bySel, mIn].forEach(i => i.addEventListener('input', draw));
+  draw();
+};
+
+/* ---------- SM ---------- */
+FIG.sm = function(c){
+  const W = 940, H = 300;
+  const s = svgIn(c, W, H);
+  rect(s, 20, 20, 620, 260, {fill: '#F7F9FB', stroke: COL.ink, rx: 6});
+  txt(s, 32, 42, 'one streaming multiprocessor (SM), 84 per A6000', {'font-size': 13, 'font-weight': 600});
+  for (let i = 0; i < 4; i++){
+    const x = 32 + i * 150;
+    rect(s, x, 56, 140, 110, {fill: '#fff', stroke: COL.rule, rx: 4});
+    txt(s, x + 8, 74, `warp scheduler ${i}`, {'font-size': 12, 'font-weight': 500});
+    txt(s, x + 8, 90, 'issues 1 warp instr / cycle', {'font-size': 10, fill: COL.muted});
+    for (let w = 0; w < 6; w++){
+      const wx = x + 8 + (w % 3) * 42, wy = 100 + Math.floor(w / 3) * 18;
+      rect(s, wx, wy, 38, 14, {fill: w < 4 ? WARP_COLORS[(i * 4 + w) % 8] : COL.soft, rx: 2});
+      txt(s, wx + 19, wy + 11, w < 4 ? 'warp' : '', {'font-size': 9, fill: '#fff', 'text-anchor': 'middle'});
+    }
+    txt(s, x + 8, 156, '32 fp32 lanes (2 x 16)', {'font-size': 10, fill: COL.muted});
+  }
+  rect(s, 32, 178, 290, 40, {fill: COL.regl, stroke: COL.reg, rx: 4});
+  txt(s, 42, 196, 'register file', {'font-size': 12, 'font-weight': 500});
+  txt(s, 42, 210, '65536 x 32-bit = 256 KB, private per thread', {'font-size': 10, fill: COL.muted});
+  rect(s, 332, 178, 290, 40, {fill: COL.smeml, stroke: COL.smem, rx: 4});
+  txt(s, 342, 196, 'L1 cache + shared memory', {'font-size': 12, 'font-weight': 500});
+  txt(s, 342, 210, '128 KB pool, up to 100 KB as SMEM, shared by resident blocks', {'font-size': 10, fill: COL.muted});
+  txt(s, 32, 246, 'resident blocks: as many as fit in registers, shared memory and 48 warps', {'font-size': 11, fill: COL.muted});
+  txt(s, 32, 262, 'a warp that stalls on memory costs nothing: the scheduler issues from another warp', {'font-size': 11, fill: COL.muted});
+  // L2 and GMEM
+  rect(s, 680, 60, 240, 60, {fill: COL.gmeml, stroke: COL.gmem, rx: 4});
+  txt(s, 692, 82, 'L2 cache, 6 MB', {'font-size': 12, 'font-weight': 500});
+  txt(s, 692, 98, 'shared by all 84 SMs', {'font-size': 10, fill: COL.muted});
+  rect(s, 680, 160, 240, 80, {fill: COL.gmeml, stroke: COL.gmem, rx: 4});
+  txt(s, 692, 182, 'global memory (GMEM)', {'font-size': 12, 'font-weight': 500});
+  txt(s, 692, 198, '48 GB GDDR6, about 768 GB/s', {'font-size': 10, fill: COL.muted});
+  txt(s, 692, 214, 'latency: hundreds of cycles', {'font-size': 10, fill: COL.muted});
+  line(s, 640, 90, 680, 90, {'stroke-width': 2}); line(s, 800, 120, 800, 160, {'stroke-width': 2});
+};
+
+/* ---------- memory hierarchy ---------- */
+FIG.mem = function(c){
+  const W = 940, H = 250;
+  const s = svgIn(c, W, H);
+  const levels = [
+    {n: 'registers', where: 'per thread, in the SM', cap: '256 KB per SM (255 regs / thread max)', bw: 'highest', lat: 'about 1 cycle', col: COL.reg, light: COL.regl, w: 260},
+    {n: 'shared memory / L1', where: 'per SM, programmer managed (SMEM) or automatic (L1)', cap: '128 KB per SM', bw: 'roughly 16x GMEM', lat: 'about 20 to 30 cycles', col: COL.smem, light: COL.smeml, w: 420},
+    {n: 'L2 cache', where: 'per GPU, automatic', cap: '6 MB', bw: 'a few TB/s', lat: 'about 200 cycles', col: COL.gmem, light: COL.gmeml, w: 600},
+    {n: 'global memory', where: 'per GPU, DRAM', cap: '48 GB', bw: '768 GB/s', lat: 'about 400 to 600 cycles', col: COL.ink, light: '#E5E9EE', w: 820}
+  ];
+  levels.forEach((L, i) => {
+    const y = 20 + i * 54, x = (W - L.w) / 2;
+    rect(s, x, y, L.w, 44, {fill: L.light, stroke: L.col, rx: 4});
+    txt(s, x + 12, y + 18, L.n, {'font-size': 13, 'font-weight': 600});
+    txt(s, x + 12, y + 34, L.where, {'font-size': 10, fill: COL.muted});
+    txt(s, x + L.w - 12, y + 18, `${L.cap}`, {'font-size': 11, 'text-anchor': 'end'});
+    txt(s, x + L.w - 12, y + 34, `bandwidth ${L.bw}, latency ${L.lat}`, {'font-size': 10, fill: COL.muted, 'text-anchor': 'end'});
+  });
+  txt(s, 20, H - 8, 'the numbers are approximate; the ordering is what matters', {'font-size': 11, fill: COL.muted});
+};
+
+/* ---------- row major ---------- */
+FIG.rowmajor = function(c){
+  const R = 4, Cn = 6, cell = 44;
+  const W = 940, H = 210;
+  const s = svgIn(c, W, H);
+  const m = grid(s, {x: 30, y: 30, rows: R, cols: Cn, cell, label: 'A, 4 rows x 6 columns, element (row, col)'});
+  const flat = grid(s, {x: 340, y: 120, rows: 1, cols: R * Cn, cell: 24, label: 'flat array A[i], i = row * 6 + col'});
+  const info = txt(s, 340, 60, 'hover a cell', {'font-size': 13});
+  const info2 = txt(s, 340, 80, '', {'font-size': 12, fill: COL.muted});
+  for (let r = 0; r < R; r++) for (let cc = 0; cc < Cn; cc++){
+    const cel = m.cells[r][cc];
+    txt(m.g, cc * cell + cell / 2, r * cell + cell / 2 + 4, `${r},${cc}`, {'text-anchor': 'middle', 'font-size': 11, fill: COL.muted, 'pointer-events': 'none'});
+    cel.setAttribute('fill', r % 2 ? '#F7F9FB' : '#fff');
+    cel.addEventListener('mouseenter', () => {
+      const i = r * Cn + cc;
+      m.cells.flat().forEach(x => x.setAttribute('stroke-width', 1));
+      flat.cells[0].forEach(x => x.setAttribute('fill', '#fff'));
+      cel.setAttribute('stroke-width', 3);
+      flat.cells[0][i].setAttribute('fill', COL.hotl);
+      // same row shading
+      for (let k = 0; k < Cn; k++) flat.cells[0][r * Cn + k].setAttribute('fill', k === cc ? COL.hotl : COL.Al);
+      info.textContent = `A[${r} * 6 + ${cc}] = A[${i}], byte offset ${i * 4}`;
+      info2.textContent = `next column is A[${i + 1}] (+4 bytes); next row is A[${i + Cn}] (+${Cn * 4} bytes)`;
+    });
+  }
+  for (let i = 0; i < R * Cn; i++) txt(flat.g, i * 24 + 12, 16, i, {'text-anchor': 'middle', 'font-size': 9, fill: COL.muted, 'pointer-events': 'none'});
+  for (let r = 0; r < R; r++){ rect(flat.g, r * Cn * 24, 30, Cn * 24, 4, {fill: r % 2 ? COL.muted : COL.ink}); txt(flat.g, r * Cn * 24 + 2, 46, `row ${r}`, {'font-size': 10, fill: COL.muted}); }
+};
+
+/* ---------- roofline ---------- */
+FIG.roofline = function(c){
+  const W = 940, H = 340, L = 70, Bm = 44, T = 20, Rr = 220;
+  const s = svgIn(c, W, H);
+  const pw = W - L - Rr, ph = H - T - Bm;
+  const xmin = 0.5, xmax = 2000, ymin = 100, ymax = 60000;
+  const X = v => L + pw * (Math.log10(v) - Math.log10(xmin)) / (Math.log10(xmax) - Math.log10(xmin));
+  const Y = v => T + ph - ph * (Math.log10(v) - Math.log10(ymin)) / (Math.log10(ymax) - Math.log10(ymin));
+  rect(s, L, T, pw, ph, {fill: '#FBFCFD', stroke: COL.rule});
+  [1, 10, 100, 1000].forEach(v => { line(s, X(v), T, X(v), T + ph, {stroke: COL.rule}); txt(s, X(v), T + ph + 16, v, {'text-anchor': 'middle', 'font-size': 11, fill: COL.muted}); });
+  [100, 1000, 10000].forEach(v => { line(s, L, Y(v), L + pw, Y(v), {stroke: COL.rule}); txt(s, L - 6, Y(v) + 4, fmt(v), {'text-anchor': 'end', 'font-size': 11, fill: COL.muted}); });
+  txt(s, L + pw / 2, H - 6, 'arithmetic intensity, FLOP per byte of global memory traffic (log)', {'text-anchor': 'middle', 'font-size': 11, fill: COL.muted});
+  txt(s, 14, T + ph / 2, 'GFLOP/s (log)', {'font-size': 11, fill: COL.muted, transform: `rotate(-90 14 ${T + ph / 2})`, 'text-anchor': 'middle'});
+  const peak = 30000, bw = 768, ridge = peak / bw;
+  const p = el('path', {d: `M ${X(xmin)} ${Y(xmin * bw)} L ${X(ridge)} ${Y(peak)} L ${X(xmax)} ${Y(peak)}`, fill: 'none', stroke: COL.ink, 'stroke-width': 2}, s);
+  txt(s, X(3), Y(3 * bw) - 8, 'memory roof: 768 GB/s x AI', {'font-size': 11, transform: `rotate(-29 ${X(3)} ${Y(3 * bw) - 8})`});
+  txt(s, X(300), Y(peak) - 8, 'compute roof: about 30 TFLOP/s fp32', {'font-size': 11, 'text-anchor': 'middle'});
+  line(s, X(ridge), Y(peak), X(ridge), T + ph, {stroke: COL.muted, 'stroke-dasharray': '3 3'});
+  txt(s, X(ridge) + 4, T + ph - 6, `ridge at ${ridge.toFixed(0)} FLOP/B`, {'font-size': 10, fill: COL.muted});
+  const ks = [['1', 309], ['2', 1986], ['3', 2980], ['4', 8475], ['5', 15972], ['6', 18237], ['9', 19721], ['10', 21779], ['cuBLAS', 23250]];
+  const sorted = ks.slice().sort((a, b) => b[1] - a[1]);
+  let prevY = -Infinity;
+  sorted.forEach(([k, g]) => {
+    const y0 = Y(g);
+    const ly = Math.max(y0, prevY + 13); prevY = ly;
+    line(s, X(ridge), y0, L + pw, y0, {stroke: k === 'cuBLAS' ? COL.ink : COL.C, 'stroke-dasharray': '2 3'});
+    line(s, L + pw, y0, L + pw + 14, ly, {stroke: COL.rule});
+    txt(s, L + pw + 18, ly + 4, `${k === 'cuBLAS' ? 'cuBLAS' : 'kernel ' + k}: ${fmt(g)} GFLOP/s`, {'font-size': 10, fill: k === 'cuBLAS' ? COL.ink : COL.C});
+  });
+  // measured points
+  [['1', 309 / 15, 309], ['2', 1986 / 110, 1986], ['cuBLAS', 245, 23250]].forEach(([k, ai, g]) => {
+    el('circle', {cx: X(ai), cy: Y(g), r: 5, fill: k === 'cuBLAS' ? COL.ink : COL.hot}, s);
+    txt(s, X(ai) + 8, Y(g) + 4, k === 'cuBLAS' ? 'cuBLAS, about 245 FLOP/B' : `kernel ${k}`, {'font-size': 11});
+  });
+};
+
+/* ---------- gemm ---------- */
+FIG.gemm = function(c){
+  const W = 940, H = 290;
+  const s = svgIn(c, W, H);
+  const cell = 22, M = 8, N = 10, K = 6, i = 3, j = 6;
+  const A = grid(s, {x: 40, y: 60, rows: M, cols: K, cell, label: 'A  (M x K)', attr: (r) => ({fill: r === i ? COL.Al : '#fff'})});
+  const B = grid(s, {x: 240, y: 60, rows: K, cols: N, cell, label: 'B  (K x N)', attr: (r, cc) => ({fill: cc === j ? COL.Bl : '#fff'})});
+  const Cg = grid(s, {x: 540, y: 60, rows: M, cols: N, cell, label: 'C  (M x N)', attr: (r, cc) => ({fill: r === i && cc === j ? COL.hotl : (r === i ? '#EEF4E9' : '#fff')})});
+  txt(s, 40, 60 + M * cell + 18, `row i of A`, {'font-size': 11, fill: COL.A});
+  txt(s, 240, 60 + K * cell + 18, `column j of B`, {'font-size': 11, fill: COL.B});
+  txt(s, 540, 60 + M * cell + 18, `C[i][j] = sum over k of A[i][k] * B[k][j]     (K multiply-adds)`, {'font-size': 11, fill: COL.hot});
+  txt(s, 540, 60 + M * cell + 36, `the same row i of A is needed by every one of the N outputs in row i of C`, {'font-size': 11, fill: COL.muted});
+  txt(s, 40, 40, 'dimensions: M rows of A and C, N columns of B and C, K is the shared inner dimension', {'font-size': 12, fill: COL.muted});
+};
+
+/* ---------- naive ---------- */
+FIG.naive = function(c){
+  const W = 940, H = 300, n = 8, cell = 24;
+  const s = svgIn(c, W, H);
+  const A = grid(s, {x: 40, y: 50, rows: n, cols: n, cell, label: 'A'});
+  const B = grid(s, {x: 300, y: 50, rows: n, cols: n, cell, label: 'B'});
+  const Cg = grid(s, {x: 560, y: 50, rows: n, cols: n, cell, label: 'C, 2 x 2 blocks of 4 x 4 threads'});
+  // block borders on C
+  for (let b = 0; b <= 2; b++){ line(Cg.g, b * 4 * cell, 0, b * 4 * cell, n * cell, {stroke: COL.ink, 'stroke-width': 2}); line(Cg.g, 0, b * 4 * cell, n * cell, b * 4 * cell, {stroke: COL.ink, 'stroke-width': 2}); }
+  const info = txt(s, 40, 268, 'hover an element of C', {'font-size': 13});
+  const info2 = txt(s, 40, 288, '', {'font-size': 12, fill: COL.muted});
+  for (let r = 0; r < n; r++) for (let cc = 0; cc < n; cc++){
+    const cel = Cg.cells[r][cc];
+    cel.addEventListener('mouseenter', () => {
+      A.cells.flat().forEach(x => x.setAttribute('fill', '#fff'));
+      B.cells.flat().forEach(x => x.setAttribute('fill', '#fff'));
+      Cg.cells.flat().forEach(x => x.setAttribute('fill', '#fff'));
+      for (let k = 0; k < n; k++){ A.cells[r][k].setAttribute('fill', COL.Al); B.cells[k][cc].setAttribute('fill', COL.Bl); }
+      cel.setAttribute('fill', COL.hotl);
+      info.textContent = `C[${r}][${cc}] is owned by block (${Math.floor(r / 4)}, ${Math.floor(cc / 4)}), thread (threadIdx.x = ${r % 4}, threadIdx.y = ${cc % 4})`;
+      info2.textContent = `it reads A[${r}][0..${n - 1}] (row, stride 1 in memory) and B[0..${n - 1}][${cc}] (column, stride N in memory), ${n} multiply-adds`;
+    });
+  }
+};
+
+/* ---------- coalescing ---------- */
+FIG.coalesce = function(c){
+  let mode = 'naive';
+  const seg = $('#co-seg'), note = $('#co-note');
+  function draw(){
+    const W = 940, H = 470;
+    const s = svgIn(c, W, H);
+    const K = 4092, N = 4092;
+    const cell = 12;
+    // A: 32 rows x 8 cols shown
+    const A = grid(s, {x: 40, y: 34, rows: 32, cols: 8, cell, label: 'A (rows 0..31, k = 0..7 shown)', attr: (r, cc) => {
+      const hit = mode === 'naive' ? (cc === 0) : (r === 0 && cc === 0);
+      return {fill: hit ? COL.Al : '#fff'};
+    }});
+    txt(s, 40, 34 + 32 * cell + 14, 'k = 0', {'font-size': 10, fill: COL.muted});
+    // B: 8 rows x 32 cols
+    const B = grid(s, {x: 200, y: 34, rows: 8, cols: 32, cell, label: 'B (k = 0..7, cols 0..31 shown)', attr: (r, cc) => {
+      const hit = mode === 'naive' ? (r === 0 && cc === 0) : (r === 0);
+      return {fill: hit ? COL.Bl : '#fff'};
+    }});
+    // lanes
+    const ly = 160;
+    txt(s, 200, ly - 8, 'warp: 32 lanes, one load instruction, iteration k = 0', {'font-size': 12, 'font-weight': 600});
+    for (let l = 0; l < 32; l++){
+      rect(s, 200 + l * 22, ly, 20, 18, {fill: WARP_COLORS[0], rx: 2});
+      txt(s, 210 + l * 22, ly + 13, l, {'font-size': 9, fill: '#fff', 'text-anchor': 'middle'});
+      const aEl = mode === 'naive' ? `A[${l}][0]` : `A[0][0]`;
+      const bEl = mode === 'naive' ? `B[0][0]` : `B[0][${l}]`;
+      if (l < 4 || l === 31){
+        txt(s, 210 + l * 22, ly + 32, aEl, {'font-size': 8, 'text-anchor': 'middle', fill: COL.A});
+        txt(s, 210 + l * 22, ly + 44, bEl, {'font-size': 8, 'text-anchor': 'middle', fill: COL.B});
+      } else if (l === 5){ txt(s, 210 + l * 22, ly + 38, '...', {'font-size': 10, 'text-anchor': 'middle', fill: COL.muted}); }
+    }
+    // memory strips
+    const my = 230;
+    txt(s, 200, my - 8, 'A in memory: each row is 4092 floats = 511.5 sectors of 32 bytes', {'font-size': 12, 'font-weight': 600});
+    const rowList = mode === 'naive' ? [0, 1, 2, 3, 4, '...', 31] : [0];
+    rowList.forEach((rr, r) => {
+      const y = my + r * 14;
+      if (rr === '...'){ txt(s, 196, y + 9, '...', {'font-size': 10, fill: COL.muted, 'text-anchor': 'end'}); return; }
+      txt(s, 196, y + 9, `row ${rr}`, {'font-size': 9, fill: COL.muted, 'text-anchor': 'end'});
+      for (let sct = 0; sct < 10; sct++){
+        rect(s, 200 + sct * 26, y, 24, 11, {fill: sct === 0 ? COL.A : '#fff', stroke: COL.rule});
+      }
+      txt(s, 200 + 10 * 26 + 4, y + 9, '... 501 more sectors', {'font-size': 9, fill: COL.muted});
+    });
+    const by = my + rowList.length * 14 + 30;
+    txt(s, 200, by - 8, 'B in memory: row k = 0 of B, 4092 floats', {'font-size': 12, 'font-weight': 600});
+    txt(s, 196, by + 9, 'row 0', {'font-size': 9, fill: COL.muted, 'text-anchor': 'end'});
+    for (let sct = 0; sct < 10; sct++){
+      const hit = mode === 'naive' ? sct === 0 : sct < 4;
+      rect(s, 200 + sct * 26, by, 24, 11, {fill: hit ? COL.B : '#fff', stroke: COL.rule});
+    }
+    txt(s, 200 + 10 * 26 + 4, by + 9, '...', {'font-size': 9, fill: COL.muted});
+    bracket(s, 200, by + 16, mode === 'naive' ? 24 : 4 * 26 - 2, mode === 'naive' ? '1 sector, all lanes want the same float (broadcast)' : '4 sectors = 128 bytes, one transaction, 100% used', COL.B);
+    const ty = by + 60;
+    if (mode === 'naive'){
+      txt(s, 200, ty, 'A: 32 lanes, 32 different rows, 32 sectors fetched (1024 bytes) for 128 useful bytes: 12.5% efficiency', {'font-size': 12, fill: COL.warn});
+      txt(s, 200, ty + 18, 'B: 1 sector.   Total: 33 sector requests per warp per k.', {'font-size': 12});
+      note.textContent = 'consecutive lanes have consecutive rows';
+    } else {
+      txt(s, 200, ty, 'A: 1 sector, broadcast to all lanes.   B: 4 sectors, fully used.', {'font-size': 12, fill: COL.C});
+      txt(s, 200, ty + 18, 'Total: 5 sector requests per warp per k, versus 33. Same instructions, same bytes of useful data.', {'font-size': 12});
+      note.textContent = 'consecutive lanes have consecutive columns';
+    }
+  }
+  $$('button', seg).forEach(b => b.addEventListener('click', () => { $$('button', seg).forEach(x => x.classList.remove('on')); b.classList.add('on'); mode = b.dataset.m; draw(); }));
+  draw();
+};
+
+/* ---------- smem stepper ---------- */
+FIG.smem = function(c){
+  let step = 0;
+  const BK = 8, K = 32, n = 8, chunks = K / BK;
+  const note = $('#sm-note');
+  function draw(){
+    const W = 940, H = 480;
+    const s = svgIn(c, W, H);
+    const cl = 10;
+    // A slab: n rows x K cols
+    const A = grid(s, {x: 30, y: 40, rows: n, cols: K, cell: cl, label: 'block\'s slab of A (BM x K)', attr: (r, cc) => {
+      const ch = Math.floor(cc / BK); return {fill: ch === step ? COL.A : ch < step ? COL.Al : '#fff'};
+    }});
+    // B slab: K rows x n cols
+    const B = grid(s, {x: 30, y: 170, rows: K, cols: n, cell: 7, label: 'block\'s slab of B (K x BN)', attr: (r, cc) => {
+      const ch = Math.floor(r / BK); return {fill: ch === step ? COL.B : ch < step ? COL.Bl : '#fff'};
+    }});
+    txt(s, 30, 40 + n * cl + 14, `chunk ${step} of ${chunks}: columns ${step * BK}..${step * BK + BK - 1}`, {'font-size': 11, fill: COL.A});
+    txt(s, 30 + n * 7 + 8, 170 + step * BK * 7 + 14, `rows ${step * BK}..${step * BK + BK - 1}`, {'font-size': 11, fill: COL.B});
+    // SMEM boxes
+    const sx = 410, sy = 60;
+    rect(s, sx - 10, sy - 30, 200, 130, {fill: COL.smeml, stroke: COL.smem, rx: 6});
+    txt(s, sx, sy - 12, 'shared memory of this block', {'font-size': 12, 'font-weight': 600, fill: COL.smem});
+    grid(s, {x: sx, y: sy + 8, rows: n, cols: BK, cell: 9, label: 'As (BM x BK)', attr: () => ({fill: COL.A, stroke: '#fff'})});
+    grid(s, {x: sx + 100, y: sy + 8, rows: BK, cols: n, cell: 9, label: 'Bs (BK x BN)', attr: () => ({fill: COL.B, stroke: '#fff'})});
+    // arrows
+    line(s, 30 + K * cl + 6, 40 + n * cl / 2, sx - 12, sy + 30, {stroke: COL.A});
+    line(s, 30 + n * 7 + 70, 170 + step * BK * 7 + 20, sx - 12, sy + 90, {stroke: COL.B});
+    txt(s, 200, 158, 'GMEM to SMEM copy, 1 float per thread, coalesced', {'font-size': 10, fill: COL.muted});
+    // C tile
+    const cx = 680, cy = 60;
+    const Cg = grid(s, {x: cx, y: cy + 8, rows: n, cols: n, cell: 14, label: 'C tile (BM x BN)', attr: () => ({fill: step === 0 ? '#fff' : `rgba(31,157,107,${0.25 + 0.75 * step / chunks})`})});
+    txt(s, cx, cy + 8 + n * 14 + 14, `each thread: acc += ${BK} products`, {'font-size': 10, fill: COL.muted});
+    txt(s, cx, cy + 8 + n * 14 + 28, `${step} of ${chunks} chunks accumulated`, {'font-size': 10, fill: COL.C});
+    line(s, sx + 190, sy + 40, cx - 6, cy + 60, {stroke: COL.smem});
+    txt(s, sx + 150, sy + 120, '32 reads from SMEM per thread per chunk', {'font-size': 10, fill: COL.smem, 'text-anchor': 'middle'});
+    // timeline
+    const ty = 410;
+    txt(s, 30, ty - 8, 'one chunk, in time:', {'font-size': 12, 'font-weight': 600});
+    const phases = [['all threads copy chunk to SMEM', COL.gmem, 170], ['__syncthreads()', COL.hot, 110], ['each thread: 32 FMAs from SMEM', COL.smem, 220], ['__syncthreads()', COL.hot, 110], ['advance A by BK, B by BK rows', COL.muted, 200]];
+    let px = 30;
+    phases.forEach(([n2, col, w]) => { rect(s, px, ty, w, 26, {fill: col, rx: 3}); txt(s, px + w / 2, ty + 17, n2, {'font-size': 10, fill: '#fff', 'text-anchor': 'middle'}); px += w + 4; });
+    txt(s, 30, ty + 48, 'first barrier: the chunk must be complete before anyone reads it. second barrier: nobody may overwrite the buffer while a slower thread is still reading it.', {'font-size': 11, fill: COL.muted});
+    txt(s, 30, ty + 66, 'shared memory used: 2 x BM x BK x 4 bytes = 8 KB at BM = BK = 32', {'font-size': 11, fill: COL.muted});
+    note.textContent = `chunk ${step + 1} of ${chunks}`;
+  }
+  $('#sm-prev').addEventListener('click', () => { step = (step - 1 + chunks) % chunks; draw(); });
+  $('#sm-next').addEventListener('click', () => { step = (step + 1) % chunks; draw(); });
+  draw();
+};
+
+/* ---------- occupancy ---------- */
+function occupancy(regs, smem, threads){
+  const warpsPerBlock = Math.ceil(threads / 32);
+  const byThreads = Math.floor(1536 / threads);
+  const byWarps = Math.floor(48 / warpsPerBlock);
+  const regsPerWarp = Math.ceil(regs * 32 / 256) * 256;
+  const regsPerBlock = regsPerWarp * warpsPerBlock;
+  const byRegs = Math.floor(65536 / regsPerBlock);
+  const bySmem = Math.floor(102400 / (smem + 1024));
+  const cap = 16;
+  const blocks = Math.max(0, Math.min(byThreads, byWarps, byRegs, bySmem, cap));
+  return {warpsPerBlock, byThreads: Math.min(byThreads, byWarps), byRegs, bySmem, cap, blocks, regsPerWarp, regsPerBlock, occ: blocks * warpsPerBlock / 48};
+}
+FIG.occupancy = function(c){
+  const ir = $('#oc-reg'), is = $('#oc-smem'), it = $('#oc-thr');
+  function draw(){
+    const regs = Math.max(1, +ir.value || 1), smem = Math.max(0, +is.value || 0), threads = Math.max(32, +it.value || 32);
+    const o = occupancy(regs, smem, threads);
+    const W = 940, H = 230;
+    const s = svgIn(c, W, H);
+    const bars = [['thread and warp count', o.byThreads, `${threads} threads = ${o.warpsPerBlock} warps per block; 1536 threads / 48 warps per SM`], ['registers', o.byRegs, `${regs} regs x 32 = ${regs * 32}, rounded to ${o.regsPerWarp} per warp; ${fmt(o.regsPerBlock)} per block of 65536`], ['shared memory', o.bySmem, `${fmt(smem)} + 1024 bytes runtime overhead per block, of 102400 per SM`], ['hardware cap', o.cap, '16 blocks per SM on compute capability 8.6']];
+    const maxB = 32;
+    bars.forEach(([n, v, d], i) => {
+      const y = 20 + i * 42;
+      txt(s, 20, y + 14, n, {'font-size': 12, 'font-weight': 500});
+      rect(s, 180, y, 420, 20, {fill: '#F3F6F9'});
+      const w = Math.min(420, 420 * Math.min(v, maxB) / maxB);
+      const isMin = v === o.blocks;
+      rect(s, 180, y, w, 20, {fill: isMin ? COL.hot : COL.gmem, rx: 2});
+      txt(s, 186 + w, y + 14, `${v} block${v === 1 ? '' : 's'}${isMin ? '  (binding)' : ''}`, {'font-size': 11, fill: isMin ? COL.hot : COL.ink});
+      txt(s, 180, y + 32, d, {'font-size': 10, fill: COL.muted});
+    });
+    txt(s, 20, H - 30, `resident: ${o.blocks} block${o.blocks === 1 ? '' : 's'} x ${o.warpsPerBlock} warps = ${o.blocks * o.warpsPerBlock} of 48 warps`, {'font-size': 13, 'font-weight': 600});
+    txt(s, 20, H - 10, `occupancy ${(100 * o.occ).toFixed(0)}%`, {'font-size': 13, 'font-weight': 600, fill: COL.hot});
+    if (threads > 1024) txt(s, 300, H - 10, 'more than 1024 threads per block is not allowed', {'font-size': 12, fill: COL.warn});
+    if (smem > 49152) txt(s, 300, H - 30, 'above 48 KB needs dynamic shared memory opt-in', {'font-size': 12, fill: COL.warn});
+  }
+  [ir, is, it].forEach(i => i.addEventListener('input', draw));
+  draw();
+};
+
+/* ---------- 1D tiling ---------- */
+FIG.tile1d = function(c){
+  const BM = 16, BN = 16, BK = 4, TM = 4, cell = 15;
+  const W = 940, H = 400;
+  const s = svgIn(c, W, H);
+  const As = grid(s, {x: 40, y: 40, rows: BM, cols: BK, cell, label: 'As chunk (BM x BK)'});
+  const Bs = grid(s, {x: 140, y: 40, rows: BK, cols: BN, cell, label: 'Bs chunk (BK x BN)'});
+  const Cg = grid(s, {x: 140, y: 40 + BK * cell + 30, rows: BM, cols: BN, cell, label: 'C tile (BM x BN), one strip = one thread'});
+  for (let r = 0; r <= BM / TM; r++) line(Cg.g, 0, r * TM * cell, BN * cell, r * TM * cell, {stroke: COL.ink, 'stroke-width': 1.5});
+  const rx = 440;
+  txt(s, rx, 60, 'hover a strip in the C tile', {'font-size': 13});
+  const l1 = txt(s, rx, 84, '', {'font-size': 12}), l2 = txt(s, rx, 104, '', {'font-size': 12}), l3 = txt(s, rx, 124, '', {'font-size': 12});
+  // register box
+  rect(s, rx, 150, 300, 110, {fill: COL.regl, stroke: COL.reg, rx: 6});
+  txt(s, rx + 10, 170, 'registers of that thread', {'font-size': 12, 'font-weight': 600, fill: COL.reg});
+  txt(s, rx + 10, 190, `acc[${TM}]: ${TM} running sums`, {'font-size': 11});
+  for (let i = 0; i < TM; i++) rect(s, rx + 10 + i * 20, 198, 16, 12, {fill: COL.Cl, stroke: COL.C});
+  txt(s, rx + 10, 230, 'b: one Bs value, reused across all ' + TM + ' rows', {'font-size': 11});
+  rect(s, rx + 10, 238, 16, 12, {fill: COL.Bl, stroke: COL.B});
+  txt(s, rx, 285, `per k: 1 Bs load + ${TM} As loads, ${TM} FMAs  (${(1 + 1 / TM).toFixed(2)} loads per FMA, was 2)`, {'font-size': 12, fill: COL.hot});
+  txt(s, rx, 305, `per chunk: ${BK * (TM + 1)} SMEM loads, ${BK * TM} FMAs`, {'font-size': 12, fill: COL.muted});
+  const strips = [];
+  for (let tr = 0; tr < BM / TM; tr++) for (let tc = 0; tc < BN; tc++){
+    const hit = rect(Cg.g, tc * cell, tr * TM * cell, cell, TM * cell, {fill: 'transparent', style: 'cursor:pointer'});
+    hit.addEventListener('mouseenter', () => {
+      As.cells.flat().forEach(x => x.setAttribute('fill', '#fff')); Bs.cells.flat().forEach(x => x.setAttribute('fill', '#fff')); Cg.cells.flat().forEach(x => x.setAttribute('fill', '#fff'));
+      for (let i = 0; i < TM; i++) for (let k = 0; k < BK; k++) As.cells[tr * TM + i][k].setAttribute('fill', COL.Al);
+      for (let k = 0; k < BK; k++) Bs.cells[k][tc].setAttribute('fill', COL.Bl);
+      for (let i = 0; i < TM; i++) Cg.cells[tr * TM + i][tc].setAttribute('fill', COL.Cl);
+      const t = tr * BN + tc;
+      l1.textContent = `thread ${t}: tRow = ${t} / ${BN} = ${tr}, tCol = ${t} % ${BN} = ${tc}`;
+      l2.textContent = `outputs: rows ${tr * TM}..${tr * TM + TM - 1}, column ${tc}`;
+      l3.textContent = `reads: As rows ${tr * TM}..${tr * TM + TM - 1} (all ${BK} k), Bs column ${tc} (all ${BK} k)`;
+    });
+  }
+};
+
+/* ---------- 2D tiling ---------- */
+FIG.tile2d = function(c){
+  const BM = 16, BN = 16, BK = 4, TM = 4, TN = 4, cell = 15;
+  const kIn = $('#t2-k'), kv = $('#t2-kv');
+  let cur = null;
+  const W = 940, H = 400;
+  const s = svgIn(c, W, H);
+  const As = grid(s, {x: 40, y: 40, rows: BM, cols: BK, cell, label: 'As chunk (BM x BK)'});
+  const Bs = grid(s, {x: 140, y: 40, rows: BK, cols: BN, cell, label: 'Bs chunk (BK x BN)'});
+  const Cg = grid(s, {x: 140, y: 40 + BK * cell + 30, rows: BM, cols: BN, cell, label: 'C tile, each outlined square = one thread\'s TM x TN'});
+  for (let r = 0; r <= BM / TM; r++){ line(Cg.g, 0, r * TM * cell, BN * cell, r * TM * cell, {stroke: COL.ink, 'stroke-width': 1.5}); line(Cg.g, r * TN * cell, 0, r * TN * cell, BM * cell, {stroke: COL.ink, 'stroke-width': 1.5}); }
+  const rx = 440;
+  txt(s, rx, 60, 'hover a square in the C tile', {'font-size': 13});
+  const l1 = txt(s, rx, 84, '', {'font-size': 12}), l2 = txt(s, rx, 104, '', {'font-size': 12});
+  rect(s, rx, 130, 460, 170, {fill: COL.regl, stroke: COL.reg, rx: 6});
+  txt(s, rx + 10, 150, 'registers of that thread, at this k', {'font-size': 12, 'font-weight': 600, fill: COL.reg});
+  txt(s, rx + 10, 172, `regA[${TM}]`, {'font-size': 11});
+  const ra = []; for (let i = 0; i < TM; i++) ra.push(rect(s, rx + 70, 162 + i * 16, 14, 14, {fill: COL.Al, stroke: COL.A}));
+  txt(s, rx + 100, 172, `regB[${TN}]`, {'font-size': 11});
+  const rb = []; for (let j = 0; j < TN; j++) rb.push(rect(s, rx + 150 + j * 16, 162, 14, 14, {fill: COL.Bl, stroke: COL.B}));
+  const acc = grid(s, {x: rx + 150, y: 180, rows: TM, cols: TN, cell: 14, attr: () => ({fill: COL.Cl, stroke: COL.C})});
+  txt(s, rx + 100, 200, `acc[${TM}][${TN}]`, {'font-size': 11});
+  txt(s, rx + 240, 190, `acc[i][j] += regA[i] * regB[j]`, {'font-size': 11, 'font-family': 'IBM Plex Mono, monospace'});
+  txt(s, rx + 240, 208, `${TM + TN} loads, ${TM * TN} FMAs`, {'font-size': 11, fill: COL.hot});
+  txt(s, rx + 240, 226, `${((TM + TN) / (TM * TN)).toFixed(2)} loads per FMA`, {'font-size': 11, fill: COL.hot});
+  txt(s, rx + 10, 260, 'at 8 x 8 (the real kernel): 16 loads, 64 FMAs, 0.25 loads per FMA', {'font-size': 11, fill: COL.muted});
+  txt(s, rx + 10, 280, 'accumulators stay in registers across the whole K loop; only written to C once', {'font-size': 11, fill: COL.muted});
+  txt(s, rx, 330, `per output over the full K: K/64 GMEM loads, K/4 SMEM loads (kernel 4: K/32 and 9K/8)`, {'font-size': 12, fill: COL.muted});
+  function paint(){
+    const k = +kIn.value; kv.textContent = k;
+    As.cells.flat().forEach(x => x.setAttribute('fill', '#fff')); Bs.cells.flat().forEach(x => x.setAttribute('fill', '#fff')); Cg.cells.flat().forEach(x => x.setAttribute('fill', '#fff'));
+    if (!cur) return;
+    const [tr, tc] = cur;
+    for (let i = 0; i < TM; i++) As.cells[tr * TM + i][k].setAttribute('fill', COL.A);
+    for (let j = 0; j < TN; j++) Bs.cells[k][tc * TN + j].setAttribute('fill', COL.B);
+    for (let i = 0; i < TM; i++) for (let j = 0; j < TN; j++) Cg.cells[tr * TM + i][tc * TN + j].setAttribute('fill', COL.Cl);
+    const t = tr * (BN / TN) + tc;
+    l1.textContent = `thread ${t}: tRow = ${tr}, tCol = ${tc}; outputs rows ${tr * TM}..${tr * TM + TM - 1}, cols ${tc * TN}..${tc * TN + TN - 1}`;
+    l2.textContent = `k = ${k}: regA = As[${tr * TM}..${tr * TM + TM - 1}][${k}], regB = Bs[${k}][${tc * TN}..${tc * TN + TN - 1}]`;
+  }
+  for (let tr = 0; tr < BM / TM; tr++) for (let tc = 0; tc < BN / TN; tc++){
+    const hit = rect(Cg.g, tc * TN * cell, tr * TM * cell, TN * cell, TM * cell, {fill: 'transparent', style: 'cursor:pointer'});
+    hit.addEventListener('mouseenter', () => { cur = [tr, tc]; paint(); });
+  }
+  kIn.addEventListener('input', paint);
+  cur = [1, 2]; paint();
+};
+
+/* ---------- intensity ---------- */
+FIG.intensity = function(c){
+  const W = 940, H = 250;
+  const s = svgIn(c, W, H);
+  const shapes = [[4, 1], [2, 2], [4, 4], [8, 8]];
+  const titles = ['kernel 4 (column of 4)', '2 x 2 square', '4 x 4 square', 'kernel 5 (8 x 8 square)'];
+  const cell = 12;
+  shapes.forEach(([r, cc], i) => {
+    const ox = 40 + i * 230, oy = 70;
+    txt(s, ox, 32, titles[i], {'font-size': 12, 'font-weight': 600});
+    // A strip (vertical), B strip (horizontal)
+    grid(s, {x: ox, y: oy, rows: r, cols: 1, cell, attr: () => ({fill: COL.Al, stroke: COL.A})});
+    grid(s, {x: ox + cell + 6, y: oy - cell - 6, rows: 1, cols: cc, cell, attr: () => ({fill: COL.Bl, stroke: COL.B})});
+    grid(s, {x: ox + cell + 6, y: oy, rows: r, cols: cc, cell, attr: () => ({fill: COL.Cl, stroke: COL.C})});
+    const loads = r + cc, fmas = r * cc;
+    txt(s, ox, oy + Math.max(r, 8) * cell + 30, `${r} x ${cc} outputs per thread`, {'font-size': 12, 'font-weight': 600});
+    txt(s, ox, oy + Math.max(r, 8) * cell + 48, `${loads} loads, ${fmas} FMAs per k`, {'font-size': 11, fill: COL.muted});
+    txt(s, ox, oy + Math.max(r, 8) * cell + 66, `${(loads / fmas).toFixed(2)} loads per FMA`, {'font-size': 12, fill: COL.hot});
+  });
+};
+
+/* ---------- transpose ---------- */
+FIG.transpose = function(c){
+  const W = 940, H = 300, BM = 8, BK = 4, cell = 22, k = 1, TM = 4;
+  const s = svgIn(c, W, H);
+  // left: row-major
+  const L = grid(s, {x: 40, y: 40, rows: BM, cols: BK, cell, label: 'kernel 5: As[row * BK + k]', attr: (r, cc) => ({fill: (cc === k && r < TM) ? COL.Al : '#fff'})});
+  for (let r = 0; r < BM; r++) for (let cc = 0; cc < BK; cc++) txt(L.g, cc * cell + cell / 2, r * cell + cell / 2 + 4, r * BK + cc, {'text-anchor': 'middle', 'font-size': 10, fill: COL.muted});
+  txt(s, 40 + BK * cell + 10, 40 + 14, `k = ${k}, thread 0 needs rows 0..${TM - 1}`, {'font-size': 11, fill: COL.A});
+  const fl = grid(s, {x: 40, y: 250, rows: 1, cols: BM * BK, cell: 12, label: 'flat: needed values are indices 1, 5, 9, 13 (stride BK), four LDS.32', attr: (r, cc) => ({fill: (cc % BK === k && cc < TM * BK) ? COL.Al : '#fff'})});
+  // right: transposed
+  const R = grid(s, {x: 500, y: 40, rows: BK, cols: BM, cell, attr: (r, cc) => ({fill: (r === k && cc < TM) ? COL.Al : '#fff'})});
+  txt(s, 500, 22, 'kernel 6: As[k * BM + row]  (transposed)', {'font-size': 12, fill: COL.muted, 'font-weight': 600});
+  for (let r = 0; r < BK; r++) for (let cc = 0; cc < BM; cc++) txt(R.g, cc * cell + cell / 2, r * cell + cell / 2 + 4, r * BM + cc, {'text-anchor': 'middle', 'font-size': 10, fill: COL.muted});
+  txt(s, 500, 40 + BK * cell + 34, 'rows of this array are k; a thread\'s TM values sit side by side', {'font-size': 11, fill: COL.A});
+  bracket(s, 500, 40 + BK * cell + 4, TM * cell, '', COL.smem);
+  txt(s, 500 + TM * cell + 8, 40 + BK * cell + 12, 'these four load with one LDS.128', {'font-size': 11, fill: COL.smem});
+  const fr = grid(s, {x: 500, y: 250, rows: 1, cols: BM * BK, cell: 12, label: 'flat: indices 8, 9, 10, 11, contiguous and 16-byte aligned', attr: (r, cc) => ({fill: (cc >= k * BM && cc < k * BM + TM) ? COL.Al : '#fff'})});
+  txt(s, 500, 200, 'the transpose costs nothing extra: during the GMEM to SMEM copy', {'font-size': 11, fill: COL.muted});
+  txt(s, 500, 216, 'each thread writes its four floats to the swapped positions', {'font-size': 11, fill: COL.muted});
+};
+
+/* ---------- banks ---------- */
+FIG.banks = function(c){
+  const sel = $('#bk-stride'), note = $('#bk-note');
+  function draw(){
+    const stride = +sel.value;
+    const W = 940, H = 210;
+    const s = svgIn(c, W, H);
+    const x0 = 60, dx = 26;
+    txt(s, x0, 22, 'lanes 0..31 (each reads float index lane x stride)', {'font-size': 12, 'font-weight': 600});
+    txt(s, x0, 190, 'banks 0..31 (bank = index % 32)', {'font-size': 12, 'font-weight': 600});
+    const count = new Array(32).fill(0);
+    for (let l = 0; l < 32; l++) count[(l * stride) % 32]++;
+    const worst = Math.max(...count);
+    for (let l = 0; l < 32; l++){
+      const b = (l * stride) % 32;
+      const conflict = count[b] > 1;
+      line(s, x0 + l * dx + 10, 50, x0 + b * dx + 10, 140, {stroke: conflict ? COL.hot : COL.C, 'stroke-width': 1, opacity: .7});
+    }
+    for (let l = 0; l < 32; l++){ rect(s, x0 + l * dx, 32, 20, 18, {fill: WARP_COLORS[0], rx: 2}); txt(s, x0 + l * dx + 10, 45, l, {'font-size': 9, fill: '#fff', 'text-anchor': 'middle'}); }
+    for (let b = 0; b < 32; b++){ const col = count[b] > 1 ? COL.hot : (count[b] === 1 ? COL.C : COL.rule); rect(s, x0 + b * dx, 140, 20, 18, {fill: col, rx: 2}); txt(s, x0 + b * dx + 10, 153, b, {'font-size': 9, fill: count[b] ? '#fff' : COL.muted, 'text-anchor': 'middle'}); txt(s, x0 + b * dx + 10, 172, count[b] ? count[b] : '', {'font-size': 9, fill: COL.muted, 'text-anchor': 'middle'}); }
+    note.textContent = worst === 1 ? 'conflict-free: 1 cycle for the whole warp' : `${worst}-way conflict: the instruction is replayed ${worst} times`;
+  }
+  sel.addEventListener('input', draw);
+  draw();
+};
+
+/* ---------- tuning explorer ---------- */
+FIG.tuning = function(c){
+  const ids = ['bm', 'bn', 'bk', 'tm', 'tn'];
+  const inp = {}; ids.forEach(i => inp[i] = $('#tu-' + i));
+  function draw(){
+    const BM = +inp.bm.value, BN = +inp.bn.value, BK = +inp.bk.value, TM = +inp.tm.value, TN = +inp.tn.value;
+    const threads = (BM / TM) * (BN / TN);
+    const warps = threads / 32;
+    const smem = (BM + BN) * BK * 4;
+    const acc = TM * TN, ops = TM + TN;
+    const estRegs = Math.min(255, acc + ops + 24);
+    const loadsA = BM * BK / threads, loadsB = BN * BK / threads;
+    const f4ok = (BM * BK) % (4 * threads) === 0 && (BN * BK) % (4 * threads) === 0;
+    const aiBlock = BM * BN / (2 * (BM + BN));
+    const gmemDiv = BM * BN / (BM + BN);
+    const smemDiv = acc / ops;
+    const o = occupancy(estRegs, smem, threads);
+    const W = 940, H = 330;
+    const s = svgIn(c, W, H);
+    // tile drawing
+    const scale = Math.min(1, 200 / Math.max(BM, BN));
+    const ox = 40, oy = 60;
+    // Bs on top, As on left
+    const bkPx = Math.max(6, BK * scale);
+    rect(s, ox + bkPx + 10, oy - bkPx - 10, BN * scale, bkPx, {fill: COL.Bl, stroke: COL.B});
+    rect(s, ox, oy, bkPx, BM * scale, {fill: COL.Al, stroke: COL.A});
+    rect(s, ox + bkPx + 10, oy, BN * scale, BM * scale, {fill: COL.Cl, stroke: COL.C});
+    // thread squares
+    const tw = TN * scale, th = TM * scale;
+    if ((BM / TM) * (BN / TN) <= 4096){
+      for (let r = 0; r < BM / TM; r++) for (let cc = 0; cc < BN / TN; cc++){
+        rect(s, ox + bkPx + 10 + cc * tw, oy + r * th, tw, th, {fill: 'none', stroke: 'rgba(22,32,43,.35)', 'stroke-width': .5});
+      }
+    }
+    txt(s, ox + bkPx + 10, oy + BM * scale + 16, `C tile ${BM} x ${BN}, ${BM / TM} x ${BN / TN} threads of ${TM} x ${TN}`, {'font-size': 11, fill: COL.muted});
+    txt(s, ox + bkPx + 10, oy - bkPx - 16, `Bs ${BK} x ${BN}`, {'font-size': 10, fill: COL.B});
+    txt(s, ox, oy + BM * scale + 16, `As`, {'font-size': 10, fill: COL.A});
+    const rx = 330;
+    const rows = [
+      ['threads per block', `${fmt(threads)} (${warps} warps)`, threads <= 1024 && Number.isInteger(warps) && warps >= 1],
+      ['shared memory per block', `${fmt(smem)} bytes`, smem <= 49152],
+      ['accumulators per thread', `${acc} acc + ${ops} operands, about ${estRegs} regs`, estRegs <= 128],
+      ['float4 copy divisibility', f4ok ? 'ok' : 'not a multiple of 4 x threads', f4ok],
+      ['GMEM floats copied per thread per chunk', `${loadsA} of A, ${loadsB} of B`, true],
+      ['block arithmetic intensity (GMEM to SMEM)', `${aiBlock.toFixed(1)} FLOP per byte`, true],
+      ['GMEM loads per output over K', `K / ${gmemDiv}`, true],
+      ['SMEM loads per output over K', `K / ${smemDiv.toFixed(2)}  (${(ops / acc).toFixed(3)} loads per FMA)`, true],
+      ['occupancy at that register estimate', `${o.blocks} block(s) per SM, ${(100 * o.occ).toFixed(0)}%`, o.blocks >= 1]
+    ];
+    rows.forEach(([k, v, ok], i) => {
+      const y = 40 + i * 30;
+      txt(s, rx, y, k, {'font-size': 12, fill: COL.muted});
+      txt(s, rx + 300, y, v, {'font-size': 12, 'font-family': 'IBM Plex Mono, monospace', fill: ok ? COL.ink : COL.warn});
+    });
+    const bad = rows.filter(r => !r[2]).length;
+    txt(s, rx, 40 + rows.length * 30 + 4, bad ? `${bad} constraint(s) violated: the autotuner would skip this configuration` : 'valid configuration; only a benchmark can tell whether it is fast', {'font-size': 12, fill: bad ? COL.warn : COL.C});
+  }
+  ids.forEach(i => inp[i].addEventListener('input', draw));
+  draw();
+};
+
+/* ---------- warptiling ---------- */
+FIG.warptile = function(c){
+  const BM = 128, BN = 128, BK = 16, WM = 64, WN = 64, WNITER = 4, TM = 8, TN = 4;
+  const WMITER = (WM * WN) / (32 * TM * TN * WNITER); // 1
+  const WSUBM = WM / WMITER, WSUBN = WN / WNITER;       // 64 x 16
+  const lanesPerRow = WSUBN / TN;                        // 4
+  const px = 3;
+  const W = 940, H = 600;
+  const s = svgIn(c, W, H);
+  const cx = 150, cy = 90;
+  // Bs on top, As on left
+  const bsG = el('g', {}, s), asG = el('g', {}, s);
+  rect(bsG, cx, cy - BK * px - 20, BN * px, BK * px, {fill: COL.Bl, stroke: COL.B});
+  txt(s, cx, cy - BK * px - 26, 'Bs chunk (BK x BN)', {'font-size': 11, fill: COL.B});
+  rect(asG, cx - BK * px - 20, cy, BK * px, BM * px, {fill: COL.Al, stroke: COL.A});
+  txt(s, cx - BK * px - 20, cy - 6, 'As', {'font-size': 11, fill: COL.A});
+  rect(s, cx, cy, BN * px, BM * px, {fill: '#fff', stroke: COL.ink});
+  txt(s, cx, cy + BM * px + 16, `block tile ${BM} x ${BN}, ${BM / WM * BN / WN} warps (${BM / WM * BN / WN * 32} threads)`, {'font-size': 12, 'font-weight': 600});
+  // highlight layers
+  const hlA = el('g', {}, s), hlB = el('g', {}, s), hlC = el('g', {}, s);
+  const info = el('g', {}, s);
+  const ix = 560;
+  const lines = [];
+  for (let i = 0; i < 9; i++) lines.push(txt(info, ix, 80 + i * 20, '', {'font-size': 12}));
+  lines[0].textContent = 'hover a warp tile or a lane square';
+  rect(s, ix, 280, 340, 150, {fill: COL.regl, stroke: COL.reg, rx: 6});
+  txt(s, ix + 10, 300, 'per lane, per k', {'font-size': 12, 'font-weight': 600, fill: COL.reg});
+  txt(s, ix + 10, 322, `regA: WMITER x TM = ${WMITER * TM} values from As`, {'font-size': 11});
+  txt(s, ix + 10, 340, `regB: WNITER x TN = ${WNITER * TN} values from Bs`, {'font-size': 11});
+  txt(s, ix + 10, 358, `acc: WMITER x WNITER squares of TM x TN = ${WMITER * WNITER * TM * TN} outputs`, {'font-size': 11});
+  txt(s, ix + 10, 380, `${WMITER * TM + WNITER * TN} loads, ${WMITER * WNITER * TM * TN} FMAs: ${((WMITER * TM + WNITER * TN) / (WMITER * WNITER * TM * TN)).toFixed(3)} loads per FMA`, {'font-size': 11, fill: COL.hot});
+  txt(s, ix + 10, 402, 'the lane\'s As rows are shared with every other lane in its lane-row,', {'font-size': 10, fill: COL.muted});
+  txt(s, ix + 10, 416, 'its Bs columns with every lane in its lane-column: warp-level reuse', {'font-size': 10, fill: COL.muted});
+  txt(s, ix, 470, `warpId = threadIdx.x / 32, laneId = threadIdx.x % 32`, {'font-size': 11, 'font-family': 'IBM Plex Mono, monospace'});
+  txt(s, ix, 490, `warpRow = warpId / ${BN / WN}, warpCol = warpId % ${BN / WN}`, {'font-size': 11, 'font-family': 'IBM Plex Mono, monospace'});
+  txt(s, ix, 510, `laneRow = laneId / ${lanesPerRow}, laneCol = laneId % ${lanesPerRow}`, {'font-size': 11, 'font-family': 'IBM Plex Mono, monospace'});
+  txt(s, ix, 530, `WSUBM x WSUBN = ${WSUBM} x ${WSUBN}, ${32 / lanesPerRow} x ${lanesPerRow} lanes of ${TM} x ${TN}`, {'font-size': 11, 'font-family': 'IBM Plex Mono, monospace'});
+  function clear(){ hlA.innerHTML = ''; hlB.innerHTML = ''; hlC.innerHTML = ''; }
+  // draw structure
+  for (let wr = 0; wr < BM / WM; wr++) for (let wc = 0; wc < BN / WN; wc++){
+    const wid = wr * (BN / WN) + wc;
+    const wx = cx + wc * WN * px, wy = cy + wr * WM * px;
+    // sub-tiles
+    for (let sm = 0; sm < WMITER; sm++) for (let sn = 0; sn < WNITER; sn++){
+      const sx = wx + sn * WSUBN * px, sy = wy + sm * WSUBM * px;
+      rect(s, sx, sy, WSUBN * px, WSUBM * px, {fill: 'none', stroke: WARP_COLORS[wid], 'stroke-width': 1, 'stroke-dasharray': '3 2'});
+      // lane squares
+      for (let lane = 0; lane < 32; lane++){
+        const lr = Math.floor(lane / lanesPerRow), lc = lane % lanesPerRow;
+        const lx = sx + lc * TN * px, ly = sy + lr * TM * px;
+        const r = rect(s, lx, ly, TN * px, TM * px, {fill: WARP_COLORS[wid], opacity: 0.12 + 0.05 * (lane % 2), stroke: '#fff', 'stroke-width': .5, style: 'cursor:pointer'});
+        r.addEventListener('mouseenter', () => {
+          clear();
+          // all squares of this lane across sub-tiles
+          for (let a = 0; a < WMITER; a++) for (let b = 0; b < WNITER; b++){
+            const qx = wx + b * WSUBN * px + lc * TN * px, qy = wy + a * WSUBM * px + lr * TM * px;
+            rect(hlC, qx, qy, TN * px, TM * px, {fill: COL.hot, opacity: .85});
+          }
+          for (let a = 0; a < WMITER; a++) rect(hlA, cx - BK * px - 20, wy + a * WSUBM * px + lr * TM * px, BK * px, TM * px, {fill: COL.A, opacity: .9});
+          for (let b = 0; b < WNITER; b++) rect(hlB, wx + b * WSUBN * px + lc * TN * px, cy - BK * px - 20, TN * px, BK * px, {fill: COL.B, opacity: .9});
+          rect(hlC, wx, wy, WN * px, WM * px, {fill: 'none', stroke: WARP_COLORS[wid], 'stroke-width': 2});
+          lines[0].textContent = `warp ${wid} (warpRow ${wr}, warpCol ${wc}), lane ${lane} (laneRow ${lr}, laneCol ${lc})`;
+          lines[1].textContent = `block-tile rows ${wr * WM + lr * TM}..${wr * WM + lr * TM + TM - 1}`;
+          lines[2].textContent = `columns: ${Array.from({length: WNITER}, (_, b) => `${wc * WN + b * WSUBN + lc * TN}..${wc * WN + b * WSUBN + lc * TN + TN - 1}`).join(', ')}`;
+          lines[3].textContent = `${WMITER * WNITER} squares of ${TM} x ${TN} (magenta), one per sub-tile`;
+          lines[4].textContent = `As rows read (blue): ${TM} rows, shared by the ${lanesPerRow} lanes in this lane-row`;
+          lines[5].textContent = `Bs columns read (amber): ${WNITER * TN} columns, shared by the ${32 / lanesPerRow} lanes in this lane-column`;
+          lines[6].textContent = ''; lines[7].textContent = '';
+        });
+      }
+    }
+    rect(s, wx, wy, WN * px, WM * px, {fill: 'none', stroke: WARP_COLORS[wid], 'stroke-width': 2});
+    txt(s, wx + 4, wy + 14, `warp ${wid}`, {'font-size': 11, fill: WARP_COLORS[wid], 'font-weight': 600, 'pointer-events': 'none'});
+    // warp hover: a thin frame label region
+    const lab = rect(s, wx, wy, 60, 18, {fill: 'transparent', style: 'cursor:pointer'});
+    lab.addEventListener('mouseenter', () => {
+      clear();
+      rect(hlC, wx, wy, WN * px, WM * px, {fill: WARP_COLORS[wid], opacity: .25});
+      for (let sm = 0; sm < WMITER; sm++) for (let sn = 0; sn < WNITER; sn++) rect(hlC, wx + sn * WSUBN * px, wy + sm * WSUBM * px, WSUBN * px, WSUBM * px, {fill: 'none', stroke: COL.ink, 'stroke-width': 1.5});
+      rect(hlA, cx - BK * px - 20, wy, BK * px, WM * px, {fill: COL.A, opacity: .6});
+      rect(hlB, wx, cy - BK * px - 20, WN * px, BK * px, {fill: COL.B, opacity: .6});
+      lines[0].textContent = `warp ${wid}: warp tile ${WM} x ${WN} at rows ${wr * WM}..${wr * WM + WM - 1}, cols ${wc * WN}..${wc * WN + WN - 1}`;
+      lines[1].textContent = `split into WMITER x WNITER = ${WMITER} x ${WNITER} sub-tiles of ${WSUBM} x ${WSUBN} (dashed)`;
+      lines[2].textContent = `each sub-tile is covered by the warp's 32 lanes, ${32 / lanesPerRow} x ${lanesPerRow} squares of ${TM} x ${TN}`;
+      lines[3].textContent = `this warp only ever touches ${WM} rows of As and ${WN} columns of Bs`;
+      lines[4].textContent = 'the four warps can run on the four schedulers of an SM in parallel';
+      for (let i = 5; i < 9; i++) lines[i].textContent = '';
+    });
+  }
+  txt(s, cx, cy + BM * px + 36, 'hover the "warp n" label for the warp view, or any small square for the lane view', {'font-size': 11, fill: COL.muted});
+};
+
+/* ---------- split-K ---------- */
+FIG.splitk = function(c){
+  const W = 940, H = 300;
+  const s = svgIn(c, W, H);
+  // left: without
+  txt(s, 30, 24, 'without split-K: 256 x 256 output, 128 x 128 tiles', {'font-size': 12, 'font-weight': 600});
+  grid(s, {x: 30, y: 40, rows: 2, cols: 2, cell: 40, attr: (r, cc) => ({fill: WARP_COLORS[r * 2 + cc], stroke: '#fff'})});
+  txt(s, 30, 134, '4 blocks', {'font-size': 11, fill: COL.muted});
+  txt(s, 160, 60, 'SMs:', {'font-size': 11, fill: COL.muted});
+  for (let i = 0; i < 84; i++){ const r = Math.floor(i / 21), cc = i % 21; rect(s, 190 + cc * 11, 44 + r * 11, 9, 9, {fill: i < 4 ? WARP_COLORS[i] : COL.soft}); }
+  txt(s, 190, 104, '4 of 84 SMs busy', {'font-size': 11, fill: COL.warn});
+  // right: with
+  const oy = 160;
+  txt(s, 30, oy - 12, 'with split-K = 4: each tile is computed by 4 blocks over K/4 each, then reduced', {'font-size': 12, 'font-weight': 600});
+  for (let p = 0; p < 4; p++){
+    grid(s, {x: 30 + p * 100, y: oy, rows: 2, cols: 2, cell: 26, attr: (r, cc) => ({fill: WARP_COLORS[r * 2 + cc], opacity: .35 + .15 * p, stroke: '#fff'})});
+    txt(s, 30 + p * 100, oy + 68, `k in [${p}K/4, ${p + 1}K/4)`, {'font-size': 10, fill: COL.muted});
+  }
+  txt(s, 30, oy + 90, '16 blocks write partial sums to a scratch buffer', {'font-size': 11, fill: COL.muted});
+  line(s, 440, oy + 26, 500, oy + 26, {'stroke-width': 2});
+  rect(s, 500, oy - 4, 120, 60, {fill: COL.soft, stroke: COL.rule, rx: 4});
+  txt(s, 560, oy + 22, 'reduce kernel', {'font-size': 11, 'text-anchor': 'middle'});
+  txt(s, 560, oy + 40, 'C = sum of 4 partials', {'font-size': 10, 'text-anchor': 'middle', fill: COL.muted});
+  line(s, 620, oy + 26, 680, oy + 26, {'stroke-width': 2});
+  grid(s, {x: 680, y: oy, rows: 2, cols: 2, cell: 26, attr: (r, cc) => ({fill: WARP_COLORS[r * 2 + cc], stroke: '#fff'})});
+  txt(s, 680, oy + 68, 'C', {'font-size': 11, fill: COL.muted});
+  txt(s, 760, oy + 26, '16 of 84 SMs busy, plus a short extra kernel', {'font-size': 11, fill: COL.C});
+};
+
+/* ---------- pipeline ---------- */
+FIG.pipeline = function(c){
+  const W = 940, H = 200;
+  const s = svgIn(c, W, H);
+  const u = 42;
+  function bar(x, y, w, label, col){ rect(s, x, y, w, 24, {fill: col, rx: 3}); txt(s, x + w / 2, y + 16, label, {'font-size': 10, fill: '#fff', 'text-anchor': 'middle'}); }
+  txt(s, 20, 30, 'kernels 3 to 10: serialised', {'font-size': 12, 'font-weight': 600});
+  let x = 20;
+  for (let i = 0; i < 3; i++){ bar(x, 40, 2 * u, `load ${i}`, COL.gmem); x += 2 * u + 2; bar(x, 40, 12, '', COL.hot); x += 14; bar(x, 40, 3 * u, `compute ${i}`, COL.smem); x += 3 * u + 2; bar(x, 40, 12, '', COL.hot); x += 14; }
+  txt(s, x + 4, 56, 'time', {'font-size': 10, fill: COL.muted});
+  txt(s, 20, 110, 'double buffered: load i+1 overlaps compute i', {'font-size': 12, 'font-weight': 600});
+  x = 20;
+  bar(x, 120, 2 * u, 'load 0', COL.gmem); x += 2 * u + 2; bar(x, 120, 12, '', COL.hot); x += 14;
+  for (let i = 0; i < 3; i++){ bar(x, 120, 3 * u, `compute ${i}`, COL.smem); bar(x, 148, 2 * u, `load ${i + 1}`, COL.gmem); x += 3 * u + 2; bar(x, 120, 12, '', COL.hot); x += 14; }
+  txt(s, x + 4, 136, 'time', {'font-size': 10, fill: COL.muted});
+  txt(s, 20, 190, 'magenta = __syncthreads(). two shared memory buffers alternate; registers can be double buffered the same way between shared memory and the FMA loop.', {'font-size': 11, fill: COL.muted});
+};
+
+/* ---------- triton mapping ---------- */
+FIG.tritonmap = function(c){
+  const rows = [
+    {k: '1', name: 'grid, block, thread mapping', tri: 'launch grid + tl.program_id(); num_warps = threads / 32', who: 'you', note: 'You still decide how output tiles are assigned to programs, which sets L2 locality and load balance.'},
+    {k: '2', name: 'global memory coalescing', tri: 'layout analysis on tl.load / tl.store from your strides', who: 'compiler', note: 'Consecutive lanes get consecutive elements along the contiguous dimension. Hints: tl.max_contiguous, tl.multiple_of.'},
+    {k: '3', name: 'shared memory caching', tri: 'tl.dot operands staged into shared memory automatically', who: 'compiler', note: 'There is no __shared__ in Triton source. The compiler inserts the copy and the barriers.'},
+    {k: '4, 5', name: 'register tiling, TM x TN per thread', tri: 'tl.dot accumulator in an MMA register layout', who: 'compiler', note: 'The per-thread fragment shape follows the tensor core instruction, not a template parameter.'},
+    {k: '6', name: 'vector loads, transposed As', tri: '16-byte alignment specialisation + layout conversions', who: 'compiler', note: 'If a pointer is not 16-byte aligned Triton recompiles a slower variant. Transposes become layout conversions through shared memory.'},
+    {k: '7, 8', name: 'bank conflicts', tri: 'swizzled shared memory layouts', who: 'compiler', note: 'The two kernels the article dropped are solved by default.'},
+    {k: '9', name: 'autotuning BM, BN, BK, TM, TN', tri: '@triton.autotune over BLOCK sizes, num_warps, num_stages', who: 'you (the search space)', note: 'FLA typically autotunes num_warps in 1 to 8 and num_stages in 2 to 4 per chunk kernel, plus BK or BC where it matters.'},
+    {k: '10', name: 'warptiling', tri: 'num_warps + compiler warp tiling; wgmma on Hopper', who: 'compiler', note: 'Warps are still invisible in the source, but num_warps is the one knob that changes how the block tile is split among them.'},
+    {k: '11', name: 'double buffering, async copies', tri: 'num_stages (cp.async on Ampere, TMA on Hopper)', who: 'compiler', note: 'The K loop is software-pipelined to the requested depth. Deeper pipelines cost shared memory, the same trade as occupancy.'},
+    {k: 'tensor cores', name: 'mma instructions', tri: 'tl.dot with bf16 / fp16 / fp8 / tf32 inputs', who: 'compiler', note: 'FLA casts to bf16 before each dot and keeps fp32 accumulators.'}
+  ];
+  const W = 940, rowH = 34, top = 34, H = top + rows.length * rowH + 70;
+  const s = svgIn(c, W, H);
+  txt(s, 20, 22, 'worklog kernel', {'font-size': 12, 'font-weight': 600});
+  txt(s, 345, 22, 'Triton mechanism', {'font-size': 12, 'font-weight': 600});
+  txt(s, 810, 22, 'decided by', {'font-size': 12, 'font-weight': 600});
+  const note = txt(s, 20, H - 30, 'hover a row for the detail', {'font-size': 12, fill: COL.muted});
+  const note2 = txt(s, 20, H - 12, '', {'font-size': 12, fill: COL.muted});
+  rows.forEach((r, i) => {
+    const y = top + i * rowH;
+    const g = el('g', {}, s);
+    const auto = r.who === 'compiler';
+    const bg = rect(g, 14, y, W - 28, rowH - 4, {fill: auto ? COL.Cl : COL.Bl, rx: 4, opacity: .5});
+    txt(g, 20, y + 20, r.k, {'font-size': 12, 'font-family': 'IBM Plex Mono, monospace', fill: COL.muted});
+    txt(g, 80, y + 20, r.name, {'font-size': 12});
+    line(g, 318, y + 15, 336, y + 15, {stroke: COL.muted});
+    txt(g, 345, y + 20, r.tri, {'font-size': 12, 'font-family': 'IBM Plex Mono, monospace'});
+    txt(g, 810, y + 20, r.who, {'font-size': 12, fill: auto ? COL.C : COL.B, 'font-weight': 500});
+    g.addEventListener('mouseenter', () => {
+      $$('rect', s).forEach(x => x.setAttribute('opacity', .5));
+      bg.setAttribute('opacity', 1);
+      const words = r.note.split(' ');
+      let a = '', b = '';
+      words.forEach(w => { if ((a + ' ' + w).length < 130 && !b) a += (a ? ' ' : '') + w; else b += (b ? ' ' : '') + w; });
+      note.textContent = a; note2.textContent = b;
+    });
+  });
+};
+
+/* ---------- FLA anatomy ---------- */
+FIG.fla = function(c){
+  const W = 940, H = 560;
+  const s = svgIn(c, W, H);
+  const BT = 64;
+  // sequence strip
+  txt(s, 20, 22, 'one (batch, head): sequence of T tokens split into chunks of BT = 64', {'font-size': 12, 'font-weight': 600});
+  const nC = 6, cw = 110, cy = 32;
+  for (let i = 0; i < nC; i++){
+    rect(s, 20 + i * (cw + 6), cy, cw, 26, {fill: i === 2 ? COL.hotl : COL.soft, stroke: i === 2 ? COL.hot : COL.rule, rx: 3});
+    txt(s, 20 + i * (cw + 6) + cw / 2, cy + 17, `chunk ${i}`, {'font-size': 11, 'text-anchor': 'middle', fill: i === 2 ? COL.hot : COL.muted});
+  }
+  txt(s, 20 + nC * (cw + 6) + 4, cy + 17, '...', {'font-size': 12, fill: COL.muted});
+  txt(s, 20, cy + 46, 'chunk 2 is followed through both kernels below', {'font-size': 11, fill: COL.hot});
+
+  function box(x, y, w, h, label, sub, col, dot){
+    rect(s, x, y, w, h, {fill: col, stroke: 'rgba(22,32,43,.25)', rx: 4});
+    txt(s, x + 8, y + 17, label, {'font-size': 11, 'font-weight': 600});
+    if (sub) txt(s, x + 8, y + 32, sub, {'font-size': 10, fill: COL.muted});
+    if (dot) el('circle', {cx: x + w - 10, cy: y + 10, r: 4, fill: COL.hot}, s);
+  }
+  function arrow(x1, y1, x2, y2, col){ line(s, x1, y1, x2, y2, {stroke: col || COL.muted, 'stroke-width': 1.5}); el('circle', {cx: x2, cy: y2, r: 2.5, fill: col || COL.muted}, s); }
+
+  // kernel 1: state pass
+  const ky = 110;
+  rect(s, 20, ky, 900, 170, {fill: '#F7F9FB', stroke: COL.rule, rx: 6});
+  txt(s, 32, ky + 20, 'kernel 1: state pass (chunk_fwd_h). grid = (K tiles, V tiles, batch x heads). one program loops over chunks in order.', {'font-size': 12, 'font-weight': 600});
+  box(40, ky + 40, 130, 44, 'S before chunk 2', 'K x V tile (BK x BV)', COL.smeml);
+  box(210, ky + 40, 150, 44, 'K2^T V2', 'BK x BT times BT x BV', COL.Cl, true);
+  box(400, ky + 40, 210, 44, 'S = decay * S + K2^T V2', 'after chunk 2, kept in registers', COL.smeml);
+  box(650, ky + 40, 250, 44, 'store S (chunk 2) to global memory', 'h tensor: (T / BT) x K x V per head', COL.gmeml);
+  arrow(170, ky + 62, 210, ky + 62); arrow(360, ky + 62, 400, ky + 62); arrow(610, ky + 62, 650, ky + 62);
+  txt(s, 40, ky + 112, 'inputs per chunk: K2 (BT x BK) and V2 (BT x BV) loaded with tl.load, cast to bf16; accumulation in fp32', {'font-size': 11, fill: COL.muted});
+  txt(s, 40, ky + 130, 'then the same program continues with chunk 3, 4, ... : sequential across chunks, parallel across (K tile, V tile, batch, head)', {'font-size': 11, fill: COL.muted});
+  txt(s, 40, ky + 150, 'this is the scan: parallelism comes from batch x heads x tiles, not from the sequence', {'font-size': 11, fill: COL.hot});
+
+  // kernel 2: output pass
+  const oy = 300;
+  rect(s, 20, oy, 900, 230, {fill: '#F7F9FB', stroke: COL.rule, rx: 6});
+  txt(s, 32, oy + 20, 'kernel 2: output pass (chunk_fwd_o). grid = (V tiles, chunks, batch x heads). every chunk is an independent program.', {'font-size': 12, 'font-weight': 600});
+  box(40, oy + 40, 170, 44, 'inter-chunk: Q2 S', 'BT x BK times BK x BV', COL.Cl, true);
+  box(40, oy + 100, 170, 44, 'intra-chunk: A = Q2 K2^T', 'BT x BK times BK x BT', COL.Cl, true);
+  box(240, oy + 100, 170, 44, 'causal mask on A', 'lower triangle, plus gates', COL.Bl);
+  box(440, oy + 100, 170, 44, 'A V2', 'BT x BT times BT x BV', COL.Cl, true);
+  box(650, oy + 60, 250, 64, 'O2 = Q2 S + (mask(Q2 K2^T)) V2', 'stored once, BT x BV per program', COL.regl);
+  arrow(210, oy + 122, 240, oy + 122); arrow(410, oy + 122, 440, oy + 122); arrow(610, oy + 122, 650, oy + 100); arrow(210, oy + 62, 650, oy + 80);
+  txt(s, 40, oy + 170, 'S for chunk 2 is read back from the h tensor written by kernel 1; Q2, K2, V2 are read from global memory again', {'font-size': 11, fill: COL.muted});
+  txt(s, 40, oy + 188, 'three small block-tile matmuls per program: this is where the article\'s tile lives inside FLA', {'font-size': 11, fill: COL.muted});
+  txt(s, 40, oy + 210, 'dot = a tl.dot, i.e. a block-tile matmul with K equal to BK, BT or BV (64 to 256), never 4092', {'font-size': 11, fill: COL.hot});
+};
+
+/* ---------- init ---------- */
+function init(){
+  $$('[data-fig]').forEach(c => {
+    const f = FIG[c.dataset.fig];
+    if (f){ try { f(c); } catch (e) { c.innerHTML = '<p style="color:#B4261E;font-size:.9rem">figure failed to render: ' + (e && e.message) + '</p>'; console.error(c.dataset.fig, e); } }
+  });
+  // nav highlighting
+  const links = $$('nav.rail a');
+  const byId = {}; links.forEach(a => { byId[a.getAttribute('href').slice(1)] = a; });
+  const targets = $$('section[id], h3[id], a#top');
+  if ('IntersectionObserver' in window){
+    const obs = new IntersectionObserver(entries => {
+      entries.forEach(en => { if (en.isIntersecting){ links.forEach(a => a.classList.remove('active')); const a = byId[en.target.id]; if (a) a.classList.add('active'); } });
+    }, {rootMargin: '-10% 0px -80% 0px'});
+    targets.forEach(t => obs.observe(t));
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+</body>
+</html>
